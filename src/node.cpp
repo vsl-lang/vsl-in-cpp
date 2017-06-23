@@ -30,6 +30,20 @@ size_t Node::getPos() const
     return pos;
 }
 
+EmptyNode::EmptyNode(size_t pos)
+    : Node{ Node::EMPTY, pos }
+{
+}
+
+EmptyNode::~EmptyNode()
+{
+}
+
+std::string EmptyNode::toString() const
+{
+    return "Empty {}";
+}
+
 BlockNode::BlockNode(std::vector<std::unique_ptr<Node>>&& statements,
         size_t pos)
     : Node{ Node::BLOCK, pos }, statements{ std::move(statements) }

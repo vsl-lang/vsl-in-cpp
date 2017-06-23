@@ -19,6 +19,7 @@ private:
     const Token& peek(size_t i = 1) const;
     std::vector<std::unique_ptr<Node>> parseStatements();
     std::unique_ptr<Node> parseStatement();
+    std::unique_ptr<EmptyNode> parseEmptyStatement();
     std::unique_ptr<ExprNode> parseExpr(int rbp = 0);
     std::unique_ptr<ExprNode> parseNud();
     std::unique_ptr<ExprNode> parseLed(std::unique_ptr<ExprNode> left);

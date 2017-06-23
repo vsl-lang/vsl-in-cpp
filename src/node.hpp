@@ -17,6 +17,7 @@ class Node
 public:
     enum Type
     {
+        EMPTY,
         BLOCK,
         ARG,
         ID_EXPR,
@@ -34,6 +35,14 @@ public:
 private:
     Type type;
     size_t pos;
+};
+
+class EmptyNode : public Node
+{
+public:
+    EmptyNode(size_t pos);
+    virtual ~EmptyNode() override;
+    virtual std::string toString() const override;
 };
 
 class BlockNode : public Node

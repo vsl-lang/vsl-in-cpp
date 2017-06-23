@@ -71,9 +71,22 @@ std::unique_ptr<Node> Parser::parseStatement()
         }
     case Token::LBRACE:
         return parseBlock();
+    case Token::SEMICOLON:
+        return parseEmptyStatement();
     default:
         return nullptr; // error
     }
+}
+
+std::unique_ptr<EmptyNode> Parser::parseEmptyStatement()
+{
+    const Token& semicolon = current();
+    if (semicolon.getType() != Token::SEMICOLON)
+    {
+        return nullptr; // error
+    }
+    next();
+    return std::make_unique<EmptyNode>(semicolon.getPos());
 }
 
 std::unique_ptr<ExprNode> Parser::parseExpr(int rbp)
