@@ -11,7 +11,13 @@ Parser::Parser(std::vector<std::unique_ptr<Token>> tokens)
 
 std::unique_ptr<Node> Parser::parse()
 {
-    return parseStatement(); // for now
+    size_t savedPos = current().getPos();
+    auto root = std::make_unique<BlockNode>(parseStatements(), savedPos);
+    if (current().getType() != Token::END)
+    {
+        return nullptr; // error
+    }
+    return root;
 }
 
 const Token& Parser::next()
