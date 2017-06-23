@@ -44,8 +44,7 @@ std::string EmptyNode::toString() const
     return "Empty {}";
 }
 
-BlockNode::BlockNode(std::vector<std::unique_ptr<Node>>&& statements,
-        size_t pos)
+BlockNode::BlockNode(std::vector<std::unique_ptr<Node>> statements, size_t pos)
     : Node{ Node::BLOCK, pos }, statements{ std::move(statements) }
 {
 }

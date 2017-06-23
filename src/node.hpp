@@ -48,7 +48,7 @@ public:
 class BlockNode : public Node
 {
 public:
-    BlockNode(std::vector<std::unique_ptr<Node>>&& statements, size_t pos);
+    BlockNode(std::vector<std::unique_ptr<Node>> statements, size_t pos);
     virtual ~BlockNode() override;
     virtual std::string toString() const override;
 
