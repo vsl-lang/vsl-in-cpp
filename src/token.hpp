@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <ostream>
 #include <string>
-#include <unordered_set>
+#include <unordered_map>
 
 class Token;
 
@@ -15,9 +15,17 @@ class Token
 public:
     enum Type
     {
-        IDENTIFIER,
-        KEYWORD,
+        // regular old terminals
         NUMBER,
+        IDENTIFIER,
+        // keywords
+        VAR,
+        LET,
+        FUNC,
+        RETURN,
+        IF,
+        ELSE,
+        // operators
         PLUS,
         MINUS,
         STAR,
@@ -29,6 +37,7 @@ public:
         GREATER_EQUAL,
         LESS,
         LESS_EQUAL,
+        // symbols
         COLON,
         SEMICOLON,
         COMMA,
@@ -61,7 +70,7 @@ public:
 
 private:
     static Token::Type evaluateName(const std::string& name);
-    static const std::unordered_set<std::string> keywords;
+    static const std::unordered_map<std::string, Token::Type> keywords;
     std::string name;
 };
 

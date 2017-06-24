@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <ostream>
 #include <string>
-#include <unordered_set>
+#include <unordered_map>
 #include <utility>
 
 std::ostream& operator<<(std::ostream& os, const Token& token)
@@ -23,12 +23,22 @@ const char* Token::typeToString(Token::Type type)
 {
     switch (type)
     {
-    case Token::IDENTIFIER:
-        return "identifier";
-    case Token::KEYWORD:
-        return "keyword";
     case Token::NUMBER:
         return "number";
+    case Token::IDENTIFIER:
+        return "identifier";
+    case Token::VAR:
+        return "keyword var";
+    case Token::LET:
+        return "keyword let";
+    case Token::FUNC:
+        return "keyword func";
+    case Token::RETURN:
+        return "keyword return";
+    case Token::IF:
+        return "keyword if";
+    case Token::ELSE:
+        return "keyword else";
     case Token::PLUS:
         return "operator +";
     case Token::MINUS:
@@ -103,7 +113,12 @@ std::string NameToken::toString() const
     std::string s;
     switch (getType())
     {
-    case Token::KEYWORD:
+    case Token::VAR:
+    case Token::LET:
+    case Token::FUNC:
+    case Token::RETURN:
+    case Token::IF:
+    case Token::ELSE:
         s = "keyword ";
         break;
     case Token::IDENTIFIER:
@@ -123,16 +138,22 @@ const std::string& NameToken::getName() const
 
 Token::Type NameToken::evaluateName(const std::string& name)
 {
-    if (keywords.find(name) != keywords.end())
+    auto it = keywords.find(name);
+    if (it != keywords.end())
     {
-        return Token::KEYWORD;
+        return it->second;
     }
     return Token::IDENTIFIER;
 }
 
-const std::unordered_set<std::string> NameToken::keywords
+const std::unordered_map<std::string, Token::Type> NameToken::keywords
 {
-    "var", "let", "func", "return", "if", "else"
+    { "var", Token::VAR },
+    { "let", Token::LET },
+    { "func", Token::FUNC },
+    { "return", Token::RETURN },
+    { "if", Token::IF },
+    { "else", Token::ELSE }
 };
 
 NumberToken::NumberToken(long value, size_t pos)
