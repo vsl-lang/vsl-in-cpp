@@ -11,8 +11,8 @@ std::ostream& operator<<(std::ostream& os, const Node& ast)
     return os << ast.toString();
 }
 
-Node::Node(Node::Type type, size_t pos)
-    : type{ type }, pos{ pos }
+Node::Node(Type nodeType, size_t pos)
+    : nodeType{ nodeType }, pos{ pos }
 {
 }
 
@@ -20,9 +20,9 @@ Node::~Node()
 {
 }
 
-Node::Type Node::getType() const
+Node::Type Node::getNodeType() const
 {
-    return type;
+    return nodeType;
 }
 
 size_t Node::getPos() const
@@ -71,33 +71,60 @@ std::string BlockNode::toString() const
     return s;
 }
 
-ArgNode::ArgNode(std::string name, std::unique_ptr<ExprNode> value, size_t pos)
-    : Node{ Node::ARG, pos }, name{ std::move(name) }, value{ std::move(value) }
+AssignmentNode::AssignmentNode(std::string name, std::unique_ptr<TypeNode> type,
+    std::unique_ptr<ExprNode> value, Qualifiers qualifiers, size_t pos)
+    : Node{ Node::ASSIGNMENT, pos }, name{ std::move(name) },
+    type{ std::move(type) }, value{ std::move(value) }, qualifiers{ qualifiers }
 {
 }
 
-ArgNode::~ArgNode()
+AssignmentNode::~AssignmentNode()
 {
 }
 
-std::string ArgNode::toString() const
+std::string AssignmentNode::toString() const
 {
-    std::string s = "Arg { name: ";
+    std::string s = "Assignment { name: ";
     s += name;
+    s += ", type: ";
+    s += type->toString();
     s += ", value: ";
-    s += value->toString();
-    s += " }";
+    if (value == nullptr)
+    {
+        s += "null";
+    }
+    else
+    {
+        s += value->toString();
+    }
+    s += ", qualifiers: [ ";
+    if (qualifiers & CONST)
+    {
+        s += "const";
+    }
+    else
+    {
+        s += "nonConst";
+    }
+    s += " ] }";
     return s;
 }
 
-const std::string& ArgNode::getName() const
+TypeNode::TypeNode(std::string name, size_t pos)
+    : Node{ Node::TYPE, pos }, name{ std::move(name) }
 {
-    return name;
 }
 
-const ExprNode& ArgNode::getValue() const
+TypeNode::~TypeNode()
 {
-    return *value;
+}
+
+std::string TypeNode::toString() const
+{
+    std::string s = "Type { name: ";
+    s += name;
+    s += " }";
+    return s;
 }
 
 ExprNode::ExprNode(Node::Type type, size_t pos)
@@ -122,7 +149,7 @@ std::string IdentExprNode::toString() const
     return s;
 }
 
-const std::string IdentExprNode::getName() const
+const std::string& IdentExprNode::getName() const
 {
     return name;
 }
@@ -261,4 +288,33 @@ size_t CallExprNode::getArgCount() const
 const ArgNode& CallExprNode::getArg(size_t arg) const
 {
     return *args[arg];
+}
+
+ArgNode::ArgNode(std::string name, std::unique_ptr<ExprNode> value, size_t pos)
+    : Node{ Node::ARG, pos }, name{ std::move(name) }, value{ std::move(value) }
+{
+}
+
+ArgNode::~ArgNode()
+{
+}
+
+std::string ArgNode::toString() const
+{
+    std::string s = "Arg { name: ";
+    s += name;
+    s += ", value: ";
+    s += value->toString();
+    s += " }";
+    return s;
+}
+
+const std::string& ArgNode::getName() const
+{
+    return name;
+}
+
+const ExprNode& ArgNode::getValue() const
+{
+    return *value;
 }

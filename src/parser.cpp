@@ -55,6 +55,9 @@ std::unique_ptr<Node> Parser::parseStatement()
 {
     switch (current().getType())
     {
+    case Token::VAR:
+    case Token::LET:
+        return parseAssignment();
     case Token::IDENTIFIER:
     case Token::NUMBER:
     case Token::PLUS:
@@ -87,6 +90,85 @@ std::unique_ptr<EmptyNode> Parser::parseEmptyStatement()
     }
     next();
     return std::make_unique<EmptyNode>(semicolon.getPos());
+}
+
+std::unique_ptr<BlockNode> Parser::parseBlock()
+{
+    const Token& lbrace = current();
+    if (lbrace.getType() != Token::LBRACE)
+    {
+        return nullptr; // error
+    }
+    next();
+    std::vector<std::unique_ptr<Node>> statements = parseStatements();
+    if (current().getType() != Token::RBRACE)
+    {
+        return nullptr; // error
+    }
+    next();
+    return std::make_unique<BlockNode>(std::move(statements), lbrace.getPos());
+}
+
+std::unique_ptr<AssignmentNode> Parser::parseAssignment()
+{
+    AssignmentNode::Qualifiers qualifiers;
+    Token::Type t = current().getType();
+    size_t savedPos = current().getPos();
+    if (t == Token::VAR)
+    {
+        qualifiers = AssignmentNode::NONCONST;
+    }
+    else if (t == Token::LET)
+    {
+        qualifiers = AssignmentNode::CONST;
+    }
+    else
+    {
+        return nullptr; // error
+    }
+    next();
+    const Token& id = current();
+    if (id.getType() != Token::IDENTIFIER)
+    {
+        return nullptr; // error
+    }
+    std::string name = static_cast<const NameToken&>(id).getName();
+    next();
+    if (current().getType() != Token::COLON)
+    {
+        return nullptr; // error
+    }
+    next();
+    if (current().getType() != Token::IDENTIFIER)
+    {
+        return nullptr; // error
+    }
+    std::unique_ptr<TypeNode> type = parseType();
+    if (current().getType() != Token::ASSIGN)
+    {
+        return nullptr; // error
+    }
+    next();
+    std::unique_ptr<ExprNode> value = parseExpr();
+    if (current().getType() != Token::SEMICOLON)
+    {
+        return nullptr; // error
+    }
+    next();
+    return std::make_unique<AssignmentNode>(std::move(name),
+        std::move(type), std::move(value), qualifiers, savedPos);
+}
+
+std::unique_ptr<TypeNode> Parser::parseType()
+{
+    const Token& id = current();
+    if (id.getType() != Token::IDENTIFIER)
+    {
+        return nullptr; // error
+    }
+    next();
+    std::string name = static_cast<const NameToken&>(id).getName();
+    return std::make_unique<TypeNode>(std::move(name), id.getPos());
 }
 
 std::unique_ptr<ExprNode> Parser::parseExpr(int rbp)
@@ -225,21 +307,4 @@ std::unique_ptr<ArgNode> Parser::parseCallArg()
     next();
     return std::make_unique<ArgNode>(std::move(name), parseExpr(),
         identifier.getPos());
-}
-
-std::unique_ptr<BlockNode> Parser::parseBlock()
-{
-    const Token& lbrace = current();
-    if (lbrace.getType() != Token::LBRACE)
-    {
-        return nullptr; // error
-    }
-    next();
-    std::vector<std::unique_ptr<Node>> statements = parseStatements();
-    if (current().getType() != Token::RBRACE)
-    {
-        return nullptr; // error
-    }
-    next();
-    return std::make_unique<BlockNode>(std::move(statements), lbrace.getPos());
 }

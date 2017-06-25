@@ -20,14 +20,15 @@ private:
     std::vector<std::unique_ptr<Node>> parseStatements();
     std::unique_ptr<Node> parseStatement();
     std::unique_ptr<EmptyNode> parseEmptyStatement();
+    std::unique_ptr<BlockNode> parseBlock();
+    std::unique_ptr<AssignmentNode> parseAssignment();
+    std::unique_ptr<TypeNode> parseType();
     std::unique_ptr<ExprNode> parseExpr(int rbp = 0);
     std::unique_ptr<ExprNode> parseNud();
     std::unique_ptr<ExprNode> parseLed(std::unique_ptr<ExprNode> left);
     int getLbp(const Token& token) const;
-    std::unique_ptr<CallExprNode> parseCall(
-        std::unique_ptr<ExprNode> callee);
+    std::unique_ptr<CallExprNode> parseCall(std::unique_ptr<ExprNode> callee);
     std::unique_ptr<ArgNode> parseCallArg();
-    std::unique_ptr<BlockNode> parseBlock();
     std::vector<std::unique_ptr<Token>> tokens;
     std::vector<std::unique_ptr<Token>>::iterator pos;
 };

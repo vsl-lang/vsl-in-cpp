@@ -9,6 +9,17 @@
 #include <vector>
 
 class Node;
+class EmptyNode;
+class BlockNode;
+class AssignmentNode;
+class TypeNode;
+class ExprNode;
+class IdentExprNode;
+class NumberExprNode;
+class UnaryExprNode;
+class BinaryExprNode;
+class CallExprNode;
+class ArgNode;
 
 std::ostream& operator<<(std::ostream& os, const Node& ast);
 
@@ -19,21 +30,23 @@ public:
     {
         EMPTY,
         BLOCK,
-        ARG,
+        ASSIGNMENT,
+        TYPE,
         ID_EXPR,
         NUMBER_EXPR,
         UNARY_EXPR,
         BINARY_EXPR,
-        CALL_EXPR
+        CALL_EXPR,
+        ARG
     };
-    Node(Type type, size_t pos);
+    Node(Type nodeType, size_t pos);
     virtual ~Node() = 0;
     virtual std::string toString() const = 0;
-    Type getType() const;
+    Type getNodeType() const;
     size_t getPos() const;
 
 private:
-    Type type;
+    Type nodeType;
     size_t pos;
 };
 
@@ -56,20 +69,35 @@ private:
     std::vector<std::unique_ptr<Node>> statements;
 };
 
-class ExprNode;
-
-class ArgNode : public Node
+class AssignmentNode : public Node
 {
 public:
-    ArgNode(std::string name, std::unique_ptr<ExprNode> value, size_t pos);
-    ~ArgNode() override;
+    enum Qualifiers
+    {
+        NONCONST = 0,
+        CONST = 1
+    };
+    AssignmentNode(std::string name, std::unique_ptr<TypeNode> type,
+        std::unique_ptr<ExprNode> value, Qualifiers qualifiers, size_t pos);
+    virtual ~AssignmentNode() override;
     virtual std::string toString() const override;
-    const std::string& getName() const;
-    const ExprNode& getValue() const;
 
 private:
     std::string name;
+    std::unique_ptr<TypeNode> type;
     std::unique_ptr<ExprNode> value;
+    Qualifiers qualifiers;
+};
+
+class TypeNode : public Node
+{
+public:
+    TypeNode(std::string name, size_t pos);
+    virtual ~TypeNode() override;
+    virtual std::string toString() const override;
+
+private:
+    std::string name;
 };
 
 class ExprNode : public Node
@@ -84,7 +112,7 @@ public:
     IdentExprNode(std::string name, size_t pos);
     virtual ~IdentExprNode() override;
     virtual std::string toString() const override;
-    const std::string getName() const;
+    const std::string& getName() const;
 
 private:
     std::string name;
@@ -147,6 +175,20 @@ public:
 private:
     std::unique_ptr<ExprNode> callee;
     std::vector<std::unique_ptr<ArgNode>> args;
+};
+
+class ArgNode : public Node
+{
+public:
+    ArgNode(std::string name, std::unique_ptr<ExprNode> value, size_t pos);
+    ~ArgNode() override;
+    virtual std::string toString() const override;
+    const std::string& getName() const;
+    const ExprNode& getValue() const;
+
+private:
+    std::string name;
+    std::unique_ptr<ExprNode> value;
 };
 
 #endif // NODE_HPP
