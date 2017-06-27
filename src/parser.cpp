@@ -58,6 +58,8 @@ std::unique_ptr<Node> Parser::parseStatement()
     case Token::VAR:
     case Token::LET:
         return parseAssignment();
+    case Token::FUNC:
+        return parseFunction();
     case Token::IF:
         return parseConditional();
     case Token::IDENTIFIER:
@@ -192,6 +194,72 @@ std::unique_ptr<AssignmentNode> Parser::parseAssignment()
     next();
     return std::make_unique<AssignmentNode>(std::move(name),
         std::move(type), std::move(value), qualifiers, savedPos);
+}
+
+std::unique_ptr<FunctionNode> Parser::parseFunction()
+{
+    const Token& func = current();
+    if (func.getType() != Token::FUNC)
+    {
+        return nullptr; // error
+    }
+    size_t savedPos = func.getPos();
+    const Token& id = next();
+    if (id.getType() != Token::IDENTIFIER)
+    {
+        return nullptr; // error
+    }
+    std::string name = static_cast<const NameToken&>(id).getName();
+    if (next().getType() != Token::LPAREN)
+    {
+        return nullptr; // error
+    }
+    next();
+    std::vector<std::unique_ptr<ParamNode>> params;
+    if (current().getType() != Token::RPAREN)
+    {
+        while (true)
+        {
+            params.emplace_back(parseParam());
+            if (current().getType() != Token::COMMA)
+            {
+                break;
+            }
+            next();
+        }
+    }
+    if (current().getType() != Token::RPAREN)
+    {
+        return nullptr; // error
+    }
+    if (next().getType() != Token::ARROW)
+    {
+        return nullptr; // error
+    }
+    next();
+    std::unique_ptr<TypeNode> returnType = parseType();
+    std::unique_ptr<BlockNode> body = parseBlock();
+    return std::make_unique<FunctionNode>(std::move(name), std::move(params),
+        std::move(returnType), std::move(body), savedPos);
+}
+
+std::unique_ptr<ParamNode> Parser::parseParam()
+{
+    const Token& id = current();
+    if (id.getType() != Token::IDENTIFIER)
+    {
+        return nullptr; // error
+    }
+    size_t savedPos = id.getPos();
+    std::string name = static_cast<const NameToken&>(id).getName();
+    if (next().getType() != Token::COLON)
+    {
+        return nullptr; // error
+    }
+    next();
+    std::unique_ptr<TypeNode> type = parseType();
+    return std::make_unique<ParamNode>(std::move(name), std::move(type),
+        savedPos);
 }
 
 std::unique_ptr<TypeNode> Parser::parseType()

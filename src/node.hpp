@@ -13,6 +13,8 @@ class EmptyNode;
 class BlockNode;
 class ConditionalNode;
 class AssignmentNode;
+class FunctionNode;
+class ParamNode;
 class TypeNode;
 class ExprNode;
 class IdentExprNode;
@@ -33,6 +35,8 @@ public:
         BLOCK,
         CONDITIONAL,
         ASSIGNMENT,
+        FUNCTION,
+        PARAM,
         TYPE,
         ID_EXPR,
         NUMBER_EXPR,
@@ -104,6 +108,35 @@ private:
     std::unique_ptr<TypeNode> type;
     std::unique_ptr<ExprNode> value;
     Qualifiers qualifiers;
+};
+
+class FunctionNode : public Node
+{
+public:
+    FunctionNode(std::string name,
+        std::vector<std::unique_ptr<ParamNode>> params,
+        std::unique_ptr<TypeNode> returnType, std::unique_ptr<BlockNode> body,
+        size_t pos);
+    virtual ~FunctionNode() override;
+    virtual std::string toString() const override;
+
+private:
+    std::string name;
+    std::vector<std::unique_ptr<ParamNode>> params;
+    std::unique_ptr<TypeNode> returnType;
+    std::unique_ptr<BlockNode> body;
+};
+
+class ParamNode : public Node
+{
+public:
+    ParamNode(std::string name, std::unique_ptr<TypeNode> type, size_t pos);
+    virtual ~ParamNode() override;
+    virtual std::string toString() const override;
+
+private:
+    std::string name;
+    std::unique_ptr<TypeNode> type;
 };
 
 class TypeNode : public Node

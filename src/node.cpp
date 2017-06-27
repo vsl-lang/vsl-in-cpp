@@ -133,6 +133,64 @@ std::string AssignmentNode::toString() const
     return s;
 }
 
+FunctionNode::FunctionNode(std::string name,
+    std::vector<std::unique_ptr<ParamNode>> params,
+    std::unique_ptr<TypeNode> returnType, std::unique_ptr<BlockNode> body,
+    size_t pos)
+    : Node{ Node::FUNCTION, pos }, name{ std::move(name) },
+    params{ std::move(params) }, returnType{ std::move(returnType) },
+    body{ std::move(body) }
+{
+}
+
+FunctionNode::~FunctionNode()
+{
+}
+
+std::string FunctionNode::toString() const
+{
+    std::string s = "Function { name: ";
+    s += name;
+    s += ", params: [";
+    if (!params.empty())
+    {
+        s += ' ';
+        s += params[0]->toString();
+        for (size_t i = 1; i < params.size(); ++i)
+        {
+            s += ", ";
+            s += params[i]->toString();
+        }
+        s += ' ';
+    }
+    s += "], returnType: ";
+    s += returnType->toString();
+    s += ", body: ";
+    s += body->toString();
+    s += " ]";
+    return s;
+}
+
+ParamNode::ParamNode(std::string name, std::unique_ptr<TypeNode> type,
+    size_t pos)
+    : Node{ Node::PARAM, pos }, name{ std::move(name) }, type{ std::move(type) }
+{
+}
+
+ParamNode::~ParamNode()
+{
+}
+
+std::string ParamNode::toString() const
+{
+    std::string s = "Param { name: ";
+    s += name;
+    s += ", type: ";
+    s += type->toString();
+    s += " }";
+    return s;
+}
+
 TypeNode::TypeNode(std::string name, size_t pos)
     : Node{ Node::TYPE, pos }, name{ std::move(name) }
 {
