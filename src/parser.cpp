@@ -58,6 +58,8 @@ std::unique_ptr<Node> Parser::parseStatement()
     case Token::VAR:
     case Token::LET:
         return parseAssignment();
+    case Token::IF:
+        return parseConditional();
     case Token::IDENTIFIER:
     case Token::NUMBER:
     case Token::PLUS:
@@ -107,6 +109,39 @@ std::unique_ptr<BlockNode> Parser::parseBlock()
     }
     next();
     return std::make_unique<BlockNode>(std::move(statements), lbrace.getPos());
+}
+
+std::unique_ptr<ConditionalNode> Parser::parseConditional()
+{
+    size_t savedPos = current().getPos();
+    if (current().getType() != Token::IF)
+    {
+        return nullptr; // error
+    }
+    if (next().getType() != Token::LPAREN)
+    {
+        return nullptr; // error
+    }
+    next();
+    std::unique_ptr<ExprNode> condition = parseExpr();
+    if (current().getType() != Token::RPAREN)
+    {
+        return nullptr; // error
+    }
+    next();
+    std::unique_ptr<Node> thenCase = parseStatement();
+    std::unique_ptr<Node> elseCase;
+    if (current().getType() == Token::ELSE)
+    {
+        next();
+        elseCase = parseStatement();
+    }
+    else
+    {
+        elseCase = std::make_unique<EmptyNode>(current().getPos());
+    }
+    return std::make_unique<ConditionalNode>(std::move(condition),
+        std::move(thenCase), std::move(elseCase), savedPos);
 }
 
 std::unique_ptr<AssignmentNode> Parser::parseAssignment()

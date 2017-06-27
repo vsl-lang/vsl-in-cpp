@@ -71,6 +71,29 @@ std::string BlockNode::toString() const
     return s;
 }
 
+ConditionalNode::ConditionalNode(std::unique_ptr<ExprNode> condition,
+    std::unique_ptr<Node> thenCase, std::unique_ptr<Node> elseCase, size_t pos)
+    : Node{ Node::CONDITIONAL, pos }, condition{ std::move(condition) },
+    thenCase{ std::move(thenCase) }, elseCase{ std::move(elseCase) }
+{
+}
+
+ConditionalNode::~ConditionalNode()
+{
+}
+
+std::string ConditionalNode::toString() const
+{
+    std::string s = "Conditional { condition: ";
+    s += condition->toString();
+    s += ", thenCase: ";
+    s += thenCase->toString();
+    s += ", elseCase: ";
+    s += elseCase->toString();
+    s += " }";
+    return s;
+}
+
 AssignmentNode::AssignmentNode(std::string name, std::unique_ptr<TypeNode> type,
     std::unique_ptr<ExprNode> value, Qualifiers qualifiers, size_t pos)
     : Node{ Node::ASSIGNMENT, pos }, name{ std::move(name) },

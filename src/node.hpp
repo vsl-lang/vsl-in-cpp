@@ -11,6 +11,7 @@
 class Node;
 class EmptyNode;
 class BlockNode;
+class ConditionalNode;
 class AssignmentNode;
 class TypeNode;
 class ExprNode;
@@ -30,6 +31,7 @@ public:
     {
         EMPTY,
         BLOCK,
+        CONDITIONAL,
         ASSIGNMENT,
         TYPE,
         ID_EXPR,
@@ -67,6 +69,21 @@ public:
 
 private:
     std::vector<std::unique_ptr<Node>> statements;
+};
+
+class ConditionalNode : public Node
+{
+public:
+    ConditionalNode(std::unique_ptr<ExprNode> condition,
+        std::unique_ptr<Node> thenCase, std::unique_ptr<Node> elseCase,
+        size_t pos);
+    virtual ~ConditionalNode() override;
+    virtual std::string toString() const override;
+
+private:
+    std::unique_ptr<ExprNode> condition;
+    std::unique_ptr<Node> thenCase;
+    std::unique_ptr<Node> elseCase;
 };
 
 class AssignmentNode : public Node

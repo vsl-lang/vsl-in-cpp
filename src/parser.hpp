@@ -21,6 +21,7 @@ private:
     std::unique_ptr<Node> parseStatement();
     std::unique_ptr<EmptyNode> parseEmptyStatement();
     std::unique_ptr<BlockNode> parseBlock();
+    std::unique_ptr<ConditionalNode> parseConditional();
     std::unique_ptr<AssignmentNode> parseAssignment();
     std::unique_ptr<TypeNode> parseType();
     std::unique_ptr<ExprNode> parseExpr(int rbp = 0);
