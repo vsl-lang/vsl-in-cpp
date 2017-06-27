@@ -60,6 +60,8 @@ std::unique_ptr<Node> Parser::parseStatement()
         return parseAssignment();
     case Token::FUNC:
         return parseFunction();
+    case Token::RETURN:
+        return parseReturn();
     case Token::IF:
         return parseConditional();
     case Token::IDENTIFIER:
@@ -241,6 +243,24 @@ std::unique_ptr<FunctionNode> Parser::parseFunction()
     std::unique_ptr<BlockNode> body = parseBlock();
     return std::make_unique<FunctionNode>(std::move(name), std::move(params),
         std::move(returnType), std::move(body), savedPos);
+}
+
+std::unique_ptr<ReturnNode> Parser::parseReturn()
+{
+    const Token& ret = current();
+    if (ret.getType() != Token::RETURN)
+    {
+        return nullptr; // error
+    }
+    size_t savedPos = ret.getPos();
+    next();
+    std::unique_ptr<ExprNode> value = parseExpr();
+    if (current().getType() != Token::SEMICOLON)
+    {
+        return nullptr; // error
+    }
+    next();
+    return std::make_unique<ReturnNode>(std::move(value), savedPos);
 }
 
 std::unique_ptr<ParamNode> Parser::parseParam()

@@ -171,6 +171,23 @@ std::string FunctionNode::toString() const
     return s;
 }
 
+ReturnNode::ReturnNode(std::unique_ptr<ExprNode> value, size_t pos)
+    : Node{ Node::RETURN, pos }, value{ std::move(value) }
+{
+}
+
+ReturnNode::~ReturnNode()
+{
+}
+
+std::string ReturnNode::toString() const
+{
+    std::string s = "Return { value: ";
+    s += value->toString();
+    s += " }";
+    return s;
+}
+
 ParamNode::ParamNode(std::string name, std::unique_ptr<TypeNode> type,
     size_t pos)
     : Node{ Node::PARAM, pos }, name{ std::move(name) }, type{ std::move(type) }

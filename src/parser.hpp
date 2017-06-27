@@ -24,6 +24,7 @@ private:
     std::unique_ptr<ConditionalNode> parseConditional();
     std::unique_ptr<AssignmentNode> parseAssignment();
     std::unique_ptr<FunctionNode> parseFunction();
+    std::unique_ptr<ReturnNode> parseReturn();
     std::unique_ptr<ParamNode> parseParam();
     std::unique_ptr<TypeNode> parseType();
     std::unique_ptr<ExprNode> parseExpr(int rbp = 0);

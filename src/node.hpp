@@ -14,6 +14,7 @@ class BlockNode;
 class ConditionalNode;
 class AssignmentNode;
 class FunctionNode;
+class ReturnNode;
 class ParamNode;
 class TypeNode;
 class ExprNode;
@@ -36,6 +37,7 @@ public:
         CONDITIONAL,
         ASSIGNMENT,
         FUNCTION,
+        RETURN,
         PARAM,
         TYPE,
         ID_EXPR,
@@ -125,6 +127,17 @@ private:
     std::vector<std::unique_ptr<ParamNode>> params;
     std::unique_ptr<TypeNode> returnType;
     std::unique_ptr<BlockNode> body;
+};
+
+class ReturnNode : public Node
+{
+public:
+    ReturnNode(std::unique_ptr<ExprNode> value, size_t pos);
+    virtual ~ReturnNode() override;
+    virtual std::string toString() const override;
+
+private:
+    std::unique_ptr<ExprNode> value;
 };
 
 class ParamNode : public Node
