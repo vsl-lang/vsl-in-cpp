@@ -1,21 +1,18 @@
 #include "parser.hpp"
-#include "node.hpp"
-#include <cstddef>
-#include <memory>
-#include <vector>
 
-Parser::Parser(std::vector<std::unique_ptr<Token>> tokens)
-    : tokens{ std::move(tokens) }, pos{ this->tokens.begin() }
+Parser::Parser(std::vector<std::unique_ptr<Token>> tokens, std::ostream& errors)
+    : tokens{ std::move(tokens) }, pos{ this->tokens.begin() }, errors{ errors }
 {
 }
 
 std::unique_ptr<Node> Parser::parse()
 {
-    size_t savedPos = current().getPos();
-    auto root = std::make_unique<BlockNode>(parseStatements(), savedPos);
+    Location savedLocation = current().getLocation();
+    auto root = std::make_unique<BlockNode>(parseStatements(),
+        savedLocation);
     if (current().getType() != Token::END)
     {
-        return nullptr; // error
+        return errorExpected("eof");
     }
     return root;
 }
@@ -33,6 +30,22 @@ const Token& Parser::current() const
 const Token& Parser::peek(size_t i) const
 {
     return *pos[i];
+}
+
+std::unique_ptr<Node> Parser::errorExpected(const char* s)
+{
+    const Token& t = current();
+    Location location = t.getLocation();
+    errors << location << ": error: expected " << s << " but found " <<
+        Token::typeToString(t.getType()) << '\n';
+    return std::make_unique<ErrorNode>(location);
+}
+
+std::unique_ptr<Node> Parser::errorUnexpected(const Token& token)
+{
+    errors << token.getLocation() << ": error: unexpected token " <<
+        Token::typeToString(token.getType()) << '\n';
+    return std::make_unique<ErrorNode>(token.getLocation());
 }
 
 std::vector<std::unique_ptr<Node>> Parser::parseStatements()
@@ -70,10 +83,10 @@ std::unique_ptr<Node> Parser::parseStatement()
     case Token::MINUS:
     case Token::LPAREN:
         {
-            std::unique_ptr<ExprNode> expr = parseExpr();
+            std::unique_ptr<Node> expr = parseExpr();
             if (current().getType() != Token::SEMICOLON)
             {
-                return nullptr; // error
+                return errorExpected("';'");
             }
             next();
             return expr;
@@ -83,54 +96,58 @@ std::unique_ptr<Node> Parser::parseStatement()
     case Token::SEMICOLON:
         return parseEmptyStatement();
     default:
-        return nullptr; // error
+        ;
     }
+    auto e = errorUnexpected(current());
+    next();
+    return e;
 }
 
-std::unique_ptr<EmptyNode> Parser::parseEmptyStatement()
+std::unique_ptr<Node> Parser::parseEmptyStatement()
 {
     const Token& semicolon = current();
     if (semicolon.getType() != Token::SEMICOLON)
     {
-        return nullptr; // error
+        return errorExpected("';'");
     }
     next();
-    return std::make_unique<EmptyNode>(semicolon.getPos());
+    return std::make_unique<EmptyNode>(semicolon.getLocation());
 }
 
-std::unique_ptr<BlockNode> Parser::parseBlock()
+std::unique_ptr<Node> Parser::parseBlock()
 {
     const Token& lbrace = current();
     if (lbrace.getType() != Token::LBRACE)
     {
-        return nullptr; // error
+        return errorExpected("'{'");
     }
     next();
     std::vector<std::unique_ptr<Node>> statements = parseStatements();
     if (current().getType() != Token::RBRACE)
     {
-        return nullptr; // error
+        return errorExpected("'}'");
     }
     next();
-    return std::make_unique<BlockNode>(std::move(statements), lbrace.getPos());
+    return std::make_unique<BlockNode>(std::move(statements),
+        lbrace.getLocation());
 }
 
-std::unique_ptr<ConditionalNode> Parser::parseConditional()
+std::unique_ptr<Node> Parser::parseConditional()
 {
-    size_t savedPos = current().getPos();
+    Location savedLocation = current().getLocation();
     if (current().getType() != Token::IF)
     {
-        return nullptr; // error
+        return errorExpected("'if'");
     }
     if (next().getType() != Token::LPAREN)
     {
-        return nullptr; // error
+        return errorExpected("'('");
     }
     next();
-    std::unique_ptr<ExprNode> condition = parseExpr();
+    std::unique_ptr<Node> condition = parseExpr();
     if (current().getType() != Token::RPAREN)
     {
-        return nullptr; // error
+        return errorExpected("')'");
     }
     next();
     std::unique_ptr<Node> thenCase = parseStatement();
@@ -142,17 +159,17 @@ std::unique_ptr<ConditionalNode> Parser::parseConditional()
     }
     else
     {
-        elseCase = std::make_unique<EmptyNode>(current().getPos());
+        elseCase = std::make_unique<EmptyNode>(current().getLocation());
     }
     return std::make_unique<ConditionalNode>(std::move(condition),
-        std::move(thenCase), std::move(elseCase), savedPos);
+        std::move(thenCase), std::move(elseCase), savedLocation);
 }
 
-std::unique_ptr<AssignmentNode> Parser::parseAssignment()
+std::unique_ptr<Node> Parser::parseAssignment()
 {
     AssignmentNode::Qualifiers qualifiers;
     Token::Type t = current().getType();
-    size_t savedPos = current().getPos();
+    Location savedLocation = current().getLocation();
     if (t == Token::VAR)
     {
         qualifiers = AssignmentNode::NONCONST;
@@ -163,61 +180,61 @@ std::unique_ptr<AssignmentNode> Parser::parseAssignment()
     }
     else
     {
-        return nullptr; // error
+        return errorExpected("'let' or 'var'");
     }
     next();
     const Token& id = current();
     if (id.getType() != Token::IDENTIFIER)
     {
-        return nullptr; // error
+        return errorExpected("identifier");
     }
     std::string name = static_cast<const NameToken&>(id).getName();
     next();
     if (current().getType() != Token::COLON)
     {
-        return nullptr; // error
+        return errorExpected("':'");
     }
     next();
     if (current().getType() != Token::IDENTIFIER)
     {
-        return nullptr; // error
+        return errorExpected("identifier");
     }
-    std::unique_ptr<TypeNode> type = parseType();
+    std::unique_ptr<Node> type = parseType();
     if (current().getType() != Token::ASSIGN)
     {
-        return nullptr; // error
+        return errorExpected("'='");
     }
     next();
-    std::unique_ptr<ExprNode> value = parseExpr();
+    std::unique_ptr<Node> value = parseExpr();
     if (current().getType() != Token::SEMICOLON)
     {
-        return nullptr; // error
+        return errorExpected("';'");
     }
     next();
     return std::make_unique<AssignmentNode>(std::move(name),
-        std::move(type), std::move(value), qualifiers, savedPos);
+        std::move(type), std::move(value), qualifiers, savedLocation);
 }
 
-std::unique_ptr<FunctionNode> Parser::parseFunction()
+std::unique_ptr<Node> Parser::parseFunction()
 {
     const Token& func = current();
     if (func.getType() != Token::FUNC)
     {
-        return nullptr; // error
+        return errorExpected("'func'");
     }
-    size_t savedPos = func.getPos();
+    Location savedLocation = func.getLocation();
     const Token& id = next();
     if (id.getType() != Token::IDENTIFIER)
     {
-        return nullptr; // error
+        return errorExpected("identifier");
     }
     std::string name = static_cast<const NameToken&>(id).getName();
     if (next().getType() != Token::LPAREN)
     {
-        return nullptr; // error
+        return errorExpected("'('");
     }
     next();
-    std::vector<std::unique_ptr<ParamNode>> params;
+    std::vector<std::unique_ptr<Node>> params;
     if (current().getType() != Token::RPAREN)
     {
         while (true)
@@ -232,72 +249,72 @@ std::unique_ptr<FunctionNode> Parser::parseFunction()
     }
     if (current().getType() != Token::RPAREN)
     {
-        return nullptr; // error
+        return errorExpected("')'");
     }
     if (next().getType() != Token::ARROW)
     {
-        return nullptr; // error
+        return errorExpected("'->'");
     }
     next();
-    std::unique_ptr<TypeNode> returnType = parseType();
-    std::unique_ptr<BlockNode> body = parseBlock();
+    std::unique_ptr<Node> returnType = parseType();
+    std::unique_ptr<Node> body = parseBlock();
     return std::make_unique<FunctionNode>(std::move(name), std::move(params),
-        std::move(returnType), std::move(body), savedPos);
+        std::move(returnType), std::move(body), savedLocation);
 }
 
-std::unique_ptr<ReturnNode> Parser::parseReturn()
+std::unique_ptr<Node> Parser::parseReturn()
 {
     const Token& ret = current();
     if (ret.getType() != Token::RETURN)
     {
-        return nullptr; // error
+        return errorExpected("'return'");
     }
-    size_t savedPos = ret.getPos();
+    Location savedLocation = ret.getLocation();
     next();
-    std::unique_ptr<ExprNode> value = parseExpr();
+    std::unique_ptr<Node> value = parseExpr();
     if (current().getType() != Token::SEMICOLON)
     {
-        return nullptr; // error
+        return errorExpected("';'");
     }
     next();
-    return std::make_unique<ReturnNode>(std::move(value), savedPos);
+    return std::make_unique<ReturnNode>(std::move(value), savedLocation);
 }
 
-std::unique_ptr<ParamNode> Parser::parseParam()
+std::unique_ptr<Node> Parser::parseParam()
 {
     const Token& id = current();
     if (id.getType() != Token::IDENTIFIER)
     {
-        return nullptr; // error
+        return errorExpected("identifier");
     }
-    size_t savedPos = id.getPos();
+    Location savedLocation = id.getLocation();
     std::string name = static_cast<const NameToken&>(id).getName();
     if (next().getType() != Token::COLON)
     {
-        return nullptr; // error
+        return errorExpected("':'");
     }
     next();
-    std::unique_ptr<TypeNode> type = parseType();
+    std::unique_ptr<Node> type = parseType();
     return std::make_unique<ParamNode>(std::move(name), std::move(type),
-        savedPos);
+        savedLocation);
 }
 
-std::unique_ptr<TypeNode> Parser::parseType()
+std::unique_ptr<Node> Parser::parseType()
 {
     const Token& id = current();
     if (id.getType() != Token::IDENTIFIER)
     {
-        return nullptr; // error
+        return errorExpected("identifier");
     }
     next();
     std::string name = static_cast<const NameToken&>(id).getName();
-    return std::make_unique<TypeNode>(std::move(name), id.getPos());
+    return std::make_unique<TypeNode>(std::move(name), id.getLocation());
 }
 
-std::unique_ptr<ExprNode> Parser::parseExpr(int rbp)
+std::unique_ptr<Node> Parser::parseExpr(int rbp)
 {
     // top down operator precedence algorithm
-    std::unique_ptr<ExprNode> left = parseNud();
+    std::unique_ptr<Node> left = parseNud();
     while (rbp < getLbp(current()))
     {
         left = parseLed(std::move(left));
@@ -305,7 +322,7 @@ std::unique_ptr<ExprNode> Parser::parseExpr(int rbp)
     return left;
 }
 
-std::unique_ptr<ExprNode> Parser::parseNud()
+std::unique_ptr<Node> Parser::parseNud()
 {
     const Token& token = current();
     next();
@@ -313,20 +330,21 @@ std::unique_ptr<ExprNode> Parser::parseNud()
     {
     case Token::IDENTIFIER:
         return std::make_unique<IdentExprNode>(static_cast<const NameToken&>(
-                token).getName(), token.getPos());
+                token).getName(), token.getLocation());
     case Token::NUMBER:
-        return std::make_unique<NumberExprNode>(static_cast<const NumberToken&>(
-                token).getValue(), token.getPos());
+        return std::make_unique<NumberExprNode>(
+            static_cast<const NumberToken&>(token).getValue(),
+            token.getLocation());
     case Token::PLUS:
     case Token::MINUS:
         return std::make_unique<UnaryExprNode>(token.getType(), parseExpr(100),
-            token.getPos());
+            token.getLocation());
     default:
-        return nullptr; // error
+        return errorExpected("unary operator, identifier, or number");
     }
 }
 
-std::unique_ptr<ExprNode> Parser::parseLed(std::unique_ptr<ExprNode> left)
+std::unique_ptr<Node> Parser::parseLed(std::unique_ptr<Node> left)
 {
     const Token& token = current();
     Token::Type type = token.getType();
@@ -344,15 +362,15 @@ std::unique_ptr<ExprNode> Parser::parseLed(std::unique_ptr<ExprNode> left)
     case Token::EQUALS:
         next();
         return std::make_unique<BinaryExprNode>(type, std::move(left),
-            parseExpr(getLbp(token)), token.getPos());
+            parseExpr(getLbp(token)), token.getLocation());
     case Token::ASSIGN:
         next();
         return std::make_unique<BinaryExprNode>(type, std::move(left),
-            parseExpr(getLbp(token) - 1), token.getPos());
+            parseExpr(getLbp(token) - 1), token.getLocation());
     case Token::LPAREN:
         return parseCall(std::move(left));
     default:
-        return nullptr; // error
+        return errorExpected("binary operator");
     }
 }
 
@@ -383,16 +401,16 @@ int Parser::getLbp(const Token& token) const
     }
 }
 
-std::unique_ptr<CallExprNode> Parser::parseCall(
-    std::unique_ptr<ExprNode> callee)
+std::unique_ptr<Node> Parser::parseCall(
+    std::unique_ptr<Node> callee)
 {
     const Token& lparen = current();
     if (lparen.getType() != Token::LPAREN)
     {
-        return nullptr; // error
+        return errorExpected("'('");
     }
     next();
-    std::vector<std::unique_ptr<ArgNode>> args;
+    std::vector<std::unique_ptr<Node>> args;
     if (current().getType() != Token::RPAREN)
     {
         while (true)
@@ -407,27 +425,27 @@ std::unique_ptr<CallExprNode> Parser::parseCall(
     }
     if (current().getType() != Token::RPAREN)
     {
-        return nullptr; // error
+        return errorExpected("')'");
     }
     next();
     return std::make_unique<CallExprNode>(std::move(callee),
-        std::move(args), lparen.getPos());
+        std::move(args), lparen.getLocation());
 }
 
-std::unique_ptr<ArgNode> Parser::parseCallArg()
+std::unique_ptr<Node> Parser::parseCallArg()
 {
     const Token& identifier = current();
     if (identifier.getType() != Token::IDENTIFIER)
     {
-        return nullptr; // error
+        return errorExpected("identifier");
     }
     std::string name = static_cast<const NameToken&>(identifier).getName();
     next();
     if (current().getType() != Token::COLON)
     {
-        return nullptr; // error
+        return errorExpected("':'");
     }
     next();
     return std::make_unique<ArgNode>(std::move(name), parseExpr(),
-        identifier.getPos());
+        identifier.getLocation());
 }

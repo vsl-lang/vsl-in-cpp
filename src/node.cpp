@@ -1,18 +1,13 @@
 #include "node.hpp"
-#include <cstddef>
-#include <memory>
-#include <ostream>
-#include <string>
 #include <utility>
-#include <vector>
 
 std::ostream& operator<<(std::ostream& os, const Node& ast)
 {
     return os << ast.toString();
 }
 
-Node::Node(Type nodeType, size_t pos)
-    : nodeType{ nodeType }, pos{ pos }
+Node::Node(Type nodeType, Location location)
+    : nodeType{ nodeType }, location{ location }
 {
 }
 
@@ -25,13 +20,27 @@ Node::Type Node::getNodeType() const
     return nodeType;
 }
 
-size_t Node::getPos() const
+Location Node::getLocation() const
 {
-    return pos;
+    return location;
 }
 
-EmptyNode::EmptyNode(size_t pos)
-    : Node{ Node::EMPTY, pos }
+ErrorNode::ErrorNode(Location location)
+    : Node{ Node::ERROR, location }
+{
+}
+
+ErrorNode::~ErrorNode()
+{
+}
+
+std::string ErrorNode::toString() const
+{
+    return "Error {}";
+}
+
+EmptyNode::EmptyNode(Location location)
+    : Node{ Node::EMPTY, location }
 {
 }
 
@@ -44,8 +53,9 @@ std::string EmptyNode::toString() const
     return "Empty {}";
 }
 
-BlockNode::BlockNode(std::vector<std::unique_ptr<Node>> statements, size_t pos)
-    : Node{ Node::BLOCK, pos }, statements{ std::move(statements) }
+BlockNode::BlockNode(std::vector<std::unique_ptr<Node>> statements,
+    Location location)
+    : Node{ Node::BLOCK, location }, statements{ std::move(statements) }
 {
 }
 
@@ -71,9 +81,11 @@ std::string BlockNode::toString() const
     return s;
 }
 
-ConditionalNode::ConditionalNode(std::unique_ptr<ExprNode> condition,
-    std::unique_ptr<Node> thenCase, std::unique_ptr<Node> elseCase, size_t pos)
-    : Node{ Node::CONDITIONAL, pos }, condition{ std::move(condition) },
+ConditionalNode::ConditionalNode(std::unique_ptr<Node> condition,
+    std::unique_ptr<Node> thenCase, std::unique_ptr<Node> elseCase,
+    Location location)
+    : Node{ Node::CONDITIONAL, location },
+    condition{ std::move(condition) },
     thenCase{ std::move(thenCase) }, elseCase{ std::move(elseCase) }
 {
 }
@@ -94,10 +106,11 @@ std::string ConditionalNode::toString() const
     return s;
 }
 
-AssignmentNode::AssignmentNode(std::string name, std::unique_ptr<TypeNode> type,
-    std::unique_ptr<ExprNode> value, Qualifiers qualifiers, size_t pos)
-    : Node{ Node::ASSIGNMENT, pos }, name{ std::move(name) },
-    type{ std::move(type) }, value{ std::move(value) }, qualifiers{ qualifiers }
+AssignmentNode::AssignmentNode(std::string name, std::unique_ptr<Node> type,
+    std::unique_ptr<Node> value, Qualifiers qualifiers, Location location)
+    : Node{ Node::ASSIGNMENT, location }, name{ std::move(name) },
+    type{ std::move(type) }, value{ std::move(value) },
+    qualifiers{ qualifiers }
 {
 }
 
@@ -134,10 +147,9 @@ std::string AssignmentNode::toString() const
 }
 
 FunctionNode::FunctionNode(std::string name,
-    std::vector<std::unique_ptr<ParamNode>> params,
-    std::unique_ptr<TypeNode> returnType, std::unique_ptr<BlockNode> body,
-    size_t pos)
-    : Node{ Node::FUNCTION, pos }, name{ std::move(name) },
+    std::vector<std::unique_ptr<Node>> params, std::unique_ptr<Node> returnType,
+    std::unique_ptr<Node> body, Location location)
+    : Node{ Node::FUNCTION, location }, name{ std::move(name) },
     params{ std::move(params) }, returnType{ std::move(returnType) },
     body{ std::move(body) }
 {
@@ -171,8 +183,8 @@ std::string FunctionNode::toString() const
     return s;
 }
 
-ReturnNode::ReturnNode(std::unique_ptr<ExprNode> value, size_t pos)
-    : Node{ Node::RETURN, pos }, value{ std::move(value) }
+ReturnNode::ReturnNode(std::unique_ptr<Node> value, Location location)
+    : Node{ Node::RETURN, location }, value{ std::move(value) }
 {
 }
 
@@ -188,9 +200,10 @@ std::string ReturnNode::toString() const
     return s;
 }
 
-ParamNode::ParamNode(std::string name, std::unique_ptr<TypeNode> type,
-    size_t pos)
-    : Node{ Node::PARAM, pos }, name{ std::move(name) }, type{ std::move(type) }
+ParamNode::ParamNode(std::string name, std::unique_ptr<Node> type,
+    Location location)
+    : Node{ Node::PARAM, location }, name{ std::move(name) },
+    type{ std::move(type) }
 {
 }
 
@@ -208,8 +221,8 @@ std::string ParamNode::toString() const
     return s;
 }
 
-TypeNode::TypeNode(std::string name, size_t pos)
-    : Node{ Node::TYPE, pos }, name{ std::move(name) }
+TypeNode::TypeNode(std::string name, Location location)
+    : Node{ Node::TYPE, location }, name{ std::move(name) }
 {
 }
 
@@ -225,13 +238,13 @@ std::string TypeNode::toString() const
     return s;
 }
 
-ExprNode::ExprNode(Node::Type type, size_t pos)
-    : Node{ type, pos }
+ExprNode::ExprNode(Node::Type type, Location location)
+    : Node{ type, location }
 {
 }
 
-IdentExprNode::IdentExprNode(std::string name, size_t pos)
-    : ExprNode{ Node::ID_EXPR, pos }, name{ std::move(name) }
+IdentExprNode::IdentExprNode(std::string name, Location location)
+    : ExprNode{ Node::ID_EXPR, location }, name{ std::move(name) }
 {
 }
 
@@ -252,8 +265,8 @@ const std::string& IdentExprNode::getName() const
     return name;
 }
 
-NumberExprNode::NumberExprNode(long value, size_t pos)
-    : ExprNode{ Node::NUMBER_EXPR, pos }, value{ value }
+NumberExprNode::NumberExprNode(long value, Location location)
+    : ExprNode{ Node::NUMBER_EXPR, location }, value{ value }
 {
 }
 
@@ -274,9 +287,10 @@ long NumberExprNode::getValue() const
     return value;
 }
 
-UnaryExprNode::UnaryExprNode(Token::Type op, std::unique_ptr<ExprNode> expr,
-    size_t pos)
-    : ExprNode{ Node::UNARY_EXPR, pos }, op{ op }, expr{ std::move(expr) }
+UnaryExprNode::UnaryExprNode(Token::Type op, std::unique_ptr<Node> expr,
+    Location location)
+    : ExprNode{ Node::UNARY_EXPR, location }, op{ op },
+    expr{ std::move(expr) }
 {
 }
 
@@ -299,15 +313,15 @@ Token::Type UnaryExprNode::getOp() const
     return op;
 }
 
-const ExprNode& UnaryExprNode::getExpr() const
+const Node& UnaryExprNode::getExpr() const
 {
     return *expr;
 }
 
-BinaryExprNode::BinaryExprNode(Token::Type op, std::unique_ptr<ExprNode> left,
-    std::unique_ptr<ExprNode> right, size_t pos)
-    : ExprNode{ Node::BINARY_EXPR, pos }, op{ op }, left{ std::move(left) },
-        right{ std::move(right) }
+BinaryExprNode::BinaryExprNode(Token::Type op, std::unique_ptr<Node> left,
+    std::unique_ptr<Node> right, Location location)
+    : ExprNode{ Node::BINARY_EXPR, location }, op{ op },
+    left{ std::move(left) }, right{ std::move(right) }
 {
 }
 
@@ -332,19 +346,19 @@ Token::Type BinaryExprNode::getOp() const
     return op;
 }
 
-const ExprNode& BinaryExprNode::getLeft() const
+const Node& BinaryExprNode::getLeft() const
 {
     return *left;
 }
 
-const ExprNode& BinaryExprNode::getRight() const
+const Node& BinaryExprNode::getRight() const
 {
     return *right;
 }
 
-CallExprNode::CallExprNode(std::unique_ptr<ExprNode> callee,
-    std::vector<std::unique_ptr<ArgNode>> args, size_t pos)
-    : ExprNode{ Node::CALL_EXPR, pos }, callee{ std::move(callee) },
+CallExprNode::CallExprNode(std::unique_ptr<Node> callee,
+    std::vector<std::unique_ptr<Node>> args, Location location)
+    : ExprNode{ Node::CALL_EXPR, location }, callee{ std::move(callee) },
     args{ std::move(args) }
 {
 }
@@ -373,7 +387,7 @@ std::string CallExprNode::toString() const
     return s;
 }
 
-const ExprNode& CallExprNode::getCallee() const
+const Node& CallExprNode::getCallee() const
 {
     return *callee;
 }
@@ -383,13 +397,15 @@ size_t CallExprNode::getArgCount() const
     return args.size();
 }
 
-const ArgNode& CallExprNode::getArg(size_t arg) const
+const Node& CallExprNode::getArg(size_t arg) const
 {
     return *args[arg];
 }
 
-ArgNode::ArgNode(std::string name, std::unique_ptr<ExprNode> value, size_t pos)
-    : Node{ Node::ARG, pos }, name{ std::move(name) }, value{ std::move(value) }
+ArgNode::ArgNode(std::string name, std::unique_ptr<Node> value,
+    Location location)
+    : Node{ Node::ARG, location }, name{ std::move(name) },
+    value{ std::move(value) }
 {
 }
 
@@ -412,7 +428,7 @@ const std::string& ArgNode::getName() const
     return name;
 }
 
-const ExprNode& ArgNode::getValue() const
+const Node& ArgNode::getValue() const
 {
     return *value;
 }

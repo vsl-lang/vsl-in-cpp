@@ -1,6 +1,7 @@
 #ifndef TOKEN_HPP
 #define TOKEN_HPP
 
+#include "location.hpp"
 #include <cstddef>
 #include <ostream>
 #include <string>
@@ -48,22 +49,22 @@ public:
         RBRACE,
         END
     };
-    Token(Type type, size_t pos);
+    Token(Type type, Location location);
     virtual ~Token();
     static const char* typeToString(Type type);
     virtual std::string toString() const;
     Type getType() const;
-    size_t getPos() const;
+    Location getLocation() const;
 
 private:
     Type type;
-    size_t pos;
+    Location location;
 };
 
 class NameToken : public Token
 {
 public:
-    NameToken(std::string name, size_t pos);
+    NameToken(std::string name, Location location);
     virtual ~NameToken() override;
     virtual std::string toString() const override;
     const std::string& getName() const;
@@ -77,7 +78,7 @@ private:
 class NumberToken : public Token
 {
 public:
-    NumberToken(long value, size_t pos);
+    NumberToken(long value, Location location);
     virtual ~NumberToken() override;
     virtual std::string toString() const override;
     long getValue() const;

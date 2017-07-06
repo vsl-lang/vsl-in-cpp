@@ -4,37 +4,42 @@
 #include "node.hpp"
 #include "token.hpp"
 #include <cstddef>
+#include <iostream>
 #include <memory>
 #include <vector>
 
 class Parser
 {
 public:
-    Parser(std::vector<std::unique_ptr<Token>> tokens);
+    Parser(std::vector<std::unique_ptr<Token>> tokens,
+        std::ostream& errors = std::cerr);
     std::unique_ptr<Node> parse();
 
 private:
     const Token& next();
     const Token& current() const;
     const Token& peek(size_t i = 1) const;
+    std::unique_ptr<Node> errorExpected(const char* s);
+    std::unique_ptr<Node> errorUnexpected(const Token& token);
     std::vector<std::unique_ptr<Node>> parseStatements();
     std::unique_ptr<Node> parseStatement();
-    std::unique_ptr<EmptyNode> parseEmptyStatement();
-    std::unique_ptr<BlockNode> parseBlock();
-    std::unique_ptr<ConditionalNode> parseConditional();
-    std::unique_ptr<AssignmentNode> parseAssignment();
-    std::unique_ptr<FunctionNode> parseFunction();
-    std::unique_ptr<ReturnNode> parseReturn();
-    std::unique_ptr<ParamNode> parseParam();
-    std::unique_ptr<TypeNode> parseType();
-    std::unique_ptr<ExprNode> parseExpr(int rbp = 0);
-    std::unique_ptr<ExprNode> parseNud();
-    std::unique_ptr<ExprNode> parseLed(std::unique_ptr<ExprNode> left);
+    std::unique_ptr<Node> parseEmptyStatement();
+    std::unique_ptr<Node> parseBlock();
+    std::unique_ptr<Node> parseConditional();
+    std::unique_ptr<Node> parseAssignment();
+    std::unique_ptr<Node> parseFunction();
+    std::unique_ptr<Node> parseReturn();
+    std::unique_ptr<Node> parseParam();
+    std::unique_ptr<Node> parseType();
+    std::unique_ptr<Node> parseExpr(int rbp = 0);
+    std::unique_ptr<Node> parseNud();
+    std::unique_ptr<Node> parseLed(std::unique_ptr<Node> left);
     int getLbp(const Token& token) const;
-    std::unique_ptr<CallExprNode> parseCall(std::unique_ptr<ExprNode> callee);
-    std::unique_ptr<ArgNode> parseCallArg();
+    std::unique_ptr<Node> parseCall(std::unique_ptr<Node> callee);
+    std::unique_ptr<Node> parseCallArg();
     std::vector<std::unique_ptr<Token>> tokens;
     std::vector<std::unique_ptr<Token>>::iterator pos;
+    std::ostream& errors;
 };
 
 #endif // PARSER_HPP

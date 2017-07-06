@@ -1,4 +1,5 @@
 #include "token.hpp"
+#include "location.hpp"
 #include <cstddef>
 #include <ostream>
 #include <string>
@@ -10,8 +11,8 @@ std::ostream& operator<<(std::ostream& os, const Token& token)
     return os << token.toString();
 }
 
-Token::Token(Type type, size_t pos)
-    : type{ type }, pos{ pos }
+Token::Token(Type type, Location location)
+    : type{ type }, location{ location }
 {
 }
 
@@ -94,13 +95,13 @@ Token::Type Token::getType() const
     return type;
 }
 
-size_t Token::getPos() const
+Location Token::getLocation() const
 {
-    return pos;
+    return location;
 }
 
-NameToken::NameToken(std::string name, size_t pos)
-    : Token{ evaluateName(name), pos }, name{ std::move(name) }
+NameToken::NameToken(std::string name, Location location)
+    : Token{ evaluateName(name), location }, name{ std::move(name) }
 {
 }
 
@@ -156,8 +157,8 @@ const std::unordered_map<std::string, Token::Type> NameToken::keywords
     { "else", Token::ELSE }
 };
 
-NumberToken::NumberToken(long value, size_t pos)
-    : Token{ Token::NUMBER, pos }, value { value }
+NumberToken::NumberToken(long value, Location location)
+    : Token{ Token::NUMBER, location }, value { value }
 {
 }
 

@@ -1,35 +1,37 @@
 #include "lexer.hpp"
-#include "token.hpp"
 #include <cctype>
-#include <cstddef>
+#include <cerrno>
 #include <cstdlib>
-#include <memory>
 #include <utility>
 
-Lexer::Lexer(const char* src)
-    : src{ src }, pos{ src }
+Lexer::Lexer(const char* src, std::ostream& errors)
+    : src{ src }, location{ src, 1, 1 }, errors{ errors }
 {
 }
 
-std::unique_ptr<Token> Lexer::next()
+std::unique_ptr<Token> Lexer::nextToken()
 {
-    for (; *pos != '\0'; ++pos)
+    for (; current() != '\0'; next())
     {
-        switch (*pos)
+        switch (current())
         {
+        case '\n':
+            ++location.line;
+            location.col = 0;
+            break;
         case '+':
             return lexToken(Token::PLUS);
         case '-':
-            if (lookAhead(1) == '>')
+            if (peek() == '>')
             {
-                ++pos;
+                next();
                 return lexToken(Token::ARROW);
             }
             return lexToken(Token::MINUS);
         case '*':
             return lexToken(Token::STAR);
         case '/':
-            switch (lookAhead(1))
+            switch (peek())
             {
             case '/':
                 lexLineComment();
@@ -44,23 +46,23 @@ std::unique_ptr<Token> Lexer::next()
         case '%':
             return lexToken(Token::PERCENT);
         case '=':
-            if (lookAhead(1) == '=')
+            if (peek() == '=')
             {
-                ++pos;
+                next();
                 return lexToken(Token::EQUALS);
             }
             return lexToken(Token::ASSIGN);
         case '>':
-            if (lookAhead(1) == '=')
+            if (peek() == '=')
             {
-                ++pos;
+                next();
                 return lexToken(Token::GREATER_EQUAL);
             }
             return lexToken(Token::GREATER);
         case '<':
-            if (lookAhead(1) == '=')
+            if (peek() == '=')
             {
-                ++pos;
+                next();
                 return lexToken(Token::LESS_EQUAL);
             }
             return lexToken(Token::LESS);
@@ -79,30 +81,46 @@ std::unique_ptr<Token> Lexer::next()
         case '}':
             return lexToken(Token::RBRACE);
         default:
-            if (isalpha(*pos))
+            if (isalpha(current()))
             {
                 return lexName();
             }
-            if (isdigit(*pos))
+            if (isdigit(current()))
             {
                 return lexNumber();
             }
+            if (!isspace(current()))
+            {
+                errors << location << ": error: unknown symbol '" <<
+                    current() << "'\n";
+            }
         }
     }
-    return std::make_unique<Token>(Token::END, pos - src);
+    return std::make_unique<Token>(Token::END, location);
 }
 
 bool Lexer::empty() const
 {
-    return *pos == '\0';
+    return current() == '\0';
 }
 
-char Lexer::lookAhead(size_t k) const
+char Lexer::current() const
+{
+    return *location.pos;
+}
+
+char Lexer::next()
+{
+    ++location.col;
+    return *++location.pos;
+}
+
+char Lexer::peek(size_t i) const
 {
     char c;
-    for (size_t i = 0; i <= k; ++i)
+    for (size_t j = 0; j <= i; ++j)
     {
-        c = pos[i];
+        c = location.pos[j];
         if (c == '\0')
         {
             break;
@@ -113,46 +131,57 @@ char Lexer::lookAhead(size_t k) const
 
 std::unique_ptr<Token> Lexer::lexToken(Token::Type type)
 {
-    return std::make_unique<Token>(type, pos++ - src);
+    Location savedLocation = location;
+    next();
+    return std::make_unique<Token>(type, savedLocation);
 }
 
 std::unique_ptr<NameToken> Lexer::lexName()
 {
+    Location savedLocation = location;
     std::string id;
-    size_t savedPos = pos - src;
     do
     {
-        id += *pos++;
+        id += current();
+        next();
     }
-    while (isalnum(*pos));
-    return std::make_unique<NameToken>(std::move(id), savedPos);
+    while (isalnum(current()));
+    return std::make_unique<NameToken>(std::move(id), savedLocation);
 }
 
 std::unique_ptr<NumberToken> Lexer::lexNumber()
 {
-    size_t savedPos = pos - src;
+    Location savedLocation = location;
     char* newPos;
-    long value = std::strtol(pos, &newPos, 0);
-    pos = newPos;
-    return std::make_unique<NumberToken>(value, savedPos);
+    errno = 0;
+    long value = std::strtol(location.pos, &newPos, 0);
+    location.col += newPos - location.pos;
+    location.pos = newPos;
+    if (errno == ERANGE)
+    {
+        errors << location << ": warning: ";
+        errors.write(savedLocation.pos, location.pos - savedLocation.pos);
+        errors << " is out of range\n";
+    }
+    return std::make_unique<NumberToken>(value, savedLocation);
 }
 
 void Lexer::lexLineComment()
 {
     do
     {
-        ++pos;
+        next();
     }
-    while (pos[1] != '\n' && pos[1] != '\0');
+    while (peek() != '\n' && peek() != '\0');
 }
 
 void Lexer::lexBlockComment()
 {
-    ++pos;
+    next();
     do
     {
-        ++pos;
+        next();
     }
-    while (*pos != '\0' && *pos != '*' && pos[1] != '/');
-    ++pos;
+    while (current() != '\0' && current() != '*' && peek() != '/');
+    next();
 }

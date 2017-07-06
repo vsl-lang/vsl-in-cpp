@@ -18,7 +18,7 @@ void lex()
         std::unique_ptr<Token> token;
         do
         {
-            token = lexer.next();
+            token = lexer.nextToken();
             std::cerr << *token << '\n';
         }
         while (token->getType() != Token::END);
@@ -36,10 +36,10 @@ void parse()
         std::vector<std::unique_ptr<Token>> tokens;
         do
         {
-            tokens.emplace_back(lexer.next());
+            tokens.emplace_back(lexer.nextToken());
         }
         while (!lexer.empty());
-        tokens.emplace_back(lexer.next());
+        tokens.emplace_back(lexer.nextToken());
         Parser parser{ std::move(tokens) };
         std::cerr << parser.parse()->toString() << '\n';
     }

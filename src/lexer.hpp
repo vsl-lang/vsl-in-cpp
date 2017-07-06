@@ -2,25 +2,30 @@
 #define LEXER_HPP
 
 #include "token.hpp"
+#include "location.hpp"
 #include <cstddef>
+#include <iostream>
 #include <memory>
 
 class Lexer
 {
 public:
-    Lexer(const char* src);
-    std::unique_ptr<Token> next();
+    Lexer(const char* src, std::ostream& errors = std::cerr);
+    std::unique_ptr<Token> nextToken();
     bool empty() const;
 
 private:
-    char lookAhead(size_t k) const;
+    char current() const;
+    char next();
+    char peek(size_t i = 1) const;
     std::unique_ptr<Token> lexToken(Token::Type type);
     std::unique_ptr<NameToken> lexName();
     std::unique_ptr<NumberToken> lexNumber();
     void lexLineComment();
     void lexBlockComment();
     const char* src;
-    const char* pos;
+    Location location;
+    std::ostream& errors;
 };
 
 #endif // LEXER_HPP
