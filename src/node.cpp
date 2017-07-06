@@ -34,6 +34,11 @@ ErrorNode::~ErrorNode()
 {
 }
 
+void ErrorNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
+}
+
 std::string ErrorNode::toString() const
 {
     return "Error {}";
@@ -46,6 +51,11 @@ EmptyNode::EmptyNode(Location location)
 
 EmptyNode::~EmptyNode()
 {
+}
+
+void EmptyNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
 }
 
 std::string EmptyNode::toString() const
@@ -61,6 +71,11 @@ BlockNode::BlockNode(std::vector<std::unique_ptr<Node>> statements,
 
 BlockNode::~BlockNode()
 {
+}
+
+void BlockNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
 }
 
 std::string BlockNode::toString() const
@@ -94,6 +109,11 @@ ConditionalNode::~ConditionalNode()
 {
 }
 
+void ConditionalNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
+}
+
 std::string ConditionalNode::toString() const
 {
     std::string s = "Conditional { condition: ";
@@ -116,6 +136,11 @@ AssignmentNode::AssignmentNode(std::string name, std::unique_ptr<Node> type,
 
 AssignmentNode::~AssignmentNode()
 {
+}
+
+void AssignmentNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
 }
 
 std::string AssignmentNode::toString() const
@@ -159,6 +184,11 @@ FunctionNode::~FunctionNode()
 {
 }
 
+void FunctionNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
+}
+
 std::string FunctionNode::toString() const
 {
     std::string s = "Function { name: ";
@@ -192,6 +222,11 @@ ReturnNode::~ReturnNode()
 {
 }
 
+void ReturnNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
+}
+
 std::string ReturnNode::toString() const
 {
     std::string s = "Return { value: ";
@@ -211,6 +246,11 @@ ParamNode::~ParamNode()
 {
 }
 
+void ParamNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
+}
+
 std::string ParamNode::toString() const
 {
     std::string s = "Param { name: ";
@@ -228,6 +268,11 @@ TypeNode::TypeNode(std::string name, Location location)
 
 TypeNode::~TypeNode()
 {
+}
+
+void TypeNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
 }
 
 std::string TypeNode::toString() const
@@ -252,6 +297,11 @@ IdentExprNode::~IdentExprNode()
 {
 }
 
+void IdentExprNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
+}
+
 std::string IdentExprNode::toString() const
 {
     std::string s = "Ident { name: ";
@@ -272,6 +322,11 @@ NumberExprNode::NumberExprNode(long value, Location location)
 
 NumberExprNode::~NumberExprNode()
 {
+}
+
+void NumberExprNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
 }
 
 std::string NumberExprNode::toString() const
@@ -296,6 +351,11 @@ UnaryExprNode::UnaryExprNode(Token::Type op, std::unique_ptr<Node> expr,
 
 UnaryExprNode::~UnaryExprNode()
 {
+}
+
+void UnaryExprNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
 }
 
 std::string UnaryExprNode::toString() const
@@ -327,6 +387,11 @@ BinaryExprNode::BinaryExprNode(Token::Type op, std::unique_ptr<Node> left,
 
 BinaryExprNode::~BinaryExprNode()
 {
+}
+
+void BinaryExprNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
 }
 
 std::string BinaryExprNode::toString() const
@@ -365,6 +430,11 @@ CallExprNode::CallExprNode(std::unique_ptr<Node> callee,
 
 CallExprNode::~CallExprNode()
 {
+}
+
+void CallExprNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
 }
 
 std::string CallExprNode::toString() const
@@ -411,6 +481,11 @@ ArgNode::ArgNode(std::string name, std::unique_ptr<Node> value,
 
 ArgNode::~ArgNode()
 {
+}
+
+void ArgNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visit(*this);
 }
 
 std::string ArgNode::toString() const
