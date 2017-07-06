@@ -28,57 +28,57 @@ const char* Token::typeToString(Token::Type type)
     case Token::IDENTIFIER:
         return "identifier";
     case Token::VAR:
-        return "keyword var";
+        return "'var'";
     case Token::LET:
-        return "keyword let";
+        return "'let'";
     case Token::FUNC:
-        return "keyword func";
+        return "'func'";
     case Token::RETURN:
-        return "keyword return";
+        return "'return'";
     case Token::IF:
-        return "keyword if";
+        return "'if'";
     case Token::ELSE:
-        return "keyword else";
+        return "'else'";
     case Token::PLUS:
-        return "operator +";
+        return "'+'";
     case Token::MINUS:
-        return "operator -";
+        return "'-'";
     case Token::STAR:
-        return "operator *";
+        return "'*'";
     case Token::SLASH:
-        return "operator /";
+        return "'/'";
     case Token::PERCENT:
-        return "operator %";
+        return "'%'";
     case Token::ASSIGN:
-        return "operator =";
+        return "'='";
     case Token::EQUALS:
-        return "operator ==";
+        return "'=='";
     case Token::GREATER:
-        return "operator >";
+        return "'>'";
     case Token::GREATER_EQUAL:
-        return "operator >=";
+        return "'>='";
     case Token::LESS:
-        return "operator <";
+        return "'<'";
     case Token::LESS_EQUAL:
-        return "operator <=";
+        return "'<='";
     case Token::COLON:
-        return "symbol :";
+        return "':'";
     case Token::SEMICOLON:
-        return "symbol ;";
+        return "';'";
     case Token::COMMA:
-        return "symbol ,";
+        return "','";
     case Token::ARROW:
-        return "symbol ->";
+        return "'->'";
     case Token::LPAREN:
-        return "symbol (";
+        return "'('";
     case Token::RPAREN:
-        return "symbol )";
+        return "')'";
     case Token::LBRACE:
-        return "symbol {";
+        return "'{'";
     case Token::RBRACE:
-        return "symbol }";
+        return "'}'";
     case Token::END:
-        return "end";
+        return "eof";
     default:
         return "invalid";
     }
