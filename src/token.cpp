@@ -11,8 +11,8 @@ std::ostream& operator<<(std::ostream& os, const Token& token)
     return os << token.toString();
 }
 
-Token::Token(Type type, Location location)
-    : type{ type }, location{ location }
+Token::Token(Kind kind, Location location)
+    : kind{ kind }, location{ location }
 {
 }
 
@@ -20,65 +20,69 @@ Token::~Token()
 {
 }
 
-const char* Token::typeToString(Token::Type type)
+const char* Token::kindToString(Token::Kind kind)
 {
-    switch (type)
+    switch (kind)
     {
     case Token::NUMBER:
         return "number";
     case Token::IDENTIFIER:
         return "identifier";
-    case Token::VAR:
+    case Token::KEYWORD_VAR:
         return "'var'";
-    case Token::LET:
+    case Token::KEYWORD_LET:
         return "'let'";
-    case Token::FUNC:
+    case Token::KEYWORD_FUNC:
         return "'func'";
-    case Token::RETURN:
+    case Token::KEYWORD_RETURN:
         return "'return'";
-    case Token::IF:
+    case Token::KEYWORD_IF:
         return "'if'";
-    case Token::ELSE:
+    case Token::KEYWORD_ELSE:
         return "'else'";
-    case Token::PLUS:
+    case Token::KEYWORD_INT:
+        return "'Int'";
+    case Token::KEYWORD_VOID:
+        return "'Void'";
+    case Token::OP_PLUS:
         return "'+'";
-    case Token::MINUS:
+    case Token::OP_MINUS:
         return "'-'";
-    case Token::STAR:
+    case Token::OP_STAR:
         return "'*'";
-    case Token::SLASH:
+    case Token::OP_SLASH:
         return "'/'";
-    case Token::PERCENT:
+    case Token::OP_PERCENT:
         return "'%'";
-    case Token::ASSIGN:
+    case Token::OP_ASSIGN:
         return "'='";
-    case Token::EQUALS:
+    case Token::OP_EQUALS:
         return "'=='";
-    case Token::GREATER:
+    case Token::OP_GREATER:
         return "'>'";
-    case Token::GREATER_EQUAL:
+    case Token::OP_GREATER_EQUAL:
         return "'>='";
-    case Token::LESS:
+    case Token::OP_LESS:
         return "'<'";
-    case Token::LESS_EQUAL:
+    case Token::OP_LESS_EQUAL:
         return "'<='";
-    case Token::COLON:
+    case Token::SYMBOL_COLON:
         return "':'";
-    case Token::SEMICOLON:
+    case Token::SYMBOL_SEMICOLON:
         return "';'";
-    case Token::COMMA:
+    case Token::SYMBOL_COMMA:
         return "','";
-    case Token::ARROW:
+    case Token::SYMBOL_ARROW:
         return "'->'";
-    case Token::LPAREN:
+    case Token::SYMBOL_LPAREN:
         return "'('";
-    case Token::RPAREN:
+    case Token::SYMBOL_RPAREN:
         return "')'";
-    case Token::LBRACE:
+    case Token::SYMBOL_LBRACE:
         return "'{'";
-    case Token::RBRACE:
+    case Token::SYMBOL_RBRACE:
         return "'}'";
-    case Token::END:
+    case Token::SYMBOL_EOF:
         return "eof";
     default:
         return "invalid";
@@ -87,17 +91,7 @@ const char* Token::typeToString(Token::Type type)
 
 std::string Token::toString() const
 {
-    return typeToString(type);
-}
-
-Token::Type Token::getType() const
-{
-    return type;
-}
-
-Location Token::getLocation() const
-{
-    return location;
+    return kindToString(kind);
 }
 
 NameToken::NameToken(std::string name, Location location)
@@ -112,14 +106,16 @@ NameToken::~NameToken()
 std::string NameToken::toString() const
 {
     std::string s;
-    switch (getType())
+    switch (kind)
     {
-    case Token::VAR:
-    case Token::LET:
-    case Token::FUNC:
-    case Token::RETURN:
-    case Token::IF:
-    case Token::ELSE:
+    case Token::KEYWORD_VAR:
+    case Token::KEYWORD_LET:
+    case Token::KEYWORD_FUNC:
+    case Token::KEYWORD_RETURN:
+    case Token::KEYWORD_IF:
+    case Token::KEYWORD_ELSE:
+    case Token::KEYWORD_INT:
+    case Token::KEYWORD_VOID:
         s = "keyword ";
         break;
     case Token::IDENTIFIER:
@@ -132,12 +128,7 @@ std::string NameToken::toString() const
     return s;
 }
 
-const std::string& NameToken::getName() const
-{
-    return name;
-}
-
-Token::Type NameToken::evaluateName(const std::string& name)
+Token::Kind NameToken::evaluateName(const std::string& name)
 {
     auto it = keywords.find(name);
     if (it != keywords.end())
@@ -147,14 +138,16 @@ Token::Type NameToken::evaluateName(const std::string& name)
     return Token::IDENTIFIER;
 }
 
-const std::unordered_map<std::string, Token::Type> NameToken::keywords
+const std::unordered_map<std::string, Token::Kind> NameToken::keywords
 {
-    { "var", Token::VAR },
-    { "let", Token::LET },
-    { "func", Token::FUNC },
-    { "return", Token::RETURN },
-    { "if", Token::IF },
-    { "else", Token::ELSE }
+    { "var", Token::KEYWORD_VAR },
+    { "let", Token::KEYWORD_LET },
+    { "func", Token::KEYWORD_FUNC },
+    { "return", Token::KEYWORD_RETURN },
+    { "if", Token::KEYWORD_IF },
+    { "else", Token::KEYWORD_ELSE },
+    { "Int", Token::KEYWORD_INT },
+    { "Void", Token::KEYWORD_VOID }
 };
 
 NumberToken::NumberToken(long value, Location location)
@@ -171,9 +164,4 @@ std::string NumberToken::toString() const
     std::string s = "number ";
     s += std::to_string(value);
     return s;
-}
-
-long NumberToken::getValue() const
-{
-    return value;
 }

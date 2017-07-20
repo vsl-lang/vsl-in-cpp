@@ -29,8 +29,8 @@ private:
     std::unique_ptr<Node> parseAssignment();
     std::unique_ptr<Node> parseFunction();
     std::unique_ptr<Node> parseReturn();
-    std::unique_ptr<Node> parseParam();
-    std::unique_ptr<Node> parseType();
+    FunctionNode::Param parseParam();
+    std::unique_ptr<Type> parseType();
     std::unique_ptr<Node> parseExpr(int rbp = 0);
     std::unique_ptr<Node> parseNud();
     std::unique_ptr<Node> parseLed(std::unique_ptr<Node> left);

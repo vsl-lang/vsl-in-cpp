@@ -11,6 +11,7 @@ std::ostream& operator<<(std::ostream& os, const Location& location);
 class Location
 {
 public:
+    Location() = default;
     Location(const char* pos, size_t line, size_t col);
     const char* pos;
     size_t line;

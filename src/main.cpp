@@ -1,4 +1,6 @@
 #include "lexer.hpp"
+#include "node.hpp"
+#include "nodeverifier.hpp"
 #include "parser.hpp"
 #include "token.hpp"
 #include <cstring>
@@ -21,7 +23,7 @@ void lex()
             token = lexer.nextToken();
             std::cerr << *token << '\n';
         }
-        while (token->getType() != Token::END);
+        while (token->kind != Token::SYMBOL_EOF);
     }
 }
 
@@ -45,6 +47,29 @@ void parse()
     }
 }
 
+void verify()
+{
+    std::string input;
+    while (std::cout.good() && std::cin.good())
+    {
+        std::cout << "> ";
+        std::getline(std::cin, input);
+        Lexer lexer{ input.c_str() };
+        std::vector<std::unique_ptr<Token>> tokens;
+        do
+        {
+            tokens.emplace_back(lexer.nextToken());
+        }
+        while (!lexer.empty());
+        tokens.emplace_back(lexer.nextToken());
+        Parser parser{ std::move(tokens) };
+        NodeVerifier verifier;
+        std::unique_ptr<Node> ast = parser.parse();
+        ast->accept(verifier);
+        std::cerr << ast->toString() << '\n';
+    }
+}
+
 void help()
 {
     std::cout <<
@@ -52,7 +77,8 @@ void help()
         "Options:\n"
         "  -h --help Display this information.\n"
         "  -l        Start the lexer REPL.\n"
-        "  -p        Start the parser REPL.\n";
+        "  -p        Start the parser REPL.\n"
+        "  -v        Start the verifier REPL.\n";
 }
 
 int main(int argc, char** argv)
@@ -67,6 +93,11 @@ int main(int argc, char** argv)
         else if (strcmp(argv[i], "-p") == 0)
         {
             parse();
+            return 0;
+        }
+        else if (strcmp(argv[i], "-v") == 0)
+        {
+            verify();
             return 0;
         }
         else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)

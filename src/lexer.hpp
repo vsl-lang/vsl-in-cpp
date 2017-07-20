@@ -18,7 +18,7 @@ private:
     char current() const;
     char next();
     char peek(size_t i = 1) const;
-    std::unique_ptr<Token> lexToken(Token::Type type);
+    std::unique_ptr<Token> lexToken(Token::Kind kind);
     std::unique_ptr<NameToken> lexName();
     std::unique_ptr<NumberToken> lexNumber();
     void lexLineComment();

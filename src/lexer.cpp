@@ -20,16 +20,16 @@ std::unique_ptr<Token> Lexer::nextToken()
             location.col = 0;
             break;
         case '+':
-            return lexToken(Token::PLUS);
+            return lexToken(Token::OP_PLUS);
         case '-':
             if (peek() == '>')
             {
                 next();
-                return lexToken(Token::ARROW);
+                return lexToken(Token::SYMBOL_ARROW);
             }
-            return lexToken(Token::MINUS);
+            return lexToken(Token::OP_MINUS);
         case '*':
-            return lexToken(Token::STAR);
+            return lexToken(Token::OP_STAR);
         case '/':
             switch (peek())
             {
@@ -40,46 +40,46 @@ std::unique_ptr<Token> Lexer::nextToken()
                 lexBlockComment();
                 break;
             default:
-                return lexToken(Token::SLASH);
+                return lexToken(Token::OP_SLASH);
             }
             break;
         case '%':
-            return lexToken(Token::PERCENT);
+            return lexToken(Token::OP_PERCENT);
         case '=':
             if (peek() == '=')
             {
                 next();
-                return lexToken(Token::EQUALS);
+                return lexToken(Token::OP_EQUALS);
             }
-            return lexToken(Token::ASSIGN);
+            return lexToken(Token::OP_ASSIGN);
         case '>':
             if (peek() == '=')
             {
                 next();
-                return lexToken(Token::GREATER_EQUAL);
+                return lexToken(Token::OP_GREATER_EQUAL);
             }
-            return lexToken(Token::GREATER);
+            return lexToken(Token::OP_GREATER);
         case '<':
             if (peek() == '=')
             {
                 next();
-                return lexToken(Token::LESS_EQUAL);
+                return lexToken(Token::OP_LESS_EQUAL);
             }
-            return lexToken(Token::LESS);
+            return lexToken(Token::OP_LESS);
         case ':':
-            return lexToken(Token::COLON);
+            return lexToken(Token::SYMBOL_COLON);
         case ';':
-            return lexToken(Token::SEMICOLON);
+            return lexToken(Token::SYMBOL_SEMICOLON);
         case ',':
-            return lexToken(Token::COMMA);
+            return lexToken(Token::SYMBOL_COMMA);
         case '(':
-            return lexToken(Token::LPAREN);
+            return lexToken(Token::SYMBOL_LPAREN);
         case ')':
-            return lexToken(Token::RPAREN);
+            return lexToken(Token::SYMBOL_RPAREN);
         case '{':
-            return lexToken(Token::LBRACE);
+            return lexToken(Token::SYMBOL_LBRACE);
         case '}':
-            return lexToken(Token::RBRACE);
+            return lexToken(Token::SYMBOL_RBRACE);
         default:
             if (isalpha(current()))
             {
@@ -96,7 +96,7 @@ std::unique_ptr<Token> Lexer::nextToken()
             }
         }
     }
-    return std::make_unique<Token>(Token::END, location);
+    return std::make_unique<Token>(Token::SYMBOL_EOF, location);
 }
 
 bool Lexer::empty() const
@@ -129,11 +129,11 @@ char Lexer::peek(size_t i) const
     return c;
 }
 
-std::unique_ptr<Token> Lexer::lexToken(Token::Type type)
+std::unique_ptr<Token> Lexer::lexToken(Token::Kind kind)
 {
     Location savedLocation = location;
     next();
-    return std::make_unique<Token>(type, savedLocation);
+    return std::make_unique<Token>(kind, savedLocation);
 }
 
 std::unique_ptr<NameToken> Lexer::lexName()

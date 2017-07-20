@@ -6,23 +6,13 @@ std::ostream& operator<<(std::ostream& os, const Node& ast)
     return os << ast.toString();
 }
 
-Node::Node(Type nodeType, Location location)
-    : nodeType{ nodeType }, location{ location }
+Node::Node(Kind kind, Location location, std::unique_ptr<Type> type)
+    : type{ std::move(type) }, kind{ kind }, location{ location }
 {
 }
 
 Node::~Node()
 {
-}
-
-Node::Type Node::getNodeType() const
-{
-    return nodeType;
-}
-
-Location Node::getLocation() const
-{
-    return location;
 }
 
 ErrorNode::ErrorNode(Location location)
@@ -126,11 +116,10 @@ std::string ConditionalNode::toString() const
     return s;
 }
 
-AssignmentNode::AssignmentNode(std::string name, std::unique_ptr<Node> type,
+AssignmentNode::AssignmentNode(std::string name, std::unique_ptr<Type> type,
     std::unique_ptr<Node> value, Qualifiers qualifiers, Location location)
-    : Node{ Node::ASSIGNMENT, location }, name{ std::move(name) },
-    type{ std::move(type) }, value{ std::move(value) },
-    qualifiers{ qualifiers }
+    : Node{ Node::ASSIGNMENT, location, std::move(type) },
+    name{ std::move(name) }, value{ std::move(value) }, qualifiers{ qualifiers }
 {
 }
 
@@ -171,13 +160,27 @@ std::string AssignmentNode::toString() const
     return s;
 }
 
-FunctionNode::FunctionNode(std::string name,
-    std::vector<std::unique_ptr<Node>> params, std::unique_ptr<Node> returnType,
-    std::unique_ptr<Node> body, Location location)
+FunctionNode::ParamName::ParamName(std::string str, Location location)
+    : str{ std::move(str) }, location{ location }
+{
+}
+
+FunctionNode::FunctionNode(std::string name, std::vector<Param> params,
+    std::unique_ptr<Type> returnType, std::unique_ptr<Node> body,
+    Location location)
     : Node{ Node::FUNCTION, location }, name{ std::move(name) },
-    params{ std::move(params) }, returnType{ std::move(returnType) },
     body{ std::move(body) }
 {
+    std::vector<std::unique_ptr<Type>> paramTypes;
+    paramNames.reserve(params.size());
+    paramTypes.reserve(params.size());
+    for (auto& param : params)
+    {
+        paramNames.emplace_back(std::move(param.name.str), param.name.location);
+        paramTypes.emplace_back(std::move(param.type));
+    }
+    type = std::make_unique<FunctionType>(std::move(paramTypes),
+        std::move(returnType));
 }
 
 FunctionNode::~FunctionNode()
@@ -191,25 +194,36 @@ void FunctionNode::accept(NodeVisitor& nodeVisitor)
 
 std::string FunctionNode::toString() const
 {
+    auto& funcType = static_cast<FunctionType&>(*type);
     std::string s = "Function { name: ";
     s += name;
     s += ", params: [";
-    if (!params.empty())
+    if (!paramNames.empty())
     {
         s += ' ';
-        s += params[0]->toString();
-        for (size_t i = 1; i < params.size(); ++i)
+        auto& paramTypes = funcType.params;
+        s += paramToString(paramNames[0].str, *paramTypes[0]);
+        for (size_t i = 1; i < paramNames.size(); ++i)
         {
             s += ", ";
-            s += params[i]->toString();
+            s += paramToString(paramNames[i].str, *paramTypes[i]);
         }
         s += ' ';
     }
     s += "], returnType: ";
-    s += returnType->toString();
+    s += funcType.returnType->toString();
     s += ", body: ";
     s += body->toString();
     s += " ]";
+    return s;
+}
+
+std::string FunctionNode::paramToString(const std::string& name,
+    const Type& type)
+{
+    std::string s = name;
+    s += ": ";
+    s += type.toString();
     return s;
 }
 
@@ -235,56 +249,8 @@ std::string ReturnNode::toString() const
     return s;
 }
 
-ParamNode::ParamNode(std::string name, std::unique_ptr<Node> type,
-    Location location)
-    : Node{ Node::PARAM, location }, name{ std::move(name) },
-    type{ std::move(type) }
-{
-}
-
-ParamNode::~ParamNode()
-{
-}
-
-void ParamNode::accept(NodeVisitor& nodeVisitor)
-{
-    nodeVisitor.visit(*this);
-}
-
-std::string ParamNode::toString() const
-{
-    std::string s = "Param { name: ";
-    s += name;
-    s += ", type: ";
-    s += type->toString();
-    s += " }";
-    return s;
-}
-
-TypeNode::TypeNode(std::string name, Location location)
-    : Node{ Node::TYPE, location }, name{ std::move(name) }
-{
-}
-
-TypeNode::~TypeNode()
-{
-}
-
-void TypeNode::accept(NodeVisitor& nodeVisitor)
-{
-    nodeVisitor.visit(*this);
-}
-
-std::string TypeNode::toString() const
-{
-    std::string s = "Type { name: ";
-    s += name;
-    s += " }";
-    return s;
-}
-
-ExprNode::ExprNode(Node::Type type, Location location)
-    : Node{ type, location }
+ExprNode::ExprNode(Node::Kind kind, Location location)
+    : Node{ kind, location }
 {
 }
 
@@ -310,11 +276,6 @@ std::string IdentExprNode::toString() const
     return s;
 }
 
-const std::string& IdentExprNode::getName() const
-{
-    return name;
-}
-
 NumberExprNode::NumberExprNode(long value, Location location)
     : ExprNode{ Node::NUMBER_EXPR, location }, value{ value }
 {
@@ -337,12 +298,7 @@ std::string NumberExprNode::toString() const
     return s;
 }
 
-long NumberExprNode::getValue() const
-{
-    return value;
-}
-
-UnaryExprNode::UnaryExprNode(Token::Type op, std::unique_ptr<Node> expr,
+UnaryExprNode::UnaryExprNode(Token::Kind op, std::unique_ptr<Node> expr,
     Location location)
     : ExprNode{ Node::UNARY_EXPR, location }, op{ op },
     expr{ std::move(expr) }
@@ -361,24 +317,14 @@ void UnaryExprNode::accept(NodeVisitor& nodeVisitor)
 std::string UnaryExprNode::toString() const
 {
     std::string s = "Unary { op: ";
-    s += Token::typeToString(op);
+    s += Token::kindToString(op);
     s += ", expr: ";
     s += expr->toString();
     s += " }";
     return s;
 }
 
-Token::Type UnaryExprNode::getOp() const
-{
-    return op;
-}
-
-const Node& UnaryExprNode::getExpr() const
-{
-    return *expr;
-}
-
-BinaryExprNode::BinaryExprNode(Token::Type op, std::unique_ptr<Node> left,
+BinaryExprNode::BinaryExprNode(Token::Kind op, std::unique_ptr<Node> left,
     std::unique_ptr<Node> right, Location location)
     : ExprNode{ Node::BINARY_EXPR, location }, op{ op },
     left{ std::move(left) }, right{ std::move(right) }
@@ -397,28 +343,13 @@ void BinaryExprNode::accept(NodeVisitor& nodeVisitor)
 std::string BinaryExprNode::toString() const
 {
     std::string s = "Binary { op: ";
-    s += Token::typeToString(op);
+    s += Token::kindToString(op);
     s += ", left: ";
     s += left->toString();
     s += ", right: ";
     s += right->toString();
     s += " }";
     return s;
-}
-
-Token::Type BinaryExprNode::getOp() const
-{
-    return op;
-}
-
-const Node& BinaryExprNode::getLeft() const
-{
-    return *left;
-}
-
-const Node& BinaryExprNode::getRight() const
-{
-    return *right;
 }
 
 CallExprNode::CallExprNode(std::unique_ptr<Node> callee,
@@ -457,21 +388,6 @@ std::string CallExprNode::toString() const
     return s;
 }
 
-const Node& CallExprNode::getCallee() const
-{
-    return *callee;
-}
-
-size_t CallExprNode::getArgCount() const
-{
-    return args.size();
-}
-
-const Node& CallExprNode::getArg(size_t arg) const
-{
-    return *args[arg];
-}
-
 ArgNode::ArgNode(std::string name, std::unique_ptr<Node> value,
     Location location)
     : Node{ Node::ARG, location }, name{ std::move(name) },
@@ -496,14 +412,4 @@ std::string ArgNode::toString() const
     s += value->toString();
     s += " }";
     return s;
-}
-
-const std::string& ArgNode::getName() const
-{
-    return name;
-}
-
-const Node& ArgNode::getValue() const
-{
-    return *value;
 }
