@@ -48,7 +48,7 @@ public:
         SYMBOL_EOF
     };
     Token(Kind kind, Location location);
-    virtual ~Token();
+    virtual ~Token() = default;
     static const char* kindToString(Kind kind);
     virtual std::string toString() const;
     Kind kind;
@@ -59,7 +59,7 @@ class NameToken : public Token
 {
 public:
     NameToken(std::string name, Location location);
-    virtual ~NameToken() override;
+    virtual ~NameToken() override = default;
     virtual std::string toString() const override;
     std::string name;
 
@@ -72,7 +72,7 @@ class NumberToken : public Token
 {
 public:
     NumberToken(long value, Location location);
-    virtual ~NumberToken() override;
+    virtual ~NumberToken() override = default;
     virtual std::string toString() const override;
     long value;
 };

@@ -16,10 +16,6 @@ Token::Token(Kind kind, Location location)
 {
 }
 
-Token::~Token()
-{
-}
-
 const char* Token::kindToString(Token::Kind kind)
 {
     switch (kind)
@@ -99,10 +95,6 @@ NameToken::NameToken(std::string name, Location location)
 {
 }
 
-NameToken::~NameToken()
-{
-}
-
 std::string NameToken::toString() const
 {
     std::string s;
@@ -152,10 +144,6 @@ const std::unordered_map<std::string, Token::Kind> NameToken::keywords
 
 NumberToken::NumberToken(long value, Location location)
     : Token{ Token::NUMBER, location }, value { value }
-{
-}
-
-NumberToken::~NumberToken()
 {
 }
 

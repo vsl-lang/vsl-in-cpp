@@ -20,10 +20,6 @@ ErrorNode::ErrorNode(Location location)
 {
 }
 
-ErrorNode::~ErrorNode()
-{
-}
-
 void ErrorNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visit(*this);
@@ -36,10 +32,6 @@ std::string ErrorNode::toString() const
 
 EmptyNode::EmptyNode(Location location)
     : Node{ Node::EMPTY, location }
-{
-}
-
-EmptyNode::~EmptyNode()
 {
 }
 
@@ -56,10 +48,6 @@ std::string EmptyNode::toString() const
 BlockNode::BlockNode(std::vector<std::unique_ptr<Node>> statements,
     Location location)
     : Node{ Node::BLOCK, location }, statements{ std::move(statements) }
-{
-}
-
-BlockNode::~BlockNode()
 {
 }
 
@@ -95,10 +83,6 @@ ConditionalNode::ConditionalNode(std::unique_ptr<Node> condition,
 {
 }
 
-ConditionalNode::~ConditionalNode()
-{
-}
-
 void ConditionalNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visit(*this);
@@ -120,10 +104,6 @@ AssignmentNode::AssignmentNode(std::string name, std::unique_ptr<Type> type,
     std::unique_ptr<Node> value, Qualifiers qualifiers, Location location)
     : Node{ Node::ASSIGNMENT, location, std::move(type) },
     name{ std::move(name) }, value{ std::move(value) }, qualifiers{ qualifiers }
-{
-}
-
-AssignmentNode::~AssignmentNode()
 {
 }
 
@@ -183,10 +163,6 @@ FunctionNode::FunctionNode(std::string name, std::vector<Param> params,
         std::move(returnType));
 }
 
-FunctionNode::~FunctionNode()
-{
-}
-
 void FunctionNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visit(*this);
@@ -232,10 +208,6 @@ ReturnNode::ReturnNode(std::unique_ptr<Node> value, Location location)
 {
 }
 
-ReturnNode::~ReturnNode()
-{
-}
-
 void ReturnNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visit(*this);
@@ -259,10 +231,6 @@ IdentExprNode::IdentExprNode(std::string name, Location location)
 {
 }
 
-IdentExprNode::~IdentExprNode()
-{
-}
-
 void IdentExprNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visit(*this);
@@ -278,10 +246,6 @@ std::string IdentExprNode::toString() const
 
 NumberExprNode::NumberExprNode(long value, Location location)
     : ExprNode{ Node::NUMBER_EXPR, location }, value{ value }
-{
-}
-
-NumberExprNode::~NumberExprNode()
 {
 }
 
@@ -302,10 +266,6 @@ UnaryExprNode::UnaryExprNode(Token::Kind op, std::unique_ptr<Node> expr,
     Location location)
     : ExprNode{ Node::UNARY_EXPR, location }, op{ op },
     expr{ std::move(expr) }
-{
-}
-
-UnaryExprNode::~UnaryExprNode()
 {
 }
 
@@ -331,10 +291,6 @@ BinaryExprNode::BinaryExprNode(Token::Kind op, std::unique_ptr<Node> left,
 {
 }
 
-BinaryExprNode::~BinaryExprNode()
-{
-}
-
 void BinaryExprNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visit(*this);
@@ -356,10 +312,6 @@ CallExprNode::CallExprNode(std::unique_ptr<Node> callee,
     std::vector<std::unique_ptr<Node>> args, Location location)
     : ExprNode{ Node::CALL_EXPR, location }, callee{ std::move(callee) },
     args{ std::move(args) }
-{
-}
-
-CallExprNode::~CallExprNode()
 {
 }
 
@@ -392,10 +344,6 @@ ArgNode::ArgNode(std::string name, std::unique_ptr<Node> value,
     Location location)
     : Node{ Node::ARG, location }, name{ std::move(name) },
     value{ std::move(value) }
-{
-}
-
-ArgNode::~ArgNode()
 {
 }
 

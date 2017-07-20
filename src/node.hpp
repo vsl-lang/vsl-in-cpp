@@ -63,7 +63,7 @@ class ErrorNode : public Node
 {
 public:
     ErrorNode(Location location);
-    virtual ~ErrorNode() override;
+    virtual ~ErrorNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
 };
@@ -72,7 +72,7 @@ class EmptyNode : public Node
 {
 public:
     EmptyNode(Location location);
-    virtual ~EmptyNode() override;
+    virtual ~EmptyNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
 };
@@ -81,7 +81,7 @@ class BlockNode : public Node
 {
 public:
     BlockNode(std::vector<std::unique_ptr<Node>> statements, Location location);
-    virtual ~BlockNode() override;
+    virtual ~BlockNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     std::vector<std::unique_ptr<Node>> statements;
@@ -93,7 +93,7 @@ public:
     ConditionalNode(std::unique_ptr<Node> condition,
         std::unique_ptr<Node> thenCase, std::unique_ptr<Node> elseCase,
         Location location);
-    virtual ~ConditionalNode() override;
+    virtual ~ConditionalNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     std::unique_ptr<Node> condition;
@@ -111,7 +111,7 @@ public:
     };
     AssignmentNode(std::string name, std::unique_ptr<Type> type,
         std::unique_ptr<Node> value, Qualifiers qualifiers, Location location);
-    virtual ~AssignmentNode() override;
+    virtual ~AssignmentNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     std::string name;
@@ -137,7 +137,7 @@ public:
     FunctionNode(std::string name, std::vector<Param> params,
         std::unique_ptr<Type> returnType, std::unique_ptr<Node> body,
         Location location);
-    virtual ~FunctionNode() override;
+    virtual ~FunctionNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     static std::string paramToString(const std::string& name, const Type& type);
@@ -150,7 +150,7 @@ class ReturnNode : public Node
 {
 public:
     ReturnNode(std::unique_ptr<Node> value, Location location);
-    virtual ~ReturnNode() override;
+    virtual ~ReturnNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     std::unique_ptr<Node> value;
@@ -166,7 +166,7 @@ class IdentExprNode : public ExprNode
 {
 public:
     IdentExprNode(std::string name, Location location);
-    virtual ~IdentExprNode() override;
+    virtual ~IdentExprNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     std::string name;
@@ -176,7 +176,7 @@ class NumberExprNode : public ExprNode
 {
 public:
     NumberExprNode(long value, Location location);
-    virtual ~NumberExprNode() override;
+    virtual ~NumberExprNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     long value;
@@ -187,7 +187,7 @@ class UnaryExprNode : public ExprNode
 public:
     UnaryExprNode(Token::Kind op, std::unique_ptr<Node> expr,
         Location location);
-    virtual ~UnaryExprNode() override;
+    virtual ~UnaryExprNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     Token::Kind op;
@@ -199,7 +199,7 @@ class BinaryExprNode : public ExprNode
 public:
     BinaryExprNode(Token::Kind op, std::unique_ptr<Node> left,
         std::unique_ptr<Node> right, Location location);
-    virtual ~BinaryExprNode() override;
+    virtual ~BinaryExprNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     Token::Kind op;
@@ -212,7 +212,7 @@ class CallExprNode : public ExprNode
 public:
     CallExprNode(std::unique_ptr<Node> callee,
         std::vector<std::unique_ptr<Node>> args, Location location);
-    virtual ~CallExprNode() override;
+    virtual ~CallExprNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     std::unique_ptr<Node> callee;
@@ -223,7 +223,7 @@ class ArgNode : public Node
 {
 public:
     ArgNode(std::string name, std::unique_ptr<Node> value, Location location);
-    ~ArgNode() override;
+    ~ArgNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     std::string name;
