@@ -35,14 +35,7 @@ void parse()
         std::cout << "> ";
         std::getline(std::cin, input);
         VSLLexer lexer{ input.c_str() };
-        std::vector<std::unique_ptr<Token>> tokens;
-        do
-        {
-            tokens.emplace_back(lexer.nextToken());
-        }
-        while (!lexer.empty());
-        tokens.emplace_back(lexer.nextToken());
-        VSLParser parser{ std::move(tokens) };
+        VSLParser parser{ lexer };
         std::cerr << parser.parse()->toString() << '\n';
     }
 }
@@ -55,14 +48,7 @@ void verify()
         std::cout << "> ";
         std::getline(std::cin, input);
         VSLLexer lexer{ input.c_str() };
-        std::vector<std::unique_ptr<Token>> tokens;
-        do
-        {
-            tokens.emplace_back(lexer.nextToken());
-        }
-        while (!lexer.empty());
-        tokens.emplace_back(lexer.nextToken());
-        VSLParser parser{ std::move(tokens) };
+        VSLParser parser{ lexer };
         NodeVerifier verifier;
         std::unique_ptr<Node> ast = parser.parse();
         ast->accept(verifier);

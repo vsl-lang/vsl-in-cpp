@@ -1,7 +1,7 @@
 #include "vslparser.hpp"
 
-VSLParser::VSLParser(std::vector<std::unique_ptr<Token>> tokens, std::ostream& errors)
-    : tokens{ std::move(tokens) }, pos{ this->tokens.begin() }, errors{ errors }
+VSLParser::VSLParser(Lexer& lexer, std::ostream& errors)
+    : lexer{ lexer }, errors{ errors }
 {
 }
 
@@ -19,17 +19,30 @@ std::unique_ptr<Node> VSLParser::parse()
 
 const Token& VSLParser::next()
 {
-    return **++pos;
+    cache.pop_front();
+    return current();
 }
 
-const Token& VSLParser::current() const
+const Token& VSLParser::current()
 {
-    return **pos;
+    return peek(0);
 }
 
-const Token& VSLParser::peek(size_t i) const
+const Token& VSLParser::peek(size_t i)
 {
-    return *pos[i];
+    if (cache.size() > i)
+    {
+        return *cache[i];
+    }
+    else
+    {
+        size_t j = i - cache.size();
+        for (size_t k = 0; k <= j; ++k)
+        {
+            cache.emplace_back(lexer.nextToken());
+        }
+        return *cache.back();
+    }
 }
 
 std::unique_ptr<Node> VSLParser::errorExpected(const char* s)

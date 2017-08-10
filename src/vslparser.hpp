@@ -1,26 +1,26 @@
 #ifndef VSLPARSER_HPP
 #define VSLPARSER_HPP
 
+#include "lexer.hpp"
 #include "node.hpp"
 #include "parser.hpp"
 #include "token.hpp"
 #include <cstddef>
+#include <deque>
 #include <iostream>
 #include <memory>
-#include <vector>
 
 class VSLParser : public Parser
 {
 public:
-    VSLParser(std::vector<std::unique_ptr<Token>> tokens,
-        std::ostream& errors = std::cerr);
+    VSLParser(Lexer& lexer, std::ostream& errors = std::cerr);
     virtual ~VSLParser() override = default;
     virtual std::unique_ptr<Node> parse() override;
 
 private:
     const Token& next();
-    const Token& current() const;
-    const Token& peek(size_t i = 1) const;
+    const Token& current();
+    const Token& peek(size_t i = 1);
     std::unique_ptr<Node> errorExpected(const char* s);
     std::unique_ptr<Node> errorUnexpected(const Token& token);
     std::vector<std::unique_ptr<Node>> parseStatements();
@@ -39,8 +39,8 @@ private:
     int getLbp(const Token& token) const;
     std::unique_ptr<Node> parseCall(std::unique_ptr<Node> callee);
     std::unique_ptr<Node> parseCallArg();
-    std::vector<std::unique_ptr<Token>> tokens;
-    std::vector<std::unique_ptr<Token>>::iterator pos;
+    Lexer& lexer;
+    std::deque<std::unique_ptr<Token>> cache;
     std::ostream& errors;
 };
 
