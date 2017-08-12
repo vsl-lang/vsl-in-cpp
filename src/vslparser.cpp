@@ -8,13 +8,12 @@ VSLParser::VSLParser(Lexer& lexer, std::ostream& errors)
 std::unique_ptr<Node> VSLParser::parse()
 {
     Location savedLocation = current().location;
-    auto root = std::make_unique<BlockNode>(parseStatements(),
-        savedLocation);
+    auto statements = parseStatements();
     if (current().kind != Token::SYMBOL_EOF)
     {
         return errorExpected("eof");
     }
-    return root;
+    return std::make_unique<BlockNode>(std::move(statements), savedLocation);
 }
 
 const Token& VSLParser::next()
