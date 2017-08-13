@@ -20,16 +20,16 @@ std::unique_ptr<Token> VSLLexer::nextToken()
             location.col = 0;
             break;
         case '+':
-            return lexToken(Token::OP_PLUS);
+            return lexDefaultToken(Token::OP_PLUS);
         case '-':
             if (peek() == '>')
             {
                 next();
-                return lexToken(Token::SYMBOL_ARROW);
+                return lexDefaultToken(Token::SYMBOL_ARROW);
             }
-            return lexToken(Token::OP_MINUS);
+            return lexDefaultToken(Token::OP_MINUS);
         case '*':
-            return lexToken(Token::OP_STAR);
+            return lexDefaultToken(Token::OP_STAR);
         case '/':
             switch (peek())
             {
@@ -40,46 +40,46 @@ std::unique_ptr<Token> VSLLexer::nextToken()
                 lexBlockComment();
                 break;
             default:
-                return lexToken(Token::OP_SLASH);
+                return lexDefaultToken(Token::OP_SLASH);
             }
             break;
         case '%':
-            return lexToken(Token::OP_PERCENT);
+            return lexDefaultToken(Token::OP_PERCENT);
         case '=':
             if (peek() == '=')
             {
                 next();
-                return lexToken(Token::OP_EQUALS);
+                return lexDefaultToken(Token::OP_EQUALS);
             }
-            return lexToken(Token::OP_ASSIGN);
+            return lexDefaultToken(Token::OP_ASSIGN);
         case '>':
             if (peek() == '=')
             {
                 next();
-                return lexToken(Token::OP_GREATER_EQUAL);
+                return lexDefaultToken(Token::OP_GREATER_EQUAL);
             }
-            return lexToken(Token::OP_GREATER);
+            return lexDefaultToken(Token::OP_GREATER);
         case '<':
             if (peek() == '=')
             {
                 next();
-                return lexToken(Token::OP_LESS_EQUAL);
+                return lexDefaultToken(Token::OP_LESS_EQUAL);
             }
-            return lexToken(Token::OP_LESS);
+            return lexDefaultToken(Token::OP_LESS);
         case ':':
-            return lexToken(Token::SYMBOL_COLON);
+            return lexDefaultToken(Token::SYMBOL_COLON);
         case ';':
-            return lexToken(Token::SYMBOL_SEMICOLON);
+            return lexDefaultToken(Token::SYMBOL_SEMICOLON);
         case ',':
-            return lexToken(Token::SYMBOL_COMMA);
+            return lexDefaultToken(Token::SYMBOL_COMMA);
         case '(':
-            return lexToken(Token::SYMBOL_LPAREN);
+            return lexDefaultToken(Token::SYMBOL_LPAREN);
         case ')':
-            return lexToken(Token::SYMBOL_RPAREN);
+            return lexDefaultToken(Token::SYMBOL_RPAREN);
         case '{':
-            return lexToken(Token::SYMBOL_LBRACE);
+            return lexDefaultToken(Token::SYMBOL_LBRACE);
         case '}':
-            return lexToken(Token::SYMBOL_RBRACE);
+            return lexDefaultToken(Token::SYMBOL_RBRACE);
         default:
             if (isalpha(current()))
             {
@@ -96,7 +96,7 @@ std::unique_ptr<Token> VSLLexer::nextToken()
             }
         }
     }
-    return std::make_unique<Token>(Token::SYMBOL_EOF, location);
+    return lexDefaultToken(Token::SYMBOL_EOF);
 }
 
 bool VSLLexer::empty() const
@@ -129,11 +129,11 @@ char VSLLexer::peek(size_t i) const
     return c;
 }
 
-std::unique_ptr<Token> VSLLexer::lexToken(Token::Kind kind)
+std::unique_ptr<DefaultToken> VSLLexer::lexDefaultToken(Token::Kind kind)
 {
     Location savedLocation = location;
     next();
-    return std::make_unique<Token>(kind, savedLocation);
+    return std::make_unique<DefaultToken>(kind, savedLocation);
 }
 
 std::unique_ptr<NameToken> VSLLexer::lexName()

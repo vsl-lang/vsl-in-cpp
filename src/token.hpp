@@ -48,11 +48,19 @@ public:
         SYMBOL_EOF
     };
     Token(Kind kind, Location location);
-    virtual ~Token() = default;
+    virtual ~Token() = 0;
     static const char* kindToString(Kind kind);
-    virtual std::string toString() const;
+    virtual std::string toString() const = 0;
     Kind kind;
     Location location;
+};
+
+class DefaultToken : public Token
+{
+public:
+    DefaultToken(Kind kind, Location location);
+    virtual ~DefaultToken() = default;
+    virtual std::string toString() const override;
 };
 
 class NameToken : public Token

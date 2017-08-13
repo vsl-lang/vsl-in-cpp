@@ -16,7 +16,11 @@ Token::Token(Kind kind, Location location)
 {
 }
 
-const char* Token::kindToString(Token::Kind kind)
+Token::~Token()
+{
+}
+
+const char* Token::kindToString(Kind kind)
 {
     switch (kind)
     {
@@ -85,7 +89,12 @@ const char* Token::kindToString(Token::Kind kind)
     }
 }
 
-std::string Token::toString() const
+DefaultToken::DefaultToken(Kind kind, Location location)
+    : Token{ kind, location }
+{
+}
+
+std::string DefaultToken::toString() const
 {
     return kindToString(kind);
 }
