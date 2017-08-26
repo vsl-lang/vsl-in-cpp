@@ -1,5 +1,6 @@
 #include "type.hpp"
 #include <algorithm>
+#include "llvm/IR/DerivedTypes.h"
 
 Type::Type(Kind kind)
     : kind{ kind }
@@ -40,6 +41,19 @@ std::string SimpleType::toString() const
     return kindToString(kind);
 }
 
+llvm::Type* SimpleType::toLLVMType(llvm::LLVMContext& context) const
+{
+    switch (kind)
+    {
+    case Type::INT:
+        return llvm::Type::getInt32Ty(context);
+    case Type::VOID:
+        return llvm::Type::getVoidTy(context);
+    default:
+        return nullptr;
+    }
+}
+
 FunctionType::FunctionType(std::vector<std::unique_ptr<Type>> params,
     std::unique_ptr<Type> returnType)
     : Type{ Type::FUNCTION }, params{ std::move(params) },
@@ -78,4 +92,18 @@ std::string FunctionType::toString() const
     s += ") -> ";
     s += returnType->toString();
     return s;
+}
+
+llvm::Type* FunctionType::toLLVMType(llvm::LLVMContext& context) const
+{
+    std::vector<llvm::Type*> llvmParams;
+    llvmParams.resize(params.size());
+    std::transform(params.begin(), params.end(), llvmParams.begin(),
+        [&](const auto& param)
+        {
+            return param->toLLVMType(context);
+        });
+    llvm::Type* llvmReturnType = returnType->toLLVMType(context);
+    return llvm::FunctionType::get(llvmReturnType, std::move(llvmParams),
+        false);
 }

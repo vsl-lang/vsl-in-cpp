@@ -1,5 +1,5 @@
+#include "llvmgen.hpp"
 #include "node.hpp"
-#include "nodeverifier.hpp"
 #include "token.hpp"
 #include "vsllexer.hpp"
 #include "vslparser.hpp"
@@ -40,7 +40,7 @@ void parse()
     }
 }
 
-void verify()
+void generate()
 {
     std::string input;
     while (std::cout.good() && std::cin.good())
@@ -49,10 +49,10 @@ void verify()
         std::getline(std::cin, input);
         VSLLexer lexer{ input.c_str() };
         VSLParser parser{ lexer };
-        NodeVerifier verifier;
-        std::unique_ptr<Node> ast = parser.parse();
-        ast->accept(verifier);
-        std::cerr << ast->toString() << '\n';
+        LLVMGen gen;
+        auto ast = parser.parse();
+        ast->accept(gen);
+        std::cerr << gen.getIR() << '\n';
     }
 }
 
@@ -64,7 +64,7 @@ void help()
         "  -h --help Display this information.\n"
         "  -l        Start the lexer REPL.\n"
         "  -p        Start the parser REPL.\n"
-        "  -v        Start the verifier REPL.\n";
+        "  -g        Start the generator REPL.\n";
 }
 
 int main(int argc, char** argv)
@@ -81,9 +81,9 @@ int main(int argc, char** argv)
             parse();
             return 0;
         }
-        else if (strcmp(argv[i], "-v") == 0)
+        else if (strcmp(argv[i], "-g") == 0)
         {
-            verify();
+            generate();
             return 0;
         }
         else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)

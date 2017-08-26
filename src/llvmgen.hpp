@@ -1,16 +1,21 @@
-#ifndef NODEVERIFIER_HPP
-#define NODEVERIFIER_HPP
+#ifndef LLVMGEN_HPP
+#define LLVMGEN_HPP
 
 #include "node.hpp"
 #include "nodevisitor.hpp"
 #include "scopetree.hpp"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Value.h"
 #include <iostream>
+#include <string>
 
-class NodeVerifier : public NodeVisitor
+class LLVMGen : public NodeVisitor
 {
 public:
-    NodeVerifier(std::ostream& errors = std::cerr);
-    virtual ~NodeVerifier() override;
+    LLVMGen(std::ostream& errors = std::cerr);
+    virtual ~LLVMGen() override = default;
     virtual void visit(ErrorNode& node) override;
     virtual void visit(EmptyNode& node) override;
     virtual void visit(BlockNode& node) override;
@@ -24,10 +29,17 @@ public:
     virtual void visit(BinaryExprNode& node) override;
     virtual void visit(CallExprNode& node) override;
     virtual void visit(ArgNode& node) override;
+    std::string getIR() const;
 
 private:
-    std::ostream& errors;
+    static llvm::Value* createEntryAlloca(llvm::Function* f,
+        llvm::Type* type, const char* name);
+    llvm::LLVMContext context;
+    llvm::IRBuilder<> builder;
+    std::unique_ptr<llvm::Module> module;
     ScopeTree scopeTree;
+    llvm::Value* result;
+    std::ostream& errors;
 };
 
-#endif // NODEVERIFIER_HPP
+#endif // LLVMGEN_HPP

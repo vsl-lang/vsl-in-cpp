@@ -5,22 +5,22 @@ ScopeTree::ScopeTree()
 {
 }
 
-Type* ScopeTree::get(const std::string& s) const
+Scope::Item ScopeTree::get(const std::string& s) const
 {
     for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
     {
-        Type* t = it->get(s);
-        if (t != nullptr)
+        Scope::Item i = it->get(s);
+        if (i.type != nullptr && i.value != nullptr)
         {
-            return t;
+            return i;
         }
     }
-    return nullptr;
+    return { nullptr, nullptr };
 }
 
-bool ScopeTree::set(const std::string& s, Type* t)
+bool ScopeTree::set(const std::string& s, Scope::Item i)
 {
-    return scopes.back().set(s, t);
+    return scopes.back().set(s, i);
 }
 
 bool ScopeTree::isGlobal() const

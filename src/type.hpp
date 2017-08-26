@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Type.h"
 
 class Type
 {
@@ -20,6 +22,7 @@ public:
     static const char* kindToString(Type::Kind kind);
     virtual std::unique_ptr<Type> clone() const = 0;
     virtual std::string toString() const = 0;
+    virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const = 0;
     Kind kind;
 };
 
@@ -30,6 +33,7 @@ public:
     virtual ~SimpleType() override = default;
     virtual std::unique_ptr<Type> clone() const override;
     virtual std::string toString() const override;
+    virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const override;
 };
 
 class FunctionType : public Type
@@ -40,6 +44,7 @@ public:
     virtual ~FunctionType() override = default;
     virtual std::unique_ptr<Type> clone() const override;
     virtual std::string toString() const override;
+    virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const override;
     std::vector<std::unique_ptr<Type>> params;
     std::unique_ptr<Type> returnType;
 };
