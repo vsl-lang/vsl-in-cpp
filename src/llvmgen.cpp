@@ -230,6 +230,42 @@ void LLVMGen::visit(UnaryExprNode& node)
 
 void LLVMGen::visit(BinaryExprNode& node)
 {
+    if (node.op == Token::OP_ASSIGN)
+    {
+        if (node.left->kind != Node::ID_EXPR)
+        {
+            errors << node.location << ": error: lhs must be an identifier\n";
+        }
+        else
+        {
+            auto& id = static_cast<IdentExprNode&>(*node.left);
+            Scope::Item i = scopeTree.get(id.name);
+            if (i.type == nullptr || i.value == nullptr)
+            {
+                errors << id.location << ": error: unknown variable " <<
+                    id.name << '\n';
+            }
+            else
+            {
+                node.right->accept(*this);
+                if (i.type->kind != node.right->type->kind)
+                {
+                    errors << node.right->location <<
+                        ": error: cannot convert expression of type " <<
+                        node.right->type->toString() << " to type " <<
+                        i.type->toString() << '\n';
+                }
+                else
+                {
+                    result = builder.CreateStore(result, i.value);
+                    return;
+                }
+            }
+        }
+        node.type = std::make_unique<SimpleType>(Type::ERROR);
+        result = nullptr;
+        return;
+    }
     node.left->accept(*this);
     llvm::Value* left = result;
     node.right->accept(*this);
@@ -274,9 +310,6 @@ void LLVMGen::visit(BinaryExprNode& node)
         break;
     case Token::OP_PERCENT:
         result = builder.CreateSRem(left, right, "");
-        break;
-    case Token::OP_ASSIGN:
-        errors << node.location << ": error: assignments not supported yet\n";
         break;
     case Token::OP_EQUALS:
         result = builder.CreateICmpEQ(left, right, "");
