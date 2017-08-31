@@ -12,5 +12,9 @@ all: $(CXXFILES) | $(BIN)
 $(BIN):
 	mkdir $(BIN)
 
+.PHONY: docs
+docs:
+	doxygen Doxyfile
+
 clean:
 	rm -r $(BIN)

@@ -5,10 +5,26 @@ class NodeVisitor;
 
 #include "node.hpp"
 
+/**
+ * Base class for visiting {@link Node Nodes}, implementing the Visitor Pattern.
+ * Subclasses can override the visit methods to perform some operation on a
+ * {@link Node} through double dispatch.
+ */
 class NodeVisitor
 {
 public:
+    /**
+     * Destroys a NodeVisitor.
+     */
     virtual ~NodeVisitor() = 0;
+    /**
+     * Visits a {@link Node}. Because this method is hidden by its overloaded
+     * counterparts, subclasses must add a `using NodeVisitor::visit;` statement
+     * in order to use it. Usually, it's fine to just use {@link Node::accept}
+     * instead.
+     *
+     * @param node The node to visit.
+     */
     void visit(Node& node);
     virtual void visit(ErrorNode& node) = 0;
     virtual void visit(EmptyNode& node) = 0;

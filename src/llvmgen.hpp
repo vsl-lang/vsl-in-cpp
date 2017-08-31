@@ -11,10 +11,21 @@
 #include <iostream>
 #include <string>
 
+/**
+ * Generates LLVM IR by visiting a {@link Node}.
+ */
 class LLVMGen : public NodeVisitor
 {
 public:
+    /**
+     * Creates an LLVMGen object.
+     *
+     * @param errors The stream to print errors to.
+     */
     LLVMGen(std::ostream& errors = std::cerr);
+    /**
+     * Destroys an LLVMGen object.
+     */
     virtual ~LLVMGen() override = default;
     virtual void visit(ErrorNode& node) override;
     virtual void visit(EmptyNode& node) override;
@@ -29,16 +40,52 @@ public:
     virtual void visit(BinaryExprNode& node) override;
     virtual void visit(CallExprNode& node) override;
     virtual void visit(ArgNode& node) override;
+    /**
+     * Dumps the generated LLVM IR in string form.
+     *
+     * @returns The string representation of the IR.
+     */
     std::string getIR() const;
 
 private:
+    /**
+     * Creates an `alloca` instruction in the entry block of the current
+     * function. This is useful for stuff like variables and function parameters
+     * to make the `alloca`ing process a little bit easier.
+     *
+     * @param f The function to insert the `alloca` into.
+     * @param type An LLVM type representing the memory block to allocate.
+     * @param name The name of the memory block.
+     *
+     * @returns An LLVM AllocaInst.
+     */
     static llvm::Value* createEntryAlloca(llvm::Function* f,
         llvm::Type* type, const char* name);
+    /**
+     * Context object that owns most dynamic LLVM data structures.
+     */
     llvm::LLVMContext context;
+    /**
+     * Used to build the IR.
+     */
     llvm::IRBuilder<> builder;
+    /**
+     * The current module.
+     */
     std::unique_ptr<llvm::Module> module;
+    /**
+     * Manages the current scope.
+     */
     ScopeTree scopeTree;
+    /**
+     * Used as a temporary return value for some visitor methods. Most of the
+     * time this is used in the {@link ExprNode} visitors so it's best to just
+     * set it to `nullptr` otherwise.
+     */
     llvm::Value* result;
+    /**
+     * The stream to print errors to.
+     */
     std::ostream& errors;
 };
 

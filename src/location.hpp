@@ -6,15 +6,39 @@
 
 class Location;
 
+/**
+ * Allows a Location to be printed to an output stream.
+ *
+ * @param os The stream to print to.
+ * @param location The location to print.
+ *
+ * @returns The given output stream.
+ */
 std::ostream& operator<<(std::ostream& os, const Location& location);
 
+/**
+ * Represents the location of an object in the source code of a program.
+ */
 class Location
 {
 public:
+    /**
+     * Creates a Location.
+     */
     Location() = default;
+    /**
+     * Creates a Location.
+     *
+     * @param pos The absolute position.
+     * @param line The line number.
+     * @param col The column number.
+     */
     Location(const char* pos, size_t line, size_t col);
+    /** The absolute position. */
     const char* pos;
+    /** The line number. */
     size_t line;
+    /** The column number. */
     size_t col;
 };
 
