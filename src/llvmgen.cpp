@@ -24,6 +24,7 @@ void LLVMGen::visit(EmptyNode& node)
 
 void LLVMGen::visit(BlockNode& node)
 {
+    // this just creates a new scope and visits all the statements inside
     node.type = std::make_unique<SimpleType>(Type::ERROR);
     scopeTree.enter();
     for (auto& statement : node.statements)
@@ -36,14 +37,14 @@ void LLVMGen::visit(BlockNode& node)
 
 void LLVMGen::visit(ConditionalNode& node)
 {
-    // if/else statements don't really have a type here
     node.type = std::make_unique<SimpleType>(Type::ERROR);
+    // make sure that it's not in the global scope.
     if (scopeTree.isGlobal())
     {
         errors << node.location <<
             ": error: top-level control flow statements are not allowed\n";
     }
-    // setup the condition
+    // visit the condition and make sure it's an Int
     scopeTree.enter();
     node.condition->accept(*this);
     Type::Kind k = node.condition->type->kind;
@@ -54,13 +55,15 @@ void LLVMGen::visit(ConditionalNode& node)
             Type::kindToString(k) << " to type Int\n";
         result = nullptr;
     }
+    // create the condition
     llvm::Value* cond = builder.CreateICmpNE(result,
         llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), 0));
-    // create the necessary basic blocks and the branch operation
+    // create the necessary basic blocks
     llvm::Function* f = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* thenBlock = llvm::BasicBlock::Create(context, "if.then");
     llvm::BasicBlock* elseBlock = llvm::BasicBlock::Create(context, "if.else");
     llvm::BasicBlock* mergeBlock = llvm::BasicBlock::Create(context, "if.end");
+    // create the branch instruction
     builder.CreateCondBr(cond, thenBlock, elseBlock);
     // generate then block
     scopeTree.enter();
@@ -76,7 +79,7 @@ void LLVMGen::visit(ConditionalNode& node)
     node.elseCase->accept(*this);
     builder.CreateBr(mergeBlock);
     scopeTree.exit();
-    // setup merge block for other code after this
+    // setup merge block for other code after the ConditionalNode
     f->getBasicBlockList().push_back(mergeBlock);
     builder.SetInsertPoint(mergeBlock);
     scopeTree.exit();
@@ -85,7 +88,7 @@ void LLVMGen::visit(ConditionalNode& node)
 
 void LLVMGen::visit(AssignmentNode& node)
 {
-    // make sure the type and value are valid
+    // make sure the type and value are valid and they match
     Node& value = *node.value;
     value.accept(*this);
     if (node.type->kind != Type::INT)
@@ -106,13 +109,13 @@ void LLVMGen::visit(AssignmentNode& node)
         node.name.c_str());
     // create the store instruction
     builder.CreateStore(initialValue, alloca);
-    // enter it into the scope tree
+    // add to current scope
     if (!scopeTree.set(node.name, { node.type.get(), alloca }))
     {
         errors << node.location << ": error: variable " <<
             node.name << " was already defined\n";
     }
-    result = alloca;
+    result = nullptr;
 }
 
 void LLVMGen::visit(FunctionNode& node)
@@ -124,7 +127,7 @@ void LLVMGen::visit(FunctionNode& node)
         llvm::GlobalValue::ExternalLinkage, node.name, module.get());
     // add to current scope
     scopeTree.set(node.name, { &type, f });
-    // generate the body
+    // setup the parameters to be referenced as mutable variables
     auto bb = llvm::BasicBlock::Create(context, "entry", f);
     builder.SetInsertPoint(bb);
     scopeTree.enter(type.returnType.get());
@@ -138,6 +141,7 @@ void LLVMGen::visit(FunctionNode& node)
         builder.CreateStore(argIt, alloca);
         scopeTree.set(paramName, { paramType, alloca });
     }
+    // generate the body
     node.body->accept(*this);
     scopeTree.exit();
     result = nullptr;
@@ -145,6 +149,7 @@ void LLVMGen::visit(FunctionNode& node)
 
 void LLVMGen::visit(ReturnNode& node)
 {
+    // make sure the type of the value to return matches the actual return type
     node.value->accept(*this);
     node.type = node.value->type->clone();
     if (node.type->kind != scopeTree.getReturnType()->kind)
@@ -154,11 +159,13 @@ void LLVMGen::visit(ReturnNode& node)
             node.type->toString() << " to type " <<
             scopeTree.getReturnType()->toString() << '\n';
     }
+    // create the return instruction
     result = builder.CreateRet(result);
 }
 
 void LLVMGen::visit(IdentExprNode& node)
 {
+    // lookup the name in the current scope
     Scope::Item i = scopeTree.get(node.name);
     if (i.type == nullptr || i.value == nullptr)
     {
@@ -169,6 +176,7 @@ void LLVMGen::visit(IdentExprNode& node)
         return;
     }
     node.type = i.type->clone();
+    // an identifier can reference either a variable or a function
     if (node.type->kind == Type::FUNCTION)
     {
         result = i.value;
@@ -181,6 +189,7 @@ void LLVMGen::visit(IdentExprNode& node)
 
 void LLVMGen::visit(NumberExprNode& node)
 {
+    // create an LLVM integer
     node.type = std::make_unique<SimpleType>(Type::INT);
     result = llvm::ConstantInt::get(context, llvm::APInt{ sizeof(node.value),
         static_cast<uint64_t>(node.value) });
@@ -188,12 +197,13 @@ void LLVMGen::visit(NumberExprNode& node)
 
 void LLVMGen::visit(UnaryExprNode& node)
 {
+    // validate the inner expression
     Node& expr = *node.expr;
     expr.accept(*this);
     Type::Kind k = expr.type->kind;
     switch (k)
     {
-    case Type::ERROR:
+    // valid types go here
     case Type::INT:
         node.type = std::make_unique<SimpleType>(k);
         break;
@@ -202,20 +212,13 @@ void LLVMGen::visit(UnaryExprNode& node)
             ": error: cannot apply unary operator " <<
             Token::kindToString(node.op) << " to type " <<
             expr.type->toString() << '\n';
+        // propagate any sort of expression error
+    case Type::ERROR:
         node.type = std::make_unique<SimpleType>(Type::ERROR);
         result = nullptr;
-    }
-    if (node.expr->type->kind != Type::INT)
-    {
-        errors << node.expr->location <<
-            ": error: cannot convert expression of type " <<
-            Type::kindToString(node.expr->type->kind) << " to type Int\n";
-        result = nullptr;
-    }
-    if (result == nullptr)
-    {
         return;
     }
+    // create instruction based on corresponding operator
     switch (node.op)
     {
     case Token::OP_MINUS:
@@ -230,14 +233,17 @@ void LLVMGen::visit(UnaryExprNode& node)
 
 void LLVMGen::visit(BinaryExprNode& node)
 {
+    // handle assignment operator as a special case
     if (node.op == Token::OP_ASSIGN)
     {
+        // make sure that the lhs is an identifier
         if (node.left->kind != Node::ID_EXPR)
         {
             errors << node.location << ": error: lhs must be an identifier\n";
         }
         else
         {
+            // lookup the identifier
             auto& id = static_cast<IdentExprNode&>(*node.left);
             Scope::Item i = scopeTree.get(id.name);
             if (i.type == nullptr || i.value == nullptr)
@@ -247,6 +253,7 @@ void LLVMGen::visit(BinaryExprNode& node)
             }
             else
             {
+                // make sure the types match up
                 node.right->accept(*this);
                 if (i.type->kind != node.right->type->kind)
                 {
@@ -257,6 +264,7 @@ void LLVMGen::visit(BinaryExprNode& node)
                 }
                 else
                 {
+                    // finally, create the store instruction
                     result = builder.CreateStore(result, i.value);
                     return;
                 }
@@ -266,12 +274,14 @@ void LLVMGen::visit(BinaryExprNode& node)
         result = nullptr;
         return;
     }
+    // verify the left and right expressions
     node.left->accept(*this);
     llvm::Value* left = result;
     node.right->accept(*this);
     llvm::Value* right = result;
     if (left == nullptr || right == nullptr)
     {
+        node.type = std::make_unique<SimpleType>(Type::ERROR);
         return;
     }
     if (node.left->type->kind != Type::INT)
@@ -294,6 +304,7 @@ void LLVMGen::visit(BinaryExprNode& node)
         return;
     }
     node.type = std::make_unique<SimpleType>(Type::INT);
+    // create the corresponding instruction based on the operator
     switch (node.op)
     {
     case Token::OP_PLUS:
@@ -389,12 +400,15 @@ void LLVMGen::visit(CallExprNode& node)
 
 void LLVMGen::visit(ArgNode& node)
 {
+    // nothing special here
     node.value->accept(*this);
     node.type = node.value->type->clone();
 }
 
 std::string LLVMGen::getIR() const
 {
+    // llvm::Module only supports printing to a llvm::raw_ostream
+    // thankfully there's llvm::raw_string_ostream that writes to an std::string
     std::string s;
     llvm::raw_string_ostream os{ s };
     os << *module;
@@ -405,6 +419,11 @@ std::string LLVMGen::getIR() const
 llvm::Value* LLVMGen::createEntryAlloca(llvm::Function* f, llvm::Type* type,
     const char* name)
 {
+    // construct a temporary llvm::IRBuilder to create the alloca instruction
+    // i don't want to modify the builder field because it may be inserting at a
+    //  different block
+    // it might be better to save a temporary llvm::BasicBlock reference to
+    //  restore the current block after creating the alloca but oh well
     auto& entry = f->getEntryBlock();
     llvm::IRBuilder<> b{ &entry, entry.begin() };
     return b.CreateAlloca(type, nullptr, name);
