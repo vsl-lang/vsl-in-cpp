@@ -46,6 +46,13 @@ public:
      * @returns The string representation of the IR.
      */
     std::string getIR() const;
+    /**
+     * Checks if the lexer has encountered an error yet. In this case, a warning
+     * would also count as an error.
+     *
+     * @returns True if the lexer encountered an error, false otherwise.
+     */
+    bool hasError() const;
 
 private:
     /**
@@ -87,6 +94,8 @@ private:
      * The stream to print errors to.
      */
     std::ostream& errors;
+    /** True if the lexer encountered an error, otherwise false. */
+    bool errored;
 };
 
 #endif // LLVMGEN_HPP

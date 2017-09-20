@@ -6,7 +6,7 @@
 LLVMGen::LLVMGen(std::ostream& errors)
     : builder{ context },
     module{ std::make_unique<llvm::Module>("file", context) },
-    result{ nullptr }, errors { errors }
+    result{ nullptr }, errors { errors }, errored{ false }
 {
 }
 
@@ -414,6 +414,11 @@ std::string LLVMGen::getIR() const
     os << *module;
     os.flush();
     return s;
+}
+
+bool LLVMGen::hasError() const
+{
+    return errored;
 }
 
 llvm::Value* LLVMGen::createEntryAlloca(llvm::Function* f, llvm::Type* type,

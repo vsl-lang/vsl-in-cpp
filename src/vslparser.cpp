@@ -1,7 +1,7 @@
 #include "vslparser.hpp"
 
 VSLParser::VSLParser(Lexer& lexer, std::ostream& errors)
-    : lexer{ lexer }, errors{ errors }
+    : lexer{ lexer }, errors{ errors }, errored{ false }
 {
 }
 
@@ -14,6 +14,11 @@ std::unique_ptr<Node> VSLParser::parse()
         return errorExpected("eof");
     }
     return std::make_unique<BlockNode>(std::move(statements), savedLocation);
+}
+
+bool VSLParser::hasError() const
+{
+    return errored;
 }
 
 const Token& VSLParser::next()
@@ -49,6 +54,7 @@ std::unique_ptr<Node> VSLParser::errorExpected(const char* s)
     const Token& t = current();
     errors << t.location << ": error: expected " << s << " but found " <<
         Token::kindToString(t.kind) << '\n';
+    errored = true;
     return std::make_unique<ErrorNode>(t.location);
 }
 
@@ -56,6 +62,7 @@ std::unique_ptr<Node> VSLParser::errorUnexpected(const Token& token)
 {
     errors << token.location << ": error: unexpected token " <<
         Token::kindToString(token.kind) << '\n';
+    errored = true;
     return std::make_unique<ErrorNode>(token.location);
 }
 

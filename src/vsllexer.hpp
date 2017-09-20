@@ -27,6 +27,13 @@ public:
     virtual ~VSLLexer() override = default;
     virtual std::unique_ptr<Token> nextToken() override;
     virtual bool empty() const override;
+    /**
+     * Checks if the lexer has encountered an error yet. In this case, a warning
+     * would also count as an error.
+     *
+     * @returns True if the lexer encountered an error, false otherwise.
+     */
+    bool hasError() const;
 
 private:
     /**
@@ -83,6 +90,8 @@ private:
     Location location;
     /** The stream to print errors to. */
     std::ostream& errors;
+    /** True if the lexer encountered an error, otherwise false. */
+    bool errored;
 };
 
 #endif // VSLLEXER_HPP

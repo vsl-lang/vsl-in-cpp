@@ -5,7 +5,7 @@
 #include <utility>
 
 VSLLexer::VSLLexer(const char* src, std::ostream& errors)
-    : src{ src }, location{ src, 1, 1 }, errors{ errors }
+    : src{ src }, location{ src, 1, 1 }, errors{ errors }, errored{ false }
 {
 }
 
@@ -93,6 +93,7 @@ std::unique_ptr<Token> VSLLexer::nextToken()
             {
                 errors << location << ": error: unknown symbol '" <<
                     current() << "'\n";
+                errored = true;
             }
         }
     }
@@ -102,6 +103,11 @@ std::unique_ptr<Token> VSLLexer::nextToken()
 bool VSLLexer::empty() const
 {
     return current() == '\0';
+}
+
+bool VSLLexer::hasError() const
+{
+    return errored;
 }
 
 char VSLLexer::current() const
@@ -162,6 +168,7 @@ std::unique_ptr<NumberToken> VSLLexer::lexNumber()
         errors << location << ": warning: ";
         errors.write(savedLocation.pos, location.pos - savedLocation.pos);
         errors << " is out of range\n";
+        errored = true;
     }
     return std::make_unique<NumberToken>(value, savedLocation);
 }

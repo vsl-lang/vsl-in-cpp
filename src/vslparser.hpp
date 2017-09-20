@@ -28,6 +28,13 @@ public:
      */
     virtual ~VSLParser() override = default;
     virtual std::unique_ptr<Node> parse() override;
+    /**
+     * Checks if the lexer has encountered an error yet. In this case, a warning
+     * would also count as an error.
+     *
+     * @returns True if the lexer encountered an error, false otherwise.
+     */
+    bool hasError() const;
 
 private:
     /**
@@ -183,6 +190,8 @@ private:
     std::deque<std::unique_ptr<Token>> cache;
     /** The stream to print errors to. */
     std::ostream& errors;
+    /** True if the lexer encountered an error, otherwise false. */
+    bool errored;
 };
 
 #endif // VSLPARSER_HPP
