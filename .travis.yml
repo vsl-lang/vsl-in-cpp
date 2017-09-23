@@ -1,0 +1,28 @@
+language: cpp
+os: linux
+dist: trusty
+sudo: false
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+      - llvm-toolchain-trusty-5.0
+    packages:
+      - g++-6
+      - clang-5.0
+      - llvm-5.0-dev
+      - cmake
+      - doxygen
+      - graphviz
+matrix:
+  include:
+    - env: COMPILER=g++-6
+    - env: COMPILER=clang++-5.0
+before_script:
+  - mkdir build && cd build
+  - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=$COMPILER
+    -DVSL_INCLUDE_TESTS=On ..
+script:
+  - make
+  - make check
+  - make docs

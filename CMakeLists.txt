@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.2)
 project(VSL)
 
-find_package(LLVM REQUIRED CONFIG)
+find_package(LLVM 5.0.0 REQUIRED CONFIG)
 find_package(Doxygen)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -11,24 +11,28 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra")
+set(CMAKE_CXX_FLAGS
+    "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -Wno-unused-parameter")
+
 # vsl specific directories
 set(VSL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 set(VSL_DOCS_DIR ${PROJECT_SOURCE_DIR}/docs)
+set(VSL_TEST_DIR ${PROJECT_SOURCE_DIR}/test)
+set(VSL_EXT_PROJECTS_DIR ${PROJECT_SOURCE_DIR}/ext)
 
-option(BUILD_DOCS "Build documentation using Doxygen" ${DOXYGEN_FOUND})
+option(VSL_BUILD_DOCS "Build documentation using Doxygen" ${DOXYGEN_FOUND})
+option(VSL_INCLUDE_TESTS "Allow building the test code through the check target"
+    OFF)
 
-if(BUILD_DOCS)
+if(VSL_BUILD_DOCS)
     # make sure doxygen is there
     if (NOT DOXYGEN_FOUND)
         message(FATAL_ERROR "Doxygen is needed to build the documentation.")
     endif()
     set(doxyfile ${PROJECT_SOURCE_DIR}/Doxyfile)
-    # create the build target
+    # add the docs target
     add_custom_target(docs
-        # create the docs directory
         COMMAND ${CMAKE_COMMAND} -E make_directory ${VSL_DOCS_DIR}
-        # do the doxygen command
         COMMAND ${DOXYGEN_EXECUTABLE} ${doxyfile}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         COMMENT "Building documentation using Doxygen"
@@ -40,15 +44,27 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
 
-# setup includes/definitions and source files
-include_directories(${VSL_SOURCE_DIR})
-include_directories(${LLVM_INCLUDE_DIRS})
+# config so the compiler knows what files are where
+include_directories(${VSL_SOURCE_DIR} ${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
-file(GLOB SOURCES "${VSL_SOURCE_DIR}/*.cpp")
+set(VSL_MAIN_CPP ${VSL_SOURCE_DIR}/main.cpp)
+file(GLOB SOURCES ${VSL_SOURCE_DIR}/*.cpp)
+list(REMOVE_ITEM SOURCES ${VSL_MAIN_CPP})
 
-# build the executable
-add_executable(vsl ${SOURCES})
-
-# find the necessary llvm libs and link them with the executable
+# used for other parts of vsl that don't use src/main.cpp, e.g. the test code
+add_library(libvsl STATIC ${SOURCES})
+set_target_properties(libvsl PROPERTIES PREFIX "") # so i don't get liblibvsl.a
 llvm_map_components_to_libnames(llvm_libs core)
-target_link_libraries(vsl ${llvm_libs})
+target_link_libraries(libvsl ${llvm_libs})
+
+if(VSL_INCLUDE_TESTS)
+    add_subdirectory(${VSL_EXT_PROJECTS_DIR}/gtest)
+    add_subdirectory(${VSL_TEST_DIR})
+endif()
+
+# build the executable (with main.cpp)
+add_executable(vsl ${VSL_MAIN_CPP})
+
+# link the executable with the required libraries
+add_dependencies(vsl libvsl)
+target_link_libraries(vsl libvsl)
