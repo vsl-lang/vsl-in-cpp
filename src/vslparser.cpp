@@ -5,9 +5,12 @@ VSLParser::VSLParser(Lexer& lexer, std::ostream& errors)
 {
 }
 
+// program -> statements eof
 std::unique_ptr<Node> VSLParser::parse()
 {
-    Location savedLocation = current().location;
+    // it's assumed that the token cache is empty, so calling next() should get
+    //  the very first token from the lexer
+    Location savedLocation = next().location;
     auto statements = parseStatements();
     if (current().kind != Token::SYMBOL_EOF)
     {
@@ -23,30 +26,17 @@ bool VSLParser::hasError() const
 
 const Token& VSLParser::next()
 {
-    cache.pop_front();
+    //cache.pop_front();
+    //return current();
+    cache.emplace_back(lexer.nextToken());
     return current();
 }
 
 const Token& VSLParser::current()
 {
-    return peek(0);
-}
-
-const Token& VSLParser::peek(size_t i)
-{
-    if (cache.size() > i)
-    {
-        return *cache[i];
-    }
-    else
-    {
-        size_t j = i - cache.size();
-        for (size_t k = 0; k <= j; ++k)
-        {
-            cache.emplace_back(lexer.nextToken());
-        }
-        return *cache.back();
-    }
+    //return peek(0);
+    //return cache[pos];
+    return *cache.back();
 }
 
 std::unique_ptr<Node> VSLParser::errorExpected(const char* s)
@@ -66,11 +56,14 @@ std::unique_ptr<Node> VSLParser::errorUnexpected(const Token& token)
     return std::make_unique<ErrorNode>(token.location);
 }
 
+// statements -> statement*
 std::vector<std::unique_ptr<Node>> VSLParser::parseStatements()
 {
     std::vector<std::unique_ptr<Node>> statements;
     while (true)
     {
+        // the cases here are in the follow set, telling when to stop expanding
+        //  the statements production
         switch (current().kind)
         {
         case Token::SYMBOL_RBRACE:
@@ -82,8 +75,12 @@ std::vector<std::unique_ptr<Node>> VSLParser::parseStatements()
     }
 }
 
+// statement -> assignment | function | return | conditional | expr semicolon
+//            | block | empty
 std::unique_ptr<Node> VSLParser::parseStatement()
 {
+    // the cases here are first sets, distinguishing which production to go for
+    //  based on a token of lookahead
     switch (current().kind)
     {
     case Token::KEYWORD_VAR:
@@ -121,6 +118,7 @@ std::unique_ptr<Node> VSLParser::parseStatement()
     return e;
 }
 
+// empty -> semicolon
 std::unique_ptr<Node> VSLParser::parseEmptyStatement()
 {
     const Token& semicolon = current();
@@ -132,6 +130,7 @@ std::unique_ptr<Node> VSLParser::parseEmptyStatement()
     return std::make_unique<EmptyNode>(semicolon.location);
 }
 
+// block -> lbrace statements rbrace
 std::unique_ptr<Node> VSLParser::parseBlock()
 {
     const Token& lbrace = current();
@@ -140,7 +139,7 @@ std::unique_ptr<Node> VSLParser::parseBlock()
         return errorExpected("'{'");
     }
     next();
-    std::vector<std::unique_ptr<Node>> statements = parseStatements();
+    auto statements = parseStatements();
     if (current().kind != Token::SYMBOL_RBRACE)
     {
         return errorExpected("'}'");
@@ -149,6 +148,7 @@ std::unique_ptr<Node> VSLParser::parseBlock()
     return std::make_unique<BlockNode>(std::move(statements), lbrace.location);
 }
 
+// conditional -> if lparen expr rparen statement (else statement)?
 std::unique_ptr<Node> VSLParser::parseConditional()
 {
     Location savedLocation = current().location;
@@ -182,6 +182,7 @@ std::unique_ptr<Node> VSLParser::parseConditional()
         std::move(thenCase), std::move(elseCase), savedLocation);
 }
 
+// assignment -> (var | let) identifier colon type assign expr semicolon
 std::unique_ptr<Node> VSLParser::parseAssignment()
 {
     AssignmentNode::Qualifiers qualifiers;
@@ -228,6 +229,7 @@ std::unique_ptr<Node> VSLParser::parseAssignment()
         std::move(type), std::move(value), qualifiers, savedLocation);
 }
 
+// function -> func identifier lparen param (comma param)* arrow type block
 std::unique_ptr<Node> VSLParser::parseFunction()
 {
     const Token& func = current();
@@ -275,6 +277,7 @@ std::unique_ptr<Node> VSLParser::parseFunction()
         std::move(returnType), std::move(body), savedLocation);
 }
 
+// return -> 'return' expr ';'
 std::unique_ptr<Node> VSLParser::parseReturn()
 {
     const Token& ret = current();
@@ -293,6 +296,7 @@ std::unique_ptr<Node> VSLParser::parseReturn()
     return std::make_unique<ReturnNode>(std::move(value), savedLocation);
 }
 
+// param -> identifier ':' type
 FunctionNode::Param VSLParser::parseParam()
 {
     const Token& id = current();
@@ -316,6 +320,7 @@ FunctionNode::Param VSLParser::parseParam()
     return { std::move(name), std::move(type) };
 }
 
+// type -> 'Int' | 'Void'
 std::unique_ptr<Type> VSLParser::parseType()
 {
     const Token& name = current();
@@ -337,9 +342,9 @@ std::unique_ptr<Type> VSLParser::parseType()
     return std::make_unique<SimpleType>(kind);
 }
 
+// Pratt parsing/TDOP (Top Down Operator Precedence) is used for expressions
 std::unique_ptr<Node> VSLParser::parseExpr(int rbp)
 {
-    // top down operator precedence algorithm
     std::unique_ptr<Node> left = parseNud();
     while (rbp < getLbp(current()))
     {
@@ -361,7 +366,6 @@ std::unique_ptr<Node> VSLParser::parseNud()
         return std::make_unique<NumberExprNode>(
             static_cast<const NumberToken&>(token).value,
             token.location);
-    case Token::OP_PLUS:
     case Token::OP_MINUS:
         return std::make_unique<UnaryExprNode>(token.kind, parseExpr(100),
             token.location);
@@ -400,6 +404,8 @@ std::unique_ptr<Node> VSLParser::parseLed(std::unique_ptr<Node> left)
     }
 }
 
+// lbp basically means operator precedence
+// higher numbers mean higher precedence
 int VSLParser::getLbp(const Token& token) const
 {
     switch (token.kind)
@@ -427,6 +433,8 @@ int VSLParser::getLbp(const Token& token) const
     }
 }
 
+// call -> callee lparen arg (comma arg)* rparen
+// callee is passed as an argument from parseLed()
 std::unique_ptr<Node> VSLParser::parseCall(
     std::unique_ptr<Node> callee)
 {
@@ -458,6 +466,7 @@ std::unique_ptr<Node> VSLParser::parseCall(
         std::move(args), lparen.location);
 }
 
+// arg -> identifier ':' expr
 std::unique_ptr<Node> VSLParser::parseCallArg()
 {
     const Token& identifier = current();

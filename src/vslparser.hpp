@@ -50,14 +50,6 @@ private:
      */
     const Token& current();
     /**
-     * Gets the `i`th token after the current one, without consuming any.
-     *
-     * @param i The index of the token.
-     *
-     * @returns The `i`th token after the current one.
-     */
-    const Token& peek(size_t i = 1);
-    /**
      * Prints an error saying that the parser expected `s` but was given
      * something else.
      *
@@ -137,8 +129,8 @@ private:
     /**
      * Parses an expression.
      *
-     * @param rbp The right binding power to use when parsing. Only this use
-     * when you understand Pratt parsing.
+     * @param rbp The right binding power to use when parsing. Only use this if
+     * you understand Pratt parsing.
      *
      * @returns An expression.
      */
