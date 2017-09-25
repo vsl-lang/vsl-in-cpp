@@ -9,6 +9,26 @@
 #include <string>
 #include <vector>
 
+struct Flags
+{
+    Flags()
+        : h{ false }, l{ false }, p{ false }, g{ false }
+    {
+    }
+    bool h, l, p, g;
+};
+
+void help()
+{
+    std::cout <<
+        "Usage: vsl [options]\n"
+        "Options:\n"
+        "  -h --help Display this information.\n"
+        "  -l        Start the lexer REPL.\n"
+        "  -p        Start the parser REPL.\n"
+        "  -g        Start the generator REPL.\n";
+}
+
 void lex()
 {
     std::string input;
@@ -56,46 +76,53 @@ void generate()
     }
 }
 
-void help()
-{
-    std::cout <<
-        "Usage: vsl [options]\n"
-        "Options:\n"
-        "  -h --help Display this information.\n"
-        "  -l        Start the lexer REPL.\n"
-        "  -p        Start the parser REPL.\n"
-        "  -g        Start the generator REPL.\n";
-}
-
 int main(int argc, char** argv)
 {
+    Flags flags;
     for (int i = 1; i < argc; ++i)
     {
-        if (strcmp(argv[i], "-l") == 0)
+        const char* arg = argv[i];
+        if (!strcmp(arg, "-h") || !strcmp(arg, "--help"))
         {
-            lex();
-            return 0;
+            flags.h = true;
         }
-        else if (strcmp(argv[i], "-p") == 0)
+        else if (!strcmp(arg, "-l"))
         {
-            parse();
-            return 0;
+            flags.l = true;
         }
-        else if (strcmp(argv[i], "-g") == 0)
+        else if (!strcmp(arg, "-p"))
         {
-            generate();
-            return 0;
+            flags.p = true;
         }
-        else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
+        else if (!strcmp(arg, "-g"))
         {
-            help();
-            return 0;
+            flags.g = true;
         }
         else
         {
-            std::cerr << "Error: unknown argument '" << argv[i] << "'\n";
+            std::cerr << "Error: unknown argument '" << arg << "'\n";
         }
     }
-    std::cerr << "Error: no input\n";
+    if (flags.h)
+    {
+        help();
+    }
+    else if (flags.l)
+    {
+        lex();
+    }
+    else if (flags.p)
+    {
+        parse();
+    }
+    else if (flags.g)
+    {
+        generate();
+    }
+    else
+    {
+        std::cerr << "Error: no input\n";
+        return 1;
+    }
     return 0;
 }
