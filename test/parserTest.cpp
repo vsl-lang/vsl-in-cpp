@@ -59,3 +59,10 @@ TEST(ParserTest, HandlesExpr)
     invalid("x");
     valid("x(y: z % 2) - -z * 2 + 9 / 2;");
 }
+
+TEST(ParserTest, HandlesParenthesizedExprs)
+{
+    valid("(x + y) / 2;");
+    invalid("(x + 1;");
+    invalid("x + 1);");
+}

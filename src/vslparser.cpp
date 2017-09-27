@@ -369,6 +369,16 @@ std::unique_ptr<Node> VSLParser::parseNud()
     case Token::OP_MINUS:
         return std::make_unique<UnaryExprNode>(token.kind, parseExpr(100),
             token.location);
+    case Token::SYMBOL_LPAREN:
+        {
+            std::unique_ptr<Node> expr = parseExpr();
+            if (current().kind != Token::SYMBOL_RPAREN)
+            {
+                return errorExpected("')'");
+            }
+            next();
+            return expr;
+        }
     default:
         return errorExpected("unary operator, identifier, or number");
     }
