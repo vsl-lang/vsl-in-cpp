@@ -8,6 +8,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Value.h"
+#include "llvm/Support/raw_ostream.h"
 #include <iostream>
 #include <string>
 
@@ -20,9 +21,10 @@ public:
     /**
      * Creates an LLVMGen object.
      *
+     * @param module The module to emit LLVM IR into.
      * @param errors The stream to print errors to.
      */
-    LLVMGen(std::ostream& errors = std::cerr);
+    LLVMGen(llvm::Module& module, std::ostream& errors = std::cerr);
     /**
      * Destroys an LLVMGen object.
      */
@@ -69,17 +71,17 @@ private:
     static llvm::Value* createEntryAlloca(llvm::Function* f,
         llvm::Type* type, const char* name);
     /**
+     * The module to emit LLVM IR into.
+     */
+    llvm::Module& module;
+    /**
      * Context object that owns most dynamic LLVM data structures.
      */
-    llvm::LLVMContext context;
+    llvm::LLVMContext& context;
     /**
      * Used to build the IR.
      */
     llvm::IRBuilder<> builder;
-    /**
-     * The current module.
-     */
-    std::unique_ptr<llvm::Module> module;
     /**
      * Manages the current scope.
      */
@@ -94,7 +96,9 @@ private:
      * The stream to print errors to.
      */
     std::ostream& errors;
-    /** True if the lexer encountered an error, otherwise false. */
+    /**
+     * True if the lexer encountered an error, otherwise false.
+     */
     bool errored;
 };
 

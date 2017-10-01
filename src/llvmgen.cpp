@@ -1,11 +1,9 @@
 #include "llvmgen.hpp"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
-#include "llvm/Support/raw_ostream.h"
 
-LLVMGen::LLVMGen(std::ostream& errors)
-    : builder{ context },
-    module{ std::make_unique<llvm::Module>("file", context) },
+LLVMGen::LLVMGen(llvm::Module& module, std::ostream& errors)
+    : module{ module }, context{ module.getContext() }, builder{ context },
     result{ nullptr }, errors { errors }, errored{ false }
 {
 }
@@ -124,7 +122,7 @@ void LLVMGen::visit(FunctionNode& node)
     auto& type = static_cast<FunctionType&>(*node.type);
     auto ft = type.toLLVMType(context);
     auto f = llvm::Function::Create(static_cast<llvm::FunctionType*>(ft),
-        llvm::GlobalValue::ExternalLinkage, node.name, module.get());
+        llvm::GlobalValue::ExternalLinkage, node.name, &module);
     // add to current scope
     scopeTree.set(node.name, { &type, f });
     // setup the parameters to be referenced as mutable variables
@@ -411,7 +409,7 @@ std::string LLVMGen::getIR() const
     // thankfully there's llvm::raw_string_ostream that writes to an std::string
     std::string s;
     llvm::raw_string_ostream os{ s };
-    os << *module;
+    os << module;
     os.flush();
     return s;
 }

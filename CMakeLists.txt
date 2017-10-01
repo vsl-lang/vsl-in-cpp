@@ -54,7 +54,7 @@ list(REMOVE_ITEM SOURCES ${VSL_MAIN_CPP})
 # used for other parts of vsl that don't use src/main.cpp, e.g. the test code
 add_library(libvsl STATIC ${SOURCES})
 set_target_properties(libvsl PROPERTIES PREFIX "") # so i don't get liblibvsl.a
-llvm_map_components_to_libnames(llvm_libs core)
+llvm_map_components_to_libnames(llvm_libs all)
 target_link_libraries(libvsl ${llvm_libs})
 
 if(VSL_INCLUDE_TESTS)

@@ -11,6 +11,7 @@ addons:
       - g++-6
       - clang-5.0
       - llvm-5.0-dev
+      - libedit-dev
       - cmake
       - doxygen
       - graphviz
