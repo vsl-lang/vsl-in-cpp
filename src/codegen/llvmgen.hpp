@@ -49,10 +49,9 @@ public:
      */
     std::string getIR() const;
     /**
-     * Checks if the lexer has encountered an error yet. In this case, a warning
-     * would also count as an error.
+     * Checks if an error has been encountered yet.
      *
-     * @returns True if the lexer encountered an error, false otherwise.
+     * @returns True if an error was encountered, false otherwise.
      */
     bool hasError() const;
 
@@ -68,8 +67,8 @@ private:
      *
      * @returns An LLVM AllocaInst.
      */
-    static llvm::Value* createEntryAlloca(llvm::Function* f,
-        llvm::Type* type, const char* name);
+    static llvm::Value* createEntryAlloca(llvm::Function* f, llvm::Type* type,
+        const char* name);
     /**
      * The module to emit LLVM IR into.
      */
@@ -97,7 +96,7 @@ private:
      */
     std::ostream& errors;
     /**
-     * True if the lexer encountered an error, otherwise false.
+     * True if an error was encountered, otherwise false.
      */
     bool errored;
 };

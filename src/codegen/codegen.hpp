@@ -7,7 +7,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 /**
- * Generates object code from an llvm::Module.
+ * Generates native object code from an llvm::Module.
  */
 class CodeGen
 {
@@ -26,10 +26,9 @@ public:
      */
     void compile(llvm::raw_pwrite_stream& output);
     /**
-     * Checks if the lexer has encountered an error yet. In this case, a warning
-     * would also count as an error.
+     * Checks if an error has been encountered yet.
      *
-     * @returns True if the lexer encountered an error, false otherwise.
+     * @returns True if an error was encountered, false otherwise.
      */
     bool hasError() const;
     /**
@@ -57,7 +56,7 @@ private:
      */
     std::ostream& errors;
     /**
-     * True if the lexer encountered an error, otherwise false.
+     * True if an error was encountered, otherwise false.
      */
     bool errored;
 };

@@ -28,10 +28,9 @@ public:
     virtual std::unique_ptr<Token> nextToken() override;
     virtual bool empty() const override;
     /**
-     * Checks if the lexer has encountered an error yet. In this case, a warning
-     * would also count as an error.
+     * Checks if an error has been encountered yet.
      *
-     * @returns True if the lexer encountered an error, false otherwise.
+     * @returns True if an error was encountered, false otherwise.
      */
     bool hasError() const;
 
@@ -84,13 +83,21 @@ private:
      * Consumes a block comment.
      */
     void lexBlockComment();
-    /** The complete source code of the program. */
+    /**
+     * The complete source code of the program.
+     */
     const char* src;
-    /** The location of the current character. */
+    /**
+     * The location of the current character.
+     */
     Location location;
-    /** The stream to print errors to. */
+    /**
+     * The stream to print errors to.
+     */
     std::ostream& errors;
-    /** True if the lexer encountered an error, otherwise false. */
+    /**
+     * True if an error was encountered, otherwise false.
+     */
     bool errored;
 };
 
