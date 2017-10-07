@@ -1,5 +1,5 @@
-#include "vsllexer.hpp"
-#include "vslparser.hpp"
+#include "lexer/vsllexer.hpp"
+#include "parser/vslparser.hpp"
 #include "gtest/gtest.h"
 
 #define valid(src) EXPECT_TRUE(parse(src))

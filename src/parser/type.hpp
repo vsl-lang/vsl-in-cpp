@@ -1,11 +1,11 @@
 #ifndef TYPE_HPP
 #define TYPE_HPP
 
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Type.h"
 #include <memory>
 #include <string>
 #include <vector>
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Type.h"
 
 /**
  * Represents a VSL type.

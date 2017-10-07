@@ -1,4 +1,4 @@
-#include "location.hpp"
+#include "lexer/location.hpp"
 #include <cstddef>
 #include <ostream>
 

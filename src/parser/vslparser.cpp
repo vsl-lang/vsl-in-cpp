@@ -1,4 +1,4 @@
-#include "vslparser.hpp"
+#include "parser/vslparser.hpp"
 
 VSLParser::VSLParser(Lexer& lexer, std::ostream& errors)
     : lexer{ lexer }, errors{ errors }, errored{ false }

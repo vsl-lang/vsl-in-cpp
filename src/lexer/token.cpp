@@ -1,9 +1,4 @@
-#include "token.hpp"
-#include "location.hpp"
-#include <cstddef>
-#include <ostream>
-#include <string>
-#include <unordered_map>
+#include "lexer/token.hpp"
 #include <utility>
 
 std::ostream& operator<<(std::ostream& os, const Token& token)

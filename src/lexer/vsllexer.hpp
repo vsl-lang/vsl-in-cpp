@@ -1,9 +1,9 @@
 #ifndef VSLLEXER_HPP
 #define VSLLEXER_HPP
 
-#include "lexer.hpp"
-#include "location.hpp"
-#include "token.hpp"
+#include "lexer/lexer.hpp"
+#include "lexer/location.hpp"
+#include "lexer/token.hpp"
 #include <cstddef>
 #include <iostream>
 #include <memory>

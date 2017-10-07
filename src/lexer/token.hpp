@@ -1,7 +1,7 @@
 #ifndef TOKEN_HPP
 #define TOKEN_HPP
 
-#include "location.hpp"
+#include "lexer/location.hpp"
 #include <cstddef>
 #include <ostream>
 #include <string>

@@ -1,4 +1,4 @@
-#include "scope.hpp"
+#include "codegen/scope.hpp"
 
 bool Scope::Item::operator==(const Item& rhs) const
 {

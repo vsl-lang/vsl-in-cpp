@@ -1,4 +1,4 @@
-#include "node.hpp"
+#include "parser/node.hpp"
 #include <utility>
 
 std::ostream& operator<<(std::ostream& os, const Node& ast)

@@ -1,4 +1,4 @@
-#include "codegen.hpp"
+#include "codegen/codegen.hpp"
 #include "llvm/ADT/Optional.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
@@ -58,7 +58,7 @@ bool CodeGen::hasError() const
     return errored;
 }
 
-void CodeGen::optimize(int optLevel)
+void CodeGen::optimize()
 {
     auto passes =
     {

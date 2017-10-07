@@ -1,4 +1,4 @@
-#include "lexer.hpp"
+#include "lexer/lexer.hpp"
 
 Lexer::~Lexer()
 {

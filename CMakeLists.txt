@@ -48,7 +48,7 @@ endif()
 include_directories(${VSL_SOURCE_DIR} ${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 set(VSL_MAIN_CPP ${VSL_SOURCE_DIR}/main.cpp)
-file(GLOB SOURCES ${VSL_SOURCE_DIR}/*.cpp)
+file(GLOB SOURCES ${VSL_SOURCE_DIR}/**/*.cpp)
 list(REMOVE_ITEM SOURCES ${VSL_MAIN_CPP})
 
 # used for other parts of vsl that don't use src/main.cpp, e.g. the test code

@@ -1,6 +1,6 @@
-#include "type.hpp"
-#include <algorithm>
+#include "parser/type.hpp"
 #include "llvm/IR/DerivedTypes.h"
+#include <algorithm>
 
 Type::Type(Kind kind)
     : kind{ kind }

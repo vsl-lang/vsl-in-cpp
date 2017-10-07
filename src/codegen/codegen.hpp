@@ -33,10 +33,8 @@ public:
     bool hasError() const;
     /**
      * Runs a series of optimization passes on the module.
-     *
-     * @param optLevel The optimization level to use.
      */
-    void optimize(int optLevel);
+    void optimize();
 
 private:
     /**
