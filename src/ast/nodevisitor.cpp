@@ -1,4 +1,4 @@
-#include "codegen/nodevisitor.hpp"
+#include "ast/nodevisitor.hpp"
 
 NodeVisitor::~NodeVisitor()
 {

@@ -1,4 +1,4 @@
-#include "parser/type.hpp"
+#include "ast/type.hpp"
 #include "llvm/IR/DerivedTypes.h"
 #include <algorithm>
 

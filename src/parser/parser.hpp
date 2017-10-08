@@ -1,7 +1,7 @@
 #ifndef PARSER_HPP
 #define PARSER_HPP
 
-#include "parser/node.hpp"
+#include "ast/node.hpp"
 #include <memory>
 
 /**

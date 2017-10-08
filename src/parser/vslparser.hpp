@@ -1,9 +1,9 @@
 #ifndef VSLPARSER_HPP
 #define VSLPARSER_HPP
 
+#include "ast/node.hpp"
 #include "lexer/lexer.hpp"
 #include "lexer/token.hpp"
-#include "parser/node.hpp"
 #include "parser/parser.hpp"
 #include <cstddef>
 #include <deque>

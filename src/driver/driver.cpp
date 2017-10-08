@@ -1,6 +1,6 @@
-#include "driver/driver.hpp"
 #include "codegen/codegen.hpp"
-#include "codegen/llvmgen.hpp"
+#include "driver/driver.hpp"
+#include "irgen/llvmgen.hpp"
 #include "lexer/vsllexer.hpp"
 #include "parser/vslparser.hpp"
 #include "llvm/IR/LLVMContext.h"

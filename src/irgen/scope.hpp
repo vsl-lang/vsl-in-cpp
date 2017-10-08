@@ -1,7 +1,7 @@
 #ifndef SCOPE_HPP
 #define SCOPE_HPP
 
-#include "parser/type.hpp"
+#include "ast/type.hpp"
 #include "llvm/IR/Value.h"
 #include <string>
 #include <unordered_map>

@@ -1,9 +1,9 @@
 #ifndef LLVMGEN_HPP
 #define LLVMGEN_HPP
 
-#include "codegen/nodevisitor.hpp"
-#include "codegen/scopetree.hpp"
-#include "parser/node.hpp"
+#include "ast/node.hpp"
+#include "ast/nodevisitor.hpp"
+#include "irgen/scopetree.hpp"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"

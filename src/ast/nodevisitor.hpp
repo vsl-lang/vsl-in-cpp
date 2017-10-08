@@ -3,7 +3,7 @@
 
 class NodeVisitor;
 
-#include "parser/node.hpp"
+#include "ast/node.hpp"
 
 /**
  * Base class for visiting {@link Node Nodes}, implementing the Visitor Pattern.

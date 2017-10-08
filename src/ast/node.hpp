@@ -17,10 +17,10 @@ class BinaryExprNode;
 class CallExprNode;
 class ArgNode;
 
-#include "codegen/nodevisitor.hpp"
+#include "ast/nodevisitor.hpp"
+#include "ast/type.hpp"
 #include "lexer/location.hpp"
 #include "lexer/token.hpp"
-#include "parser/type.hpp"
 #include <cstddef>
 #include <memory>
 #include <ostream>

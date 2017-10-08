@@ -1,8 +1,8 @@
 #ifndef SCOPETREE_HPP
 #define SCOPETREE_HPP
 
-#include "codegen/scope.hpp"
-#include "parser/type.hpp"
+#include "ast/type.hpp"
+#include "irgen/scope.hpp"
 #include "llvm/IR/Value.h"
 #include <string>
 #include <vector>

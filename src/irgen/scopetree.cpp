@@ -1,4 +1,4 @@
-#include "codegen/scopetree.hpp"
+#include "irgen/scopetree.hpp"
 
 ScopeTree::ScopeTree()
     : scopes{ Scope{ nullptr } }
