@@ -9,16 +9,12 @@ addons:
       - llvm-toolchain-trusty-5.0
     packages:
       - g++-6
-      - clang-5.0
       - llvm-5.0-dev
       - libedit-dev
       - cmake
       - doxygen
       - graphviz
-matrix:
-  include:
-    - env: COMPILER=g++-6
-    - env: COMPILER=clang++-5.0
+env: COMPILER=g++-6
 before_script:
   - mkdir build && cd build
   - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=$COMPILER
