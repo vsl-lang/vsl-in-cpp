@@ -68,7 +68,7 @@ public:
      * @returns The scope's return type.
      */
     Type* getReturnType();
-    
+
 private:
     /** Internal symbol table. */
     std::unordered_map<std::string, Item> symtab;
