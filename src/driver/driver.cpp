@@ -1,6 +1,6 @@
 #include "codegen/codegen.hpp"
 #include "driver/driver.hpp"
-#include "irgen/llvmgen.hpp"
+#include "irgen/irgen.hpp"
 #include "lexer/vsllexer.hpp"
 #include "parser/vslparser.hpp"
 #include "llvm/IR/LLVMContext.h"
@@ -48,14 +48,14 @@ int Driver::main(int argc, const char* const* argv)
                 auto ast = parser.parse();
                 llvm::LLVMContext context;
                 auto module = std::make_unique<llvm::Module>("repl", context);
-                LLVMGen llvmGen{ *module };
-                ast->accept(llvmGen);
+                IRGen irGen{ *module };
+                ast->accept(irGen);
                 CodeGen codeGen{ *module };
                 if (op.optimize)
                 {
                     codeGen.optimize();
                 }
-                std::cerr << llvmGen.getIR() << '\n';
+                std::cerr << irGen.getIR() << '\n';
             });
     }
     return 0;
@@ -90,9 +90,9 @@ int Driver::compile()
     auto ast = parser.parse();
     llvm::LLVMContext context;
     auto module = std::make_unique<llvm::Module>(op.infile, context);
-    LLVMGen llvmGen{ *module };
-    ast->accept(llvmGen);
-    if (lexer.hasError() || parser.hasError() || llvmGen.hasError())
+    IRGen irGen{ *module };
+    ast->accept(irGen);
+    if (lexer.hasError() || parser.hasError() || irGen.hasError())
     {
         return 1;
     }

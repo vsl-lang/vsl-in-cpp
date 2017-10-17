@@ -1,26 +1,26 @@
-#include "irgen/llvmgen.hpp"
+#include "irgen/irgen.hpp"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
 
-LLVMGen::LLVMGen(llvm::Module& module, std::ostream& errors)
+IRGen::IRGen(llvm::Module& module, std::ostream& errors)
     : module{ module }, context{ module.getContext() }, builder{ context },
     result{ nullptr }, errors { errors }, errored{ false }
 {
 }
 
-void LLVMGen::visit(ErrorNode& node)
+void IRGen::visit(ErrorNode& node)
 {
     node.type = std::make_unique<SimpleType>(Type::ERROR);
     result = nullptr;
 }
 
-void LLVMGen::visit(EmptyNode& node)
+void IRGen::visit(EmptyNode& node)
 {
     node.type = std::make_unique<SimpleType>(Type::ERROR);
     result = nullptr;
 }
 
-void LLVMGen::visit(BlockNode& node)
+void IRGen::visit(BlockNode& node)
 {
     // this just creates a new scope and visits all the statements inside
     node.type = std::make_unique<SimpleType>(Type::ERROR);
@@ -33,7 +33,7 @@ void LLVMGen::visit(BlockNode& node)
     result = nullptr;
 }
 
-void LLVMGen::visit(ConditionalNode& node)
+void IRGen::visit(ConditionalNode& node)
 {
     node.type = std::make_unique<SimpleType>(Type::ERROR);
     // make sure that it's not in the global scope.
@@ -84,7 +84,7 @@ void LLVMGen::visit(ConditionalNode& node)
     result = nullptr;
 }
 
-void LLVMGen::visit(AssignmentNode& node)
+void IRGen::visit(AssignmentNode& node)
 {
     // make sure the type and value are valid and they match
     Node& value = *node.value;
@@ -116,7 +116,7 @@ void LLVMGen::visit(AssignmentNode& node)
     result = nullptr;
 }
 
-void LLVMGen::visit(FunctionNode& node)
+void IRGen::visit(FunctionNode& node)
 {
     // create the function
     auto& type = static_cast<FunctionType&>(*node.type);
@@ -145,7 +145,7 @@ void LLVMGen::visit(FunctionNode& node)
     result = nullptr;
 }
 
-void LLVMGen::visit(ReturnNode& node)
+void IRGen::visit(ReturnNode& node)
 {
     // make sure the type of the value to return matches the actual return type
     node.value->accept(*this);
@@ -161,7 +161,7 @@ void LLVMGen::visit(ReturnNode& node)
     result = builder.CreateRet(result);
 }
 
-void LLVMGen::visit(IdentExprNode& node)
+void IRGen::visit(IdentExprNode& node)
 {
     // lookup the name in the current scope
     Scope::Item i = scopeTree.get(node.name);
@@ -185,7 +185,7 @@ void LLVMGen::visit(IdentExprNode& node)
     }
 }
 
-void LLVMGen::visit(NumberExprNode& node)
+void IRGen::visit(NumberExprNode& node)
 {
     // create an LLVM integer
     node.type = std::make_unique<SimpleType>(Type::INT);
@@ -193,7 +193,7 @@ void LLVMGen::visit(NumberExprNode& node)
         static_cast<uint64_t>(node.value) });
 }
 
-void LLVMGen::visit(UnaryExprNode& node)
+void IRGen::visit(UnaryExprNode& node)
 {
     // validate the inner expression
     Node& expr = *node.expr;
@@ -229,7 +229,7 @@ void LLVMGen::visit(UnaryExprNode& node)
     }
 }
 
-void LLVMGen::visit(BinaryExprNode& node)
+void IRGen::visit(BinaryExprNode& node)
 {
     // handle assignment operator as a special case
     if (node.op == Token::OP_ASSIGN)
@@ -342,7 +342,7 @@ void LLVMGen::visit(BinaryExprNode& node)
     }
 }
 
-void LLVMGen::visit(CallExprNode& node)
+void IRGen::visit(CallExprNode& node)
 {
     // make sure the callee is an actual function
     node.callee->accept(*this);
@@ -396,14 +396,14 @@ void LLVMGen::visit(CallExprNode& node)
     result = nullptr;
 }
 
-void LLVMGen::visit(ArgNode& node)
+void IRGen::visit(ArgNode& node)
 {
     // nothing special here
     node.value->accept(*this);
     node.type = node.value->type->clone();
 }
 
-std::string LLVMGen::getIR() const
+std::string IRGen::getIR() const
 {
     // llvm::Module only supports printing to a llvm::raw_ostream
     // thankfully there's llvm::raw_string_ostream that writes to an std::string
@@ -414,12 +414,12 @@ std::string LLVMGen::getIR() const
     return s;
 }
 
-bool LLVMGen::hasError() const
+bool IRGen::hasError() const
 {
     return errored;
 }
 
-llvm::Value* LLVMGen::createEntryAlloca(llvm::Function* f, llvm::Type* type,
+llvm::Value* IRGen::createEntryAlloca(llvm::Function* f, llvm::Type* type,
     const char* name)
 {
     // construct a temporary llvm::IRBuilder to create the alloca instruction

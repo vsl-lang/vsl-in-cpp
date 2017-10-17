@@ -15,20 +15,20 @@
 /**
  * Generates LLVM IR by visiting a {@link Node}.
  */
-class LLVMGen : public NodeVisitor
+class IRGen : public NodeVisitor
 {
 public:
     /**
-     * Creates an LLVMGen object.
+     * Creates an IRGen object.
      *
      * @param module The module to emit LLVM IR into.
      * @param errors The stream to print errors to.
      */
-    LLVMGen(llvm::Module& module, std::ostream& errors = std::cerr);
+    IRGen(llvm::Module& module, std::ostream& errors = std::cerr);
     /**
-     * Destroys an LLVMGen object.
+     * Destroys an IRGen object.
      */
-    virtual ~LLVMGen() override = default;
+    virtual ~IRGen() override = default;
     virtual void visit(ErrorNode& node) override;
     virtual void visit(EmptyNode& node) override;
     virtual void visit(BlockNode& node) override;
