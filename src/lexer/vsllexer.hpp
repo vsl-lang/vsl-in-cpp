@@ -84,10 +84,6 @@ private:
      */
     void lexBlockComment();
     /**
-     * The complete source code of the program.
-     */
-    const char* src;
-    /**
      * The location of the current character.
      */
     Location location;

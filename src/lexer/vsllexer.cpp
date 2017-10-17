@@ -5,7 +5,7 @@
 #include <utility>
 
 VSLLexer::VSLLexer(const char* src, std::ostream& errors)
-    : src{ src }, location{ src, 1, 1 }, errors{ errors }, errored{ false }
+    : location{ src, 1, 1 }, errors{ errors }, errored{ false }
 {
 }
 
