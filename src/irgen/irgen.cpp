@@ -205,12 +205,13 @@ void IRGen::visit(UnaryExprNode& node)
     case Type::INT:
         node.type = std::make_unique<SimpleType>(k);
         break;
+    // errors are propagated down the expression tree
     default:
         errors << expr.location <<
             ": error: cannot apply unary operator " <<
             Token::kindToString(node.op) << " to type " <<
             expr.type->toString() << '\n';
-        // propagate any sort of expression error
+        // fallthrough
     case Type::ERROR:
         node.type = std::make_unique<SimpleType>(Type::ERROR);
         result = nullptr;
