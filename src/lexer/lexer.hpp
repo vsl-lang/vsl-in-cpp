@@ -19,7 +19,7 @@ public:
      *
      * @returns The next token.
      */
-    virtual std::unique_ptr<Token> nextToken() = 0;
+    virtual Token nextToken() = 0;
     /**
      * Tests if this Lexer is all out of tokens.
      *

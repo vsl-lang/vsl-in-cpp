@@ -17,7 +17,8 @@ class Location;
 std::ostream& operator<<(std::ostream& os, const Location& location);
 
 /**
- * Represents the location of an object in the source code of a program.
+ * Represents the location of an object in the source code of a program. Used
+ * in error messages and the like.
  */
 class Location
 {
@@ -29,13 +30,10 @@ public:
     /**
      * Creates a Location.
      *
-     * @param pos The absolute position.
      * @param line The line number.
      * @param col The column number.
      */
-    Location(const char* pos, size_t line, size_t col);
-    /** The absolute position. */
-    const char* pos;
+    Location(size_t line, size_t col);
     /** The line number. */
     size_t line;
     /** The column number. */

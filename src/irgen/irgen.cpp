@@ -1,6 +1,7 @@
 #include "irgen/irgen.hpp"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
+#include <limits>
 
 IRGen::IRGen(llvm::Module& module, std::ostream& errors)
     : module{ module }, context{ module.getContext() }, builder{ context },
@@ -98,20 +99,20 @@ void IRGen::visit(AssignmentNode& node)
     {
         errors << value.location <<
             ": error: mismatching types when initializing variable " <<
-            node.name << '\n';
+            node.name.str() << '\n';
     }
     // create the alloca instruction
     auto initialValue = result;
     llvm::Function* f = builder.GetInsertBlock()->getParent();
     auto alloca = createEntryAlloca(f, node.type->toLLVMType(context),
-        node.name.c_str());
+        node.name);
     // create the store instruction
     builder.CreateStore(initialValue, alloca);
     // add to current scope
     if (!scopeTree.set(node.name, { node.type.get(), alloca }))
     {
         errors << node.location << ": error: variable " <<
-            node.name << " was already defined\n";
+            node.name.str() << " was already defined\n";
     }
     result = nullptr;
 }
@@ -132,10 +133,10 @@ void IRGen::visit(FunctionNode& node)
     auto argIt = f->arg_begin();
     for (size_t i = 0; i < node.paramNames.size(); ++i, ++argIt)
     {
-        const auto& paramName = node.paramNames[i].str;
-        auto paramType = type.params[i].get();
-        auto alloca = createEntryAlloca(f, paramType->toLLVMType(context),
-            paramName.c_str());
+        llvm::StringRef paramName = node.paramNames[i].str;
+        Type* paramType = type.params[i].get();
+        llvm::Value* alloca = createEntryAlloca(f,
+            paramType->toLLVMType(context), paramName);
         builder.CreateStore(argIt, alloca);
         scopeTree.set(paramName, { paramType, alloca });
     }
@@ -168,7 +169,7 @@ void IRGen::visit(IdentExprNode& node)
     if (i.type == nullptr || i.value == nullptr)
     {
         errors << node.location << ": error: unknown variable " <<
-            node.name << '\n';
+            node.name.str() << '\n';
         node.type = std::make_unique<SimpleType>(Type::ERROR);
         result = nullptr;
         return;
@@ -189,8 +190,9 @@ void IRGen::visit(NumberExprNode& node)
 {
     // create an LLVM integer
     node.type = std::make_unique<SimpleType>(Type::INT);
-    result = llvm::ConstantInt::get(context, llvm::APInt{ sizeof(node.value),
-        static_cast<uint64_t>(node.value) });
+    // TODO: more than 1 type of integer
+    result = llvm::ConstantInt::get(context, llvm::APInt{ 32,
+            static_cast<uint64_t>(node.value) });
 }
 
 void IRGen::visit(UnaryExprNode& node)
@@ -209,7 +211,7 @@ void IRGen::visit(UnaryExprNode& node)
     default:
         errors << expr.location <<
             ": error: cannot apply unary operator " <<
-            Token::kindToString(node.op) << " to type " <<
+            getTokenKindName(node.op) << " to type " <<
             expr.type->toString() << '\n';
         // fallthrough
     case Type::ERROR:
@@ -220,7 +222,7 @@ void IRGen::visit(UnaryExprNode& node)
     // create instruction based on corresponding operator
     switch (node.op)
     {
-    case Token::OP_MINUS:
+    case TokenKind::MINUS:
         result = builder.CreateNeg(result);
         break;
     default:
@@ -233,7 +235,7 @@ void IRGen::visit(UnaryExprNode& node)
 void IRGen::visit(BinaryExprNode& node)
 {
     // handle assignment operator as a special case
-    if (node.op == Token::OP_ASSIGN)
+    if (node.op == TokenKind::ASSIGN)
     {
         // make sure that the lhs is an identifier
         if (node.left->kind != Node::ID_EXPR)
@@ -248,7 +250,7 @@ void IRGen::visit(BinaryExprNode& node)
             if (i.type == nullptr || i.value == nullptr)
             {
                 errors << id.location << ": error: unknown variable " <<
-                    id.name << '\n';
+                    id.name.str() << '\n';
             }
             else
             {
@@ -306,34 +308,34 @@ void IRGen::visit(BinaryExprNode& node)
     // create the corresponding instruction based on the operator
     switch (node.op)
     {
-    case Token::OP_PLUS:
+    case TokenKind::PLUS:
         result = builder.CreateAdd(left, right, "");
         break;
-    case Token::OP_MINUS:
+    case TokenKind::MINUS:
         result = builder.CreateSub(left, right, "");
         break;
-    case Token::OP_STAR:
+    case TokenKind::STAR:
         result = builder.CreateMul(left, right, "");
         break;
-    case Token::OP_SLASH:
+    case TokenKind::SLASH:
         result = builder.CreateSDiv(left, right, "");
         break;
-    case Token::OP_PERCENT:
+    case TokenKind::PERCENT:
         result = builder.CreateSRem(left, right, "");
         break;
-    case Token::OP_EQUALS:
+    case TokenKind::EQUALS:
         result = builder.CreateICmpEQ(left, right, "");
         break;
-    case Token::OP_GREATER:
+    case TokenKind::GREATER:
         result = builder.CreateICmpSGT(left, right, "");
         break;
-    case Token::OP_GREATER_EQUAL:
+    case TokenKind::GREATER_EQUAL:
         result = builder.CreateICmpSGE(left, right, "");
         break;
-    case Token::OP_LESS:
+    case TokenKind::LESS:
         result = builder.CreateICmpSLT(left, right, "");
         break;
-    case Token::OP_LESS_EQUAL:
+    case TokenKind::LESS_EQUAL:
         result = builder.CreateICmpSLE(left, right, "");
         break;
     default:
@@ -421,7 +423,7 @@ bool IRGen::hasError() const
 }
 
 llvm::Value* IRGen::createEntryAlloca(llvm::Function* f, llvm::Type* type,
-    const char* name)
+    llvm::StringRef name)
 {
     // construct a temporary llvm::IRBuilder to create the alloca instruction
     // i don't want to modify the builder field because it may be inserting at a

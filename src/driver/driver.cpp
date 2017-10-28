@@ -25,13 +25,13 @@ int Driver::main(int argc, const char* const* argv)
         return repl([](const std::string& in, std::ostream& out)
             {
                 VSLLexer lexer{ in.c_str(), out };
-                std::unique_ptr<Token> token;
+                Token token;
                 do
                 {
                     token = lexer.nextToken();
-                    out << *token << '\n';
+                    out << token << " at " << token.location << '\n';
                 }
-                while (token->kind != Token::SYMBOL_EOF);
+                while (token.kind != TokenKind::END);
             });
     case OptionParser::REPL_PARSE:
         return repl([](const std::string& in, std::ostream& out)

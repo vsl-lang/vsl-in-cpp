@@ -100,10 +100,10 @@ std::string ConditionalNode::toString() const
     return s;
 }
 
-AssignmentNode::AssignmentNode(std::string name, std::unique_ptr<Type> type,
+AssignmentNode::AssignmentNode(llvm::StringRef name, std::unique_ptr<Type> type,
     std::unique_ptr<Node> value, Qualifiers qualifiers, Location location)
     : Node{ Node::ASSIGNMENT, location, std::move(type) },
-    name{ std::move(name) }, value{ std::move(value) }, qualifiers{ qualifiers }
+    name{ name }, value{ std::move(value) }, qualifiers{ qualifiers }
 {
 }
 
@@ -140,15 +140,15 @@ std::string AssignmentNode::toString() const
     return s;
 }
 
-FunctionNode::ParamName::ParamName(std::string str, Location location)
-    : str{ std::move(str) }, location{ location }
+FunctionNode::ParamName::ParamName(llvm::StringRef str, Location location)
+    : str{ str }, location{ location }
 {
 }
 
-FunctionNode::FunctionNode(std::string name, std::vector<Param> params,
+FunctionNode::FunctionNode(llvm::StringRef name, std::vector<Param> params,
     std::unique_ptr<Type> returnType, std::unique_ptr<Node> body,
     Location location)
-    : Node{ Node::FUNCTION, location }, name{ std::move(name) },
+    : Node{ Node::FUNCTION, location }, name{ name },
     body{ std::move(body) }
 {
     std::vector<std::unique_ptr<Type>> paramTypes;
@@ -172,7 +172,7 @@ std::string FunctionNode::toString() const
 {
     auto& funcType = static_cast<FunctionType&>(*type);
     std::string s = "Function { name: ";
-    s += name;
+    s += name.str();
     s += ", params: [";
     if (!paramNames.empty())
     {
@@ -194,10 +194,9 @@ std::string FunctionNode::toString() const
     return s;
 }
 
-std::string FunctionNode::paramToString(const std::string& name,
-    const Type& type)
+std::string FunctionNode::paramToString(llvm::StringRef name, const Type& type)
 {
-    std::string s = name;
+    std::string s = name.str();
     s += ": ";
     s += type.toString();
     return s;
@@ -226,8 +225,8 @@ ExprNode::ExprNode(Node::Kind kind, Location location)
 {
 }
 
-IdentExprNode::IdentExprNode(std::string name, Location location)
-    : ExprNode{ Node::ID_EXPR, location }, name{ std::move(name) }
+IdentExprNode::IdentExprNode(llvm::StringRef name, Location location)
+    : ExprNode{ Node::ID_EXPR, location }, name{ name }
 {
 }
 
@@ -262,7 +261,7 @@ std::string NumberExprNode::toString() const
     return s;
 }
 
-UnaryExprNode::UnaryExprNode(Token::Kind op, std::unique_ptr<Node> expr,
+UnaryExprNode::UnaryExprNode(TokenKind op, std::unique_ptr<Node> expr,
     Location location)
     : ExprNode{ Node::UNARY_EXPR, location }, op{ op },
     expr{ std::move(expr) }
@@ -277,14 +276,14 @@ void UnaryExprNode::accept(NodeVisitor& nodeVisitor)
 std::string UnaryExprNode::toString() const
 {
     std::string s = "Unary { op: ";
-    s += Token::kindToString(op);
+    s += getTokenKindName(op);
     s += ", expr: ";
     s += expr->toString();
     s += " }";
     return s;
 }
 
-BinaryExprNode::BinaryExprNode(Token::Kind op, std::unique_ptr<Node> left,
+BinaryExprNode::BinaryExprNode(TokenKind op, std::unique_ptr<Node> left,
     std::unique_ptr<Node> right, Location location)
     : ExprNode{ Node::BINARY_EXPR, location }, op{ op },
     left{ std::move(left) }, right{ std::move(right) }
@@ -299,7 +298,7 @@ void BinaryExprNode::accept(NodeVisitor& nodeVisitor)
 std::string BinaryExprNode::toString() const
 {
     std::string s = "Binary { op: ";
-    s += Token::kindToString(op);
+    s += getTokenKindName(op);
     s += ", left: ";
     s += left->toString();
     s += ", right: ";
@@ -340,9 +339,9 @@ std::string CallExprNode::toString() const
     return s;
 }
 
-ArgNode::ArgNode(std::string name, std::unique_ptr<Node> value,
+ArgNode::ArgNode(llvm::StringRef name, std::unique_ptr<Node> value,
     Location location)
-    : Node{ Node::ARG, location }, name{ std::move(name) },
+    : Node{ Node::ARG, location }, name{ name },
     value{ std::move(value) }
 {
 }

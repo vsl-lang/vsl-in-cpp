@@ -21,6 +21,8 @@ class ArgNode;
 #include "ast/type.hpp"
 #include "lexer/location.hpp"
 #include "lexer/token.hpp"
+#include "lexer/tokenKind.hpp"
+#include "llvm/ADT/StringRef.h"
 #include <cstddef>
 #include <memory>
 #include <ostream>
@@ -231,7 +233,7 @@ public:
      * @param qualifiers Type qualifiers for the variable.
      * @param location Where this AssignmentNode was found in the source.
      */
-    AssignmentNode(std::string name, std::unique_ptr<Type> type,
+    AssignmentNode(llvm::StringRef name, std::unique_ptr<Type> type,
         std::unique_ptr<Node> value, Qualifiers qualifiers, Location location);
     /**
      * Destroys an AssignmentNode.
@@ -240,7 +242,7 @@ public:
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The name of the variable. */
-    std::string name;
+    llvm::StringRef name;
     /** The variable's initial value. */
     std::unique_ptr<Node> value;
     /** Type qualifiers for the variable. */
@@ -271,9 +273,9 @@ public:
          * @param str String representation of the name.
          * @param location where this ParamName was found in the source.
          */
-        ParamName(std::string str, Location location);
+        ParamName(llvm::StringRef str, Location location);
         /** String representation of the name. */
-        std::string str;
+        llvm::StringRef str;
         /** Where this ParamName was found in the source. */
         Location location;
     };
@@ -296,7 +298,7 @@ public:
      * @param body The body of the function.
      * @param location Where this FunctionNode was found in the source.
      */
-    FunctionNode(std::string name, std::vector<Param> params,
+    FunctionNode(llvm::StringRef name, std::vector<Param> params,
         std::unique_ptr<Type> returnType, std::unique_ptr<Node> body,
         Location location);
     /**
@@ -313,9 +315,10 @@ public:
      *
      * @returns The string representation of a parameter.
      */
-    static std::string paramToString(const std::string& name, const Type& type);
+    static std::string paramToString(llvm::StringRef name,
+        const Type& type);
     /** The name of the function. */
-    std::string name;
+    llvm::StringRef name;
     /** The function's parameters. */
     std::vector<ParamName> paramNames;
     /** The body of the function. */
@@ -373,7 +376,7 @@ public:
      * @param name The name of the identifier.
      * @param location where this IdentExprNode was found in the source.
      */
-    IdentExprNode(std::string name, Location location);
+    IdentExprNode(llvm::StringRef name, Location location);
     /**
      * Destroys an IdentExprNode.
      */
@@ -381,7 +384,7 @@ public:
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The name of the identifier. */
-    std::string name;
+    llvm::StringRef name;
 };
 
 /**
@@ -420,7 +423,7 @@ public:
      * @param expr The expression to apply the operator to.
      * @param location Where this UnaryExprNode was found in the source.
      */
-    UnaryExprNode(Token::Kind op, std::unique_ptr<Node> expr,
+    UnaryExprNode(TokenKind op, std::unique_ptr<Node> expr,
         Location location);
     /**
      * Destroys a UnaryExprNode.
@@ -429,7 +432,7 @@ public:
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The operator of the expression. */
-    Token::Kind op;
+    TokenKind op;
     /** The expression to apply the operator to. */
     std::unique_ptr<Node> expr;
 };
@@ -448,7 +451,7 @@ public:
      * @param right The right hand side of the expression.
      * @param location Where this BinaryExprNode was found in the source.
      */
-    BinaryExprNode(Token::Kind op, std::unique_ptr<Node> left,
+    BinaryExprNode(TokenKind op, std::unique_ptr<Node> left,
         std::unique_ptr<Node> right, Location location);
     /**
      * Destroys a BinaryExprNode.
@@ -457,7 +460,7 @@ public:
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The operator of the expression. */
-    Token::Kind op;
+    TokenKind op;
     /** The left hand side of the expression. */
     std::unique_ptr<Node> left;
     /** The right hand side of the expression. */
@@ -504,7 +507,8 @@ public:
      * @param value The value of the argument.
      * @param location Where this ArgNode was found in the source.
      */
-    ArgNode(std::string name, std::unique_ptr<Node> value, Location location);
+    ArgNode(llvm::StringRef name, std::unique_ptr<Node> value,
+        Location location);
     /**
      * Destroys an ArgNode.
      */
@@ -512,7 +516,7 @@ public:
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The name of the argument. */
-    std::string name;
+    llvm::StringRef name;
     /** The value of the argument. */
     std::unique_ptr<Node> value;
 };

@@ -4,6 +4,8 @@
 #include "lexer/lexer.hpp"
 #include "lexer/location.hpp"
 #include "lexer/token.hpp"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/StringSet.h"
 #include <cstddef>
 #include <iostream>
 #include <memory>
@@ -25,7 +27,7 @@ public:
      * Destroys a VSLLexer.
      */
     virtual ~VSLLexer() override = default;
-    virtual std::unique_ptr<Token> nextToken() override;
+    virtual Token nextToken() override;
     virtual bool empty() const override;
     /**
      * Checks if an error has been encountered yet.
@@ -36,45 +38,52 @@ public:
 
 private:
     /**
-     * Gets the current character.
+     * Gets the newest (last) character from the text buffer.
      *
      * @returns The current character.
      */
     char current() const;
     /**
-     * Gets the next character, consuming the current one.
+     * Gets the next character, adding it to the text buffer.
      *
      * @returns The next character.
      */
     char next();
     /**
-     * Gets the `i`th character after the current one, without consuming any.
-     *
-     * @param i The index of the character.
-     *
-     * @returns The `i`th character after the current one.
+     * Resets the text buffer so that it points to the character after where it
+     * was pointing to previously. This should be done before and after creating
+     * a Token.
      */
-    char peek(size_t i = 1) const;
+    void resetBuffer();
     /**
-     * Creates a {@link DefaultToken}.
+     * Gets the character after the current one, without consuming any.
      *
-     * @param kind The kind of DefaultToken to create.
-     *
-     * @returns A new {@link DefaultToken}.
+     * @returns The character after the current one.
      */
-    std::unique_ptr<DefaultToken> lexDefaultToken(Token::Kind kind);
+    char peek() const;
     /**
-     * Lexes a {@link NameToken}.
-     *
-     * @returns A new {@link NameToken}.
+     * Creates a token with the specified {@link TokenKind}. Before returning,
+     * this method will also setup the lexer for getting the next token.
      */
-    std::unique_ptr<NameToken> lexName();
+    Token createToken(TokenKind kind);
     /**
-     * Lexes a {@link NumberToken}.
+     * Creates a symbol token.
      *
-     * @returns A new {@link NumberToken}.
+     * @returns A symbol token.
      */
-    std::unique_ptr<NumberToken> lexNumber();
+    Token lexSymbol();
+    /**
+     * Creates either an identifier or keyword token.
+     *
+     * @returns Either an identifier or keyword token.
+     */
+    Token lexIdentOrKeyword();
+    /**
+     * Creates a number literal token.
+     *
+     * @returns A number literal token.
+     */
+    Token lexNumber();
     /**
      * Consumes a line comment.
      */
@@ -83,6 +92,10 @@ private:
      * Consumes a block comment.
      */
     void lexBlockComment();
+    /**
+     * The current buffer of text to insert into the next Token.
+     */
+    llvm::StringRef text;
     /**
      * The location of the current character.
      */

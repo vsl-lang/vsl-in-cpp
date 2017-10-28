@@ -4,6 +4,7 @@
 #include "ast/node.hpp"
 #include "ast/nodevisitor.hpp"
 #include "irgen/scopetree.hpp"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
@@ -68,7 +69,7 @@ private:
      * @returns An LLVM AllocaInst.
      */
     static llvm::Value* createEntryAlloca(llvm::Function* f, llvm::Type* type,
-        const char* name);
+        llvm::StringRef name);
     /**
      * The module to emit LLVM IR into.
      */

@@ -176,13 +176,21 @@ private:
      */
     std::unique_ptr<Node> parseCallArg();
     /**
+     * Parses a number.
+     *
+     * @param token The token to get the number from.
+     *
+     * @returns A number expression.
+     */
+    std::unique_ptr<Node> parseNumber(const Token& token);
+    /**
      * The Lexer to get the tokens from.
      */
     Lexer& lexer;
     /**
      * Cache of tokens used in lookahead.
      */
-    std::deque<std::unique_ptr<Token>> cache;
+    std::deque<Token> cache;
     /**
      * The stream to print errors to.
      */

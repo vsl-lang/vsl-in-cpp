@@ -1,35 +1,30 @@
 #include "lexer/vsllexer.hpp"
 #include <cctype>
-#include <cerrno>
 #include <cstdlib>
 #include <utility>
 
 VSLLexer::VSLLexer(const char* src, std::ostream& errors)
-    : location{ src, 1, 1 }, errors{ errors }, errored{ false }
+    : text{ src, 1 }, location{ 1, 1 }, errors{ errors }, errored{ false }
 {
 }
 
-std::unique_ptr<Token> VSLLexer::nextToken()
+Token VSLLexer::nextToken()
 {
-    for (; current() != '\0'; next())
+    while (current() != '\0')
     {
         switch (current())
         {
-        case '\n':
-            ++location.line;
-            location.col = 0;
-            break;
         case '+':
-            return lexDefaultToken(Token::OP_PLUS);
+            return createToken(TokenKind::PLUS);
         case '-':
             if (peek() == '>')
             {
                 next();
-                return lexDefaultToken(Token::SYMBOL_ARROW);
+                return createToken(TokenKind::ARROW);
             }
-            return lexDefaultToken(Token::OP_MINUS);
+            return createToken(TokenKind::MINUS);
         case '*':
-            return lexDefaultToken(Token::OP_STAR);
+            return createToken(TokenKind::STAR);
         case '/':
             switch (peek())
             {
@@ -40,50 +35,52 @@ std::unique_ptr<Token> VSLLexer::nextToken()
                 lexBlockComment();
                 break;
             default:
-                return lexDefaultToken(Token::OP_SLASH);
+                return createToken(TokenKind::SLASH);
             }
             break;
         case '%':
-            return lexDefaultToken(Token::OP_PERCENT);
+            return createToken(TokenKind::PERCENT);
         case '=':
             if (peek() == '=')
             {
                 next();
-                return lexDefaultToken(Token::OP_EQUALS);
+                return createToken(TokenKind::EQUALS);
             }
-            return lexDefaultToken(Token::OP_ASSIGN);
+            return createToken(TokenKind::ASSIGN);
         case '>':
             if (peek() == '=')
             {
                 next();
-                return lexDefaultToken(Token::OP_GREATER_EQUAL);
+                return createToken(TokenKind::GREATER_EQUAL);
             }
-            return lexDefaultToken(Token::OP_GREATER);
+            return createToken(TokenKind::GREATER);
         case '<':
             if (peek() == '=')
             {
                 next();
-                return lexDefaultToken(Token::OP_LESS_EQUAL);
+                return createToken(TokenKind::LESS_EQUAL);
             }
-            return lexDefaultToken(Token::OP_LESS);
-        case ':':
-            return lexDefaultToken(Token::SYMBOL_COLON);
-        case ';':
-            return lexDefaultToken(Token::SYMBOL_SEMICOLON);
-        case ',':
-            return lexDefaultToken(Token::SYMBOL_COMMA);
+            return createToken(TokenKind::LESS);
         case '(':
-            return lexDefaultToken(Token::SYMBOL_LPAREN);
+            return createToken(TokenKind::LPAREN);
         case ')':
-            return lexDefaultToken(Token::SYMBOL_RPAREN);
+            return createToken(TokenKind::RPAREN);
         case '{':
-            return lexDefaultToken(Token::SYMBOL_LBRACE);
+            return createToken(TokenKind::LBRACE);
         case '}':
-            return lexDefaultToken(Token::SYMBOL_RBRACE);
+            return createToken(TokenKind::RBRACE);
+        case ',':
+            return createToken(TokenKind::COMMA);
+        case ':':
+            return createToken(TokenKind::COLON);
+        case ';':
+            return createToken(TokenKind::SEMICOLON);
+        case '\n':
+            break;
         default:
             if (isalpha(current()))
             {
-                return lexName();
+                return lexIdentOrKeyword();
             }
             if (isdigit(current()))
             {
@@ -96,8 +93,9 @@ std::unique_ptr<Token> VSLLexer::nextToken()
                 errored = true;
             }
         }
+        resetBuffer();
     }
-    return lexDefaultToken(Token::SYMBOL_EOF);
+    return createToken(TokenKind::END);
 }
 
 bool VSLLexer::empty() const
@@ -112,65 +110,63 @@ bool VSLLexer::hasError() const
 
 char VSLLexer::current() const
 {
-    return *location.pos;
+    return text.back();
 }
 
 char VSLLexer::next()
 {
-    ++location.col;
-    return *++location.pos;
+    text = { text.begin(), text.size() + 1 };
+    return text[0];
 }
 
-char VSLLexer::peek(size_t i) const
+void VSLLexer::resetBuffer()
 {
-    char c;
-    for (size_t j = 0; j <= i; ++j)
+    // handle newlines
+    if (current() == '\n')
     {
-        c = location.pos[j];
-        if (c == '\0')
-        {
-            break;
-        }
+        ++location.line;
+        location.col = 0;
     }
-    return c;
-}
-
-std::unique_ptr<DefaultToken> VSLLexer::lexDefaultToken(Token::Kind kind)
-{
-    Location savedLocation = location;
-    next();
-    return std::make_unique<DefaultToken>(kind, savedLocation);
-}
-
-std::unique_ptr<NameToken> VSLLexer::lexName()
-{
-    Location savedLocation = location;
-    std::string id;
-    do
+    else
     {
-        id += current();
+        location.col += text.size();
+    }
+    text = { text.end(), 1 };
+}
+
+char VSLLexer::peek() const
+{
+    char c = current();
+    if (c == '\0')
+    {
+        return c;
+    }
+    return *text.end();
+}
+
+Token VSLLexer::createToken(TokenKind kind)
+{
+    Token t{ kind, text, location };
+    resetBuffer();
+    return t;
+}
+
+Token VSLLexer::lexIdentOrKeyword()
+{
+    while (isalnum(peek()))
+    {
         next();
     }
-    while (isalnum(current()));
-    return std::make_unique<NameToken>(std::move(id), savedLocation);
+    return createToken(getKeywordKind(text));
 }
 
-std::unique_ptr<NumberToken> VSLLexer::lexNumber()
+Token VSLLexer::lexNumber()
 {
-    Location savedLocation = location;
-    char* newPos;
-    errno = 0;
-    long value = std::strtol(location.pos, &newPos, 0);
-    location.col += newPos - location.pos;
-    location.pos = newPos;
-    if (errno == ERANGE)
+    while (isdigit(peek()))
     {
-        errors << location << ": warning: ";
-        errors.write(savedLocation.pos, location.pos - savedLocation.pos);
-        errors << " is out of range\n";
-        errored = true;
+        next();
     }
-    return std::make_unique<NumberToken>(value, savedLocation);
+    return createToken(TokenKind::NUMBER);
 }
 
 void VSLLexer::lexLineComment()
@@ -180,14 +176,15 @@ void VSLLexer::lexLineComment()
         next();
     }
     while (peek() != '\n' && peek() != '\0');
+    resetBuffer();
 }
 
 void VSLLexer::lexBlockComment()
 {
-    next();
+    resetBuffer();
     do
     {
-        next();
+        resetBuffer();
     }
     while (current() != '\0' && current() != '*' && peek() != '/');
     next();
