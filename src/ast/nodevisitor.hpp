@@ -34,7 +34,7 @@ public:
     virtual void visit(FunctionNode& node) = 0;
     virtual void visit(ReturnNode& node) = 0;
     virtual void visit(IdentExprNode& node) = 0;
-    virtual void visit(NumberExprNode& node) = 0;
+    virtual void visit(IntExprNode& node) = 0;
     virtual void visit(UnaryExprNode& node) = 0;
     virtual void visit(BinaryExprNode& node) = 0;
     virtual void visit(CallExprNode& node) = 0;

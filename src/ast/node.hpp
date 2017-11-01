@@ -11,7 +11,7 @@ class FunctionNode;
 class ReturnNode;
 class ExprNode;
 class IdentExprNode;
-class NumberExprNode;
+class IntExprNode;
 class UnaryExprNode;
 class BinaryExprNode;
 class CallExprNode;
@@ -22,6 +22,7 @@ class ArgNode;
 #include "lexer/location.hpp"
 #include "lexer/token.hpp"
 #include "lexer/tokenKind.hpp"
+#include "llvm/ADT/APInt.h"
 #include "llvm/ADT/StringRef.h"
 #include <cstddef>
 #include <memory>
@@ -388,26 +389,26 @@ public:
 };
 
 /**
- * Represents a number. For now, this is just a long int.
+ * Represents an integer.
  */
-class NumberExprNode : public ExprNode
+class IntExprNode : public ExprNode
 {
 public:
     /**
-     * Creates a NumberExprNode.
+     * Creates an IntExprNode.
      *
      * @param value The value of the number.
-     * @param location Where this NumberExprNode was found in the source.
+     * @param location Where this IntExprNode was found in the source.
      */
-    NumberExprNode(long value, Location location);
+    IntExprNode(llvm::APInt value, Location location);
     /**
      * Destroys a NumberExprNode.
      */
-    virtual ~NumberExprNode() override = default;
+    virtual ~IntExprNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The value of the number. */
-    long value;
+    llvm::APInt value;
 };
 
 /**

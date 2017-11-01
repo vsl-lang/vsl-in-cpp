@@ -186,13 +186,27 @@ void IRGen::visit(IdentExprNode& node)
     }
 }
 
-void IRGen::visit(NumberExprNode& node)
+void IRGen::visit(IntExprNode& node)
 {
     // create an LLVM integer
-    node.type = std::make_unique<SimpleType>(Type::INT);
-    // TODO: more than 1 type of integer
-    result = llvm::ConstantInt::get(context, llvm::APInt{ 32,
-            static_cast<uint64_t>(node.value) });
+    Type::Kind k;
+    unsigned width = node.value.getBitWidth();
+    switch (width)
+    {
+    case 1:
+        k = Type::BOOL;
+        break;
+    case 32:
+        k = Type::INT;
+        break;
+    default:
+        // should never happen
+        errors << node.location << ": error: VSL does not support " << width <<
+            "-bit integers\n";
+        k = Type::ERROR;
+    }
+    node.type = std::make_unique<SimpleType>(k);
+    result = llvm::ConstantInt::get(context, node.value);
 }
 
 void IRGen::visit(UnaryExprNode& node)
@@ -304,45 +318,57 @@ void IRGen::visit(BinaryExprNode& node)
         node.type = std::make_unique<SimpleType>(Type::ERROR);
         return;
     }
-    node.type = std::make_unique<SimpleType>(Type::INT);
     // create the corresponding instruction based on the operator
+    Type::Kind k;
     switch (node.op)
     {
     case TokenKind::PLUS:
+        k = node.left->type->kind;
         result = builder.CreateAdd(left, right, "");
         break;
     case TokenKind::MINUS:
+        k = node.left->type->kind;
         result = builder.CreateSub(left, right, "");
         break;
     case TokenKind::STAR:
+        k = node.left->type->kind;
         result = builder.CreateMul(left, right, "");
         break;
     case TokenKind::SLASH:
+        k = node.left->type->kind;
         result = builder.CreateSDiv(left, right, "");
         break;
     case TokenKind::PERCENT:
+        k = node.left->type->kind;
         result = builder.CreateSRem(left, right, "");
         break;
     case TokenKind::EQUALS:
+        k = Type::BOOL;
         result = builder.CreateICmpEQ(left, right, "");
         break;
     case TokenKind::GREATER:
+        k = Type::BOOL;
         result = builder.CreateICmpSGT(left, right, "");
         break;
     case TokenKind::GREATER_EQUAL:
+        k = Type::BOOL;
         result = builder.CreateICmpSGE(left, right, "");
         break;
     case TokenKind::LESS:
+        k = Type::BOOL;
         result = builder.CreateICmpSLT(left, right, "");
         break;
     case TokenKind::LESS_EQUAL:
+        k = Type::BOOL;
         result = builder.CreateICmpSLE(left, right, "");
         break;
     default:
         errors << node.location <<
             ": error: invalid binary operator on types Int and Int\n";
+        k = Type::ERROR;
         result = nullptr;
     }
+    node.type = std::make_unique<SimpleType>(k);
 }
 
 void IRGen::visit(CallExprNode& node)

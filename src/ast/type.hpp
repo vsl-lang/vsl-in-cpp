@@ -21,6 +21,8 @@ public:
     {
         /** Error. */
         ERROR,
+        /** Boolean. */
+        BOOL,
         /** Integer. */
         INT,
         /** Function. */

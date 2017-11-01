@@ -17,6 +17,8 @@ const char* Type::kindToString(Type::Kind kind)
     {
     case ERROR:
         return "ErrorType";
+    case BOOL:
+        return "Bool";
     case INT:
         return "Int";
     case VOID:
@@ -45,6 +47,8 @@ llvm::Type* SimpleType::toLLVMType(llvm::LLVMContext& context) const
 {
     switch (kind)
     {
+    case Type::BOOL:
+        return llvm::Type::getInt1Ty(context);
     case Type::INT:
         return llvm::Type::getInt32Ty(context);
     case Type::VOID:

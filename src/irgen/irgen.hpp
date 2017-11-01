@@ -38,7 +38,7 @@ public:
     virtual void visit(FunctionNode& node) override;
     virtual void visit(ReturnNode& node) override;
     virtual void visit(IdentExprNode& node) override;
-    virtual void visit(NumberExprNode& node) override;
+    virtual void visit(IntExprNode& node) override;
     virtual void visit(UnaryExprNode& node) override;
     virtual void visit(BinaryExprNode& node) override;
     virtual void visit(CallExprNode& node) override;

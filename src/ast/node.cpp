@@ -243,20 +243,20 @@ std::string IdentExprNode::toString() const
     return s;
 }
 
-NumberExprNode::NumberExprNode(long value, Location location)
-    : ExprNode{ Node::NUMBER_EXPR, location }, value{ value }
+IntExprNode::IntExprNode(llvm::APInt value, Location location)
+    : ExprNode{ Node::NUMBER_EXPR, location }, value{ std::move(value) }
 {
 }
 
-void NumberExprNode::accept(NodeVisitor& nodeVisitor)
+void IntExprNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visit(*this);
 }
 
-std::string NumberExprNode::toString() const
+std::string IntExprNode::toString() const
 {
-    std::string s = "Number { value: ";
-    s += std::to_string(value);
+    std::string s = "Integer { value: ";
+    s += value.toString(10, false);
     s += " }";
     return s;
 }

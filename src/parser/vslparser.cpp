@@ -90,6 +90,8 @@ std::unique_ptr<Node> VSLParser::parseStatement()
         return parseConditional();
     case TokenKind::IDENTIFIER:
     case TokenKind::NUMBER:
+    case TokenKind::KW_TRUE:
+    case TokenKind::KW_FALSE:
     case TokenKind::PLUS:
     case TokenKind::MINUS:
     case TokenKind::LPAREN:
@@ -314,21 +316,23 @@ FunctionNode::Param VSLParser::parseParam()
     return { name, std::move(type) };
 }
 
-// type -> 'Int' | 'Void'
+// type -> 'Bool' | 'Int' | 'Void'
 std::unique_ptr<Type> VSLParser::parseType()
 {
     const Token& name = current();
     Type::Kind kind;
-    if (name.kind == TokenKind::KW_INT)
+    switch (name.kind)
     {
+    case TokenKind::KW_BOOL:
+        kind = Type::BOOL;
+        break;
+    case TokenKind::KW_INT:
         kind = Type::INT;
-    }
-    else if (name.kind == TokenKind::KW_VOID)
-    {
+        break;
+    case TokenKind::KW_VOID:
         kind = Type::VOID;
-    }
-    else
-    {
+        break;
+    default:
         errorExpected("a type name");
         kind = Type::ERROR;
     }
@@ -357,6 +361,12 @@ std::unique_ptr<Node> VSLParser::parseNud()
         return std::make_unique<IdentExprNode>(token.text, token.location);
     case TokenKind::NUMBER:
         return parseNumber(token);
+    case TokenKind::KW_TRUE:
+        return std::make_unique<IntExprNode>(llvm::APInt{ 1, 1 },
+            token.location);
+    case TokenKind::KW_FALSE:
+        return std::make_unique<IntExprNode>(llvm::APInt{ 1, 0 },
+            token.location);
     case TokenKind::MINUS:
         return std::make_unique<UnaryExprNode>(token.kind, parseExpr(100),
             token.location);
@@ -485,13 +495,20 @@ std::unique_ptr<Node> VSLParser::parseCallArg()
 
 std::unique_ptr<Node> VSLParser::parseNumber(const Token& token)
 {
-    long value;
+    llvm::APInt value;
     if (token.text.getAsInteger(10, value))
     {
-        errors << token.location << ": error: overflow detected in number '" <<
+        errors << token.location << ": error: invalid integer '" <<
             token.text.str() << "'\n";
         value = 0;
         errored = true;
     }
-    return std::make_unique<NumberExprNode>(value, token.location);
+    else if (value.getActiveBits() > 32)
+    {
+        errors << token.location << ": error: overflow detected in number '" <<
+            token.text.str() << "'\n";
+        errored = true;
+    }
+    value = value.zextOrTrunc(32);
+    return std::make_unique<IntExprNode>(std::move(value), token.location);
 }
