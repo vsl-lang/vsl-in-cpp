@@ -86,7 +86,7 @@ public:
      * @param location The source location.
      * @param type The VSL type this Node represents.
      */
-    Node(Kind kind, Location location, std::unique_ptr<Type> type = nullptr);
+    Node(Kind kind, Location location, const Type* type = nullptr);
     /**
      * Destroys a Node object.
      */
@@ -103,15 +103,15 @@ public:
      * @returns The string representation of this Node.
      */
     virtual std::string toString() const = 0;
-    /**
-     * VSL Type that this Node contains. This is mostly for expressions and is
-     * usually filled out by a {@link NodeVisitor} of some sort.
-     */
-    std::unique_ptr<Type> type;
     /** The kind of Node this is. */
     Kind kind;
     /** Where this Node was found in the source. */
     Location location;
+    /**
+     * VSL Type that this Node contains. This is mostly for expressions and is
+     * usually filled out by a {@link NodeVisitor} of some sort.
+     */
+    const Type* type;
 };
 
 /**
@@ -234,7 +234,7 @@ public:
      * @param qualifiers Type qualifiers for the variable.
      * @param location Where this AssignmentNode was found in the source.
      */
-    AssignmentNode(llvm::StringRef name, std::unique_ptr<Type> type,
+    AssignmentNode(llvm::StringRef name, const Type* type,
         std::unique_ptr<Node> value, Qualifiers qualifiers, Location location);
     /**
      * Destroys an AssignmentNode.
@@ -257,39 +257,9 @@ class FunctionNode : public Node
 {
 public:
     /**
-     * Represents the name of a parameter. This is its own separate class
-     * because {@link FunctionType} keeps track of the types, but
-     * {@link FunctionNode::paramNames} keeps track of the parameter names and
-     * locations.
-     */
-    struct ParamName
-    {
-        /**
-         * Creates a ParamName.
-         */
-        ParamName() = default;
-        /**
-         * Creates a ParamName.
-         *
-         * @param str String representation of the name.
-         * @param location where this ParamName was found in the source.
-         */
-        ParamName(llvm::StringRef str, Location location);
-        /** String representation of the name. */
-        llvm::StringRef str;
-        /** Where this ParamName was found in the source. */
-        Location location;
-    };
-    /**
      * Represents a function parameter.
      */
-    struct Param
-    {
-        /** The name of the parameter. */
-        ParamName name;
-        /** The type of the parameter. */
-        std::unique_ptr<Type> type;
-    };
+    struct Param;
     /**
      * Creates a FunctionNode.
      *
@@ -300,30 +270,45 @@ public:
      * @param location Where this FunctionNode was found in the source.
      */
     FunctionNode(llvm::StringRef name, std::vector<Param> params,
-        std::unique_ptr<Type> returnType, std::unique_ptr<Node> body,
-        Location location);
+        const Type* returnType, std::unique_ptr<Node> body, Location location);
     /**
      * Destroys a FunctionNode.
      */
     virtual ~FunctionNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
-    /**
-     * Returns the string representation of a parameter.
-     *
-     * @param name The name of the parameter.
-     * @param type The type of the parameter.
-     *
-     * @returns The string representation of a parameter.
-     */
-    static std::string paramToString(llvm::StringRef name,
-        const Type& type);
     /** The name of the function. */
     llvm::StringRef name;
     /** The function's parameters. */
-    std::vector<ParamName> paramNames;
+    std::vector<Param> params;
+    /** The function's return type. */
+    const Type* returnType;
     /** The body of the function. */
     std::unique_ptr<Node> body;
+};
+
+struct FunctionNode::Param
+{
+    /**
+     * Creates a Param object.
+     *
+     * @param name The name of the parameter.
+     * @param type The type of the parameter.
+     * @param location Where this parameter was found in the source.
+     */
+    Param(llvm::StringRef name, const Type* type, Location location);
+    /**
+     * Gets the string representation of this Param.
+     *
+     * @returns The string representation of this Param.
+     */
+    std::string toString() const;
+    /** The name of the parameter. */
+    llvm::StringRef name;
+    /** The type of the parameter. */
+    const Type* type;
+    /** Where this parameter was found in the source. */
+    Location location;
 };
 
 /**

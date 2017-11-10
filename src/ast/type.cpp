@@ -7,10 +7,6 @@ Type::Type(Kind kind)
 {
 }
 
-Type::~Type()
-{
-}
-
 const char* Type::kindToString(Type::Kind kind)
 {
     switch (kind)
@@ -33,11 +29,6 @@ SimpleType::SimpleType(Type::Kind kind)
 {
 }
 
-std::unique_ptr<Type> SimpleType::clone() const
-{
-    return std::make_unique<SimpleType>(kind);
-}
-
 std::string SimpleType::toString() const
 {
     return kindToString(kind);
@@ -58,27 +49,11 @@ llvm::Type* SimpleType::toLLVMType(llvm::LLVMContext& context) const
     }
 }
 
-FunctionType::FunctionType(std::vector<std::unique_ptr<Type>> params,
-    std::unique_ptr<Type> returnType)
+FunctionType::FunctionType(std::vector<const Type*> params,
+    const Type* returnType)
     : Type{ Type::FUNCTION }, params{ std::move(params) },
-    returnType{ std::move(returnType) }
+    returnType{ returnType }
 {
-}
-
-std::unique_ptr<Type> FunctionType::clone() const
-{
-    std::vector<std::unique_ptr<Type>> newParams;
-    newParams.reserve(params.size());
-    std::unique_ptr<Type> newReturnType = returnType->clone();
-    // this is actually just an excuse to use the cool c++11 functions instead
-    //  of a boring old for loop
-    std::transform(params.begin(), params.end(), std::back_inserter(newParams),
-        [](const std::unique_ptr<Type>& param)
-        {
-            return param->clone();
-        });
-    return std::make_unique<FunctionType>(std::move(newParams),
-        std::move(newReturnType));
 }
 
 std::string FunctionType::toString() const
@@ -110,4 +85,10 @@ llvm::Type* FunctionType::toLLVMType(llvm::LLVMContext& context) const
     llvm::Type* llvmReturnType = returnType->toLLVMType(context);
     return llvm::FunctionType::get(llvmReturnType, std::move(llvmParams),
         false);
+}
+
+bool FunctionType::operator==(const FunctionType& ft) const
+{
+    return returnType == ft.returnType && params.size() == ft.params.size() &&
+        std::equal(params.begin(), params.end(), ft.params.begin());
 }

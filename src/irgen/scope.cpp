@@ -10,7 +10,7 @@ bool Scope::Item::operator!=(const Item& rhs) const
     return type != rhs.type || value != rhs.value;
 }
 
-Scope::Scope(Type* returnType)
+Scope::Scope(const Type* returnType)
     : returnType{ returnType }
 {
 }
@@ -30,7 +30,7 @@ bool Scope::set(const std::string& s, Item i)
     return symtab.emplace(s, i).second;
 }
 
-Type* Scope::getReturnType()
+const Type* Scope::getReturnType()
 {
     return returnType;
 }

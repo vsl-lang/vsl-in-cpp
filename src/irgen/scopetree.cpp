@@ -33,7 +33,7 @@ void ScopeTree::enter()
     enter(getReturnType());
 }
 
-void ScopeTree::enter(Type* returnType)
+void ScopeTree::enter(const Type* returnType)
 {
     scopes.emplace_back(returnType);
 }
@@ -43,7 +43,7 @@ void ScopeTree::exit()
     scopes.pop_back();
 }
 
-Type* ScopeTree::getReturnType()
+const Type* ScopeTree::getReturnType()
 {
     return scopes.back().getReturnType();
 }

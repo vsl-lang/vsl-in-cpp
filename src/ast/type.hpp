@@ -3,6 +3,7 @@
 
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Type.h"
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -12,6 +13,7 @@
  */
 class Type
 {
+    friend class VSLContext;
 public:
     /**
      * Specifies the kind of Type object being represented. Keep in mind that
@@ -31,16 +33,6 @@ public:
         VOID
     };
     /**
-     * Creates a Type object.
-     *
-     * @param kind The kind of Type being created.
-     */
-    Type(Kind kind);
-    /**
-     * Destroys a Type object.
-     */
-    virtual ~Type() = 0;
-    /**
      * Gets the string representation of a given Kind.
      *
      * @param kind The kind to get the string representation for.
@@ -48,12 +40,6 @@ public:
      * @returns The string representation of a given Kind
      */
     static const char* kindToString(Type::Kind kind);
-    /**
-     * Deep clones a Type object.
-     *
-     * @returns An identical clone of the Type.
-     */
-    virtual std::unique_ptr<Type> clone() const = 0;
     /**
      * Converts the Type into a string.
      *
@@ -70,6 +56,14 @@ public:
     virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const = 0;
     /** Represents what kind of Type object this is. */
     Kind kind;
+
+protected:
+    /**
+     * Creates a Type object.
+     *
+     * @param kind The kind of Type being created.
+     */
+    Type(Kind kind);
 };
 
 /**
@@ -77,20 +71,18 @@ public:
  */
 class SimpleType : public Type
 {
+    friend class VSLContext;
 public:
+    virtual std::string toString() const override;
+    virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const override;
+
+protected:
     /**
      * Creates a SimpleType object.
      *
      * @param kind The kind of SimpleType this is.
      */
     SimpleType(Type::Kind kind);
-    /**
-     * Destroys a SimpleType object.
-     */
-    virtual ~SimpleType() override = default;
-    virtual std::unique_ptr<Type> clone() const override;
-    virtual std::string toString() const override;
-    virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const override;
 };
 
 /**
@@ -98,26 +90,60 @@ public:
  */
 class FunctionType : public Type
 {
+    friend class VSLContext;
+    friend struct std::hash<FunctionType>;
 public:
+    virtual std::string toString() const override;
+    virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const override;
+    /**
+     * Tests for equality.
+     *
+     * @param ft The other FunctionType to compare with.
+     *
+     * @returns True if they are equal, false otherwise.
+     */
+    bool operator==(const FunctionType& ft) const;
+    /** The parameters that the function takes. */
+    std::vector<const Type*> params;
+    /** What type the function returns. */
+    const Type* returnType;
+
+protected:
     /**
      * Creates a FunctionType object.
      *
      * @param params The parameters that the function takes.
      * @param returnType What type the function returns.
      */
-    FunctionType(std::vector<std::unique_ptr<Type>> params,
-        std::unique_ptr<Type> returnType);
-    /**
-     * Destroys a FunctionType object.
-     */
-    virtual ~FunctionType() override = default;
-    virtual std::unique_ptr<Type> clone() const override;
-    virtual std::string toString() const override;
-    virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const override;
-    /** The parameters that the function takes. */
-    std::vector<std::unique_ptr<Type>> params;
-    /** What type the function returns. */
-    std::unique_ptr<Type> returnType;
+    FunctionType(std::vector<const Type*> params, const Type* returnType);
 };
+
+namespace std
+{
+/**
+ * Template specialization for hashing FunctionTypes.
+ */
+template<>
+struct hash<FunctionType>
+{
+    /**
+     * Computes the hash value for a given FunctionType.
+     *
+     * @param ft The FunctionType to compute the hash value for.
+     *
+     * @returns The hash value for `ft`.
+     */
+    size_t operator()(const FunctionType& ft) const
+    {
+        size_t value = 17;
+        value = value * 31 + std::hash<const Type*>{}(ft.returnType);
+        for (const Type* param : ft.params)
+        {
+            value = value * 31 + std::hash<const Type*>{}(param);
+        }
+        return value;
+    }
+};
+} // end namespace std
 
 #endif // TYPE_HPP

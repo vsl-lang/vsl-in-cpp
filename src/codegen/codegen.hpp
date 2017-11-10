@@ -37,25 +37,15 @@ public:
     void optimize();
 
 private:
-    /**
-     * The module to compile.
-     */
+    /** The module to compile. */
     llvm::Module& module;
-    /**
-     * Handles all the module-level transformations, such as compilation.
-     */
+    /** Handles all the module-level transformations, such as compilation. */
     llvm::legacy::PassManager pm;
-    /**
-     * Handles all the function-level transformations, such as optimization.
-     */
+    /** Handles all the function-level transformations, such as optimization. */
     llvm::legacy::FunctionPassManager fpm;
-    /**
-     * The stream to print errors to.
-     */
+    /** The stream to print errors to. */
     std::ostream& errors;
-    /**
-     * True if an error was encountered, otherwise false.
-     */
+    /** True if an error was encountered, otherwise false. */
     bool errored;
 };
 

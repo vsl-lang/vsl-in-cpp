@@ -37,18 +37,21 @@ int Driver::main(int argc, const char* const* argv)
         return repl([](const std::string& in, std::ostream& out)
             {
                 VSLLexer lexer{ in.c_str(), out };
-                VSLParser parser{ lexer, out };
+                VSLContext vslContext;
+                VSLParser parser{ vslContext, lexer, out };
                 out << parser.parse()->toString() << '\n';
             });
     case OptionParser::REPL_GENERATE:
         return repl([&](const std::string& in, std::ostream& out)
             {
                 VSLLexer lexer{ in.c_str(), out };
-                VSLParser parser{ lexer, out };
+                VSLContext vslContext;
+                VSLParser parser{ vslContext, lexer, out };
                 auto ast = parser.parse();
-                llvm::LLVMContext context;
-                auto module = std::make_unique<llvm::Module>("repl", context);
-                IRGen irGen{ *module };
+                llvm::LLVMContext llvmContext;
+                auto module = std::make_unique<llvm::Module>("repl",
+                    llvmContext);
+                IRGen irGen{ vslContext, *module };
                 ast->accept(irGen);
                 CodeGen codeGen{ *module };
                 if (op.optimize)
@@ -86,11 +89,12 @@ int Driver::compile()
         return 1;
     }
     VSLLexer lexer{ in.get()->getBuffer().data() };
-    VSLParser parser{ lexer };
+    VSLContext vslContext;
+    VSLParser parser{ vslContext, lexer };
     auto ast = parser.parse();
-    llvm::LLVMContext context;
-    auto module = std::make_unique<llvm::Module>(op.infile, context);
-    IRGen irGen{ *module };
+    llvm::LLVMContext llvmContext;
+    auto module = std::make_unique<llvm::Module>(op.infile, llvmContext);
+    IRGen irGen{ vslContext, *module };
     ast->accept(irGen);
     if (lexer.hasError() || parser.hasError() || irGen.hasError())
     {

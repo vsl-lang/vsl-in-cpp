@@ -6,8 +6,8 @@ std::ostream& operator<<(std::ostream& os, const Node& ast)
     return os << ast.toString();
 }
 
-Node::Node(Kind kind, Location location, std::unique_ptr<Type> type)
-    : type{ std::move(type) }, kind{ kind }, location{ location }
+Node::Node(Kind kind, Location location, const Type* type)
+    : kind{ kind }, location{ location }, type{ type }
 {
 }
 
@@ -100,10 +100,10 @@ std::string ConditionalNode::toString() const
     return s;
 }
 
-AssignmentNode::AssignmentNode(llvm::StringRef name, std::unique_ptr<Type> type,
+AssignmentNode::AssignmentNode(llvm::StringRef name, const Type* type,
     std::unique_ptr<Node> value, Qualifiers qualifiers, Location location)
-    : Node{ Node::ASSIGNMENT, location, std::move(type) },
-    name{ name }, value{ std::move(value) }, qualifiers{ qualifiers }
+    : Node{ Node::ASSIGNMENT, location, type }, name{ name },
+    value{ std::move(value) }, qualifiers{ qualifiers }
 {
 }
 
@@ -140,27 +140,12 @@ std::string AssignmentNode::toString() const
     return s;
 }
 
-FunctionNode::ParamName::ParamName(llvm::StringRef str, Location location)
-    : str{ str }, location{ location }
-{
-}
-
 FunctionNode::FunctionNode(llvm::StringRef name, std::vector<Param> params,
-    std::unique_ptr<Type> returnType, std::unique_ptr<Node> body,
-    Location location)
+    const Type* returnType, std::unique_ptr<Node> body, Location location)
     : Node{ Node::FUNCTION, location }, name{ name },
+    params{ std::move(params) }, returnType{ returnType },
     body{ std::move(body) }
 {
-    std::vector<std::unique_ptr<Type>> paramTypes;
-    paramNames.reserve(params.size());
-    paramTypes.reserve(params.size());
-    for (auto& param : params)
-    {
-        paramNames.emplace_back(std::move(param.name.str), param.name.location);
-        paramTypes.emplace_back(std::move(param.type));
-    }
-    type = std::make_unique<FunctionType>(std::move(paramTypes),
-        std::move(returnType));
 }
 
 void FunctionNode::accept(NodeVisitor& nodeVisitor)
@@ -170,35 +155,39 @@ void FunctionNode::accept(NodeVisitor& nodeVisitor)
 
 std::string FunctionNode::toString() const
 {
-    auto& funcType = static_cast<FunctionType&>(*type);
     std::string s = "Function { name: ";
     s += name.str();
     s += ", params: [";
-    if (!paramNames.empty())
+    if (!params.empty())
     {
         s += ' ';
-        auto& paramTypes = funcType.params;
-        s += paramToString(paramNames[0].str, *paramTypes[0]);
-        for (size_t i = 1; i < paramNames.size(); ++i)
+        s += params[0].toString();
+        for (size_t i = 1; i < params.size(); ++i)
         {
             s += ", ";
-            s += paramToString(paramNames[i].str, *paramTypes[i]);
+            s += params[i].toString();
         }
         s += ' ';
     }
     s += "], returnType: ";
-    s += funcType.returnType->toString();
+    s += returnType->toString();
     s += ", body: ";
     s += body->toString();
     s += " ]";
     return s;
 }
 
-std::string FunctionNode::paramToString(llvm::StringRef name, const Type& type)
+FunctionNode::Param::Param(llvm::StringRef name, const Type* type,
+    Location Location)
+    : name{ name }, type{ type }, location{ location }
+{
+}
+
+std::string FunctionNode::Param::toString() const
 {
     std::string s = name.str();
     s += ": ";
-    s += type.toString();
+    s += type->toString();
     return s;
 }
 

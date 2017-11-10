@@ -4,6 +4,7 @@
 #include "ast/node.hpp"
 #include "ast/nodevisitor.hpp"
 #include "irgen/scopetree.hpp"
+#include "irgen/vslContext.hpp"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
@@ -22,10 +23,12 @@ public:
     /**
      * Creates an IRGen object.
      *
+     * @param vslContext The VSLContext object to be used.
      * @param module The module to emit LLVM IR into.
      * @param errors The stream to print errors to.
      */
-    IRGen(llvm::Module& module, std::ostream& errors = std::cerr);
+    IRGen(VSLContext& vslContext, llvm::Module& module,
+        std::ostream& errors = std::cerr);
     /**
      * Destroys an IRGen object.
      */
@@ -70,21 +73,15 @@ private:
      */
     static llvm::Value* createEntryAlloca(llvm::Function* f, llvm::Type* type,
         llvm::StringRef name);
-    /**
-     * The module to emit LLVM IR into.
-     */
+    /* The VSLContext object to be used. */
+    VSLContext& vslContext;
+    /** The module to emit LLVM IR into. */
     llvm::Module& module;
-    /**
-     * Context object that owns most dynamic LLVM data structures.
-     */
+    /** Context object that owns most dynamic LLVM data structures. */
     llvm::LLVMContext& context;
-    /**
-     * Used to build the IR.
-     */
+    /** Used to build the IR. */
     llvm::IRBuilder<> builder;
-    /**
-     * Manages the current scope.
-     */
+    /** Manages the current scope. */
     ScopeTree scopeTree;
     /**
      * Used as a temporary return value for some visitor methods. Most of the
@@ -92,13 +89,9 @@ private:
      * set it to `nullptr` otherwise.
      */
     llvm::Value* result;
-    /**
-     * The stream to print errors to.
-     */
+    /** The stream to print errors to. */
     std::ostream& errors;
-    /**
-     * True if an error was encountered, otherwise false.
-     */
+    /** True if an error was encountered, otherwise false. */
     bool errored;
 };
 

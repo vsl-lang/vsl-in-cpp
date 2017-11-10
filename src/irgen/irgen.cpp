@@ -3,28 +3,29 @@
 #include "llvm/IR/Function.h"
 #include <limits>
 
-IRGen::IRGen(llvm::Module& module, std::ostream& errors)
-    : module{ module }, context{ module.getContext() }, builder{ context },
-    result{ nullptr }, errors { errors }, errored{ false }
+IRGen::IRGen(VSLContext& vslContext, llvm::Module& module, std::ostream& errors)
+    : vslContext{ vslContext }, module{ module },
+    context{ module.getContext() }, builder{ context }, result{ nullptr },
+    errors { errors }, errored{ false }
 {
 }
 
 void IRGen::visit(ErrorNode& node)
 {
-    node.type = std::make_unique<SimpleType>(Type::ERROR);
+    node.type = vslContext.getSimpleType(Type::ERROR);
     result = nullptr;
 }
 
 void IRGen::visit(EmptyNode& node)
 {
-    node.type = std::make_unique<SimpleType>(Type::ERROR);
+    node.type = vslContext.getSimpleType(Type::ERROR);
     result = nullptr;
 }
 
 void IRGen::visit(BlockNode& node)
 {
     // this just creates a new scope and visits all the statements inside
-    node.type = std::make_unique<SimpleType>(Type::ERROR);
+    node.type = vslContext.getSimpleType(Type::ERROR);
     scopeTree.enter();
     for (auto& statement : node.statements)
     {
@@ -36,7 +37,7 @@ void IRGen::visit(BlockNode& node)
 
 void IRGen::visit(ConditionalNode& node)
 {
-    node.type = std::make_unique<SimpleType>(Type::ERROR);
+    node.type = vslContext.getSimpleType(Type::ERROR);
     // make sure that it's not in the global scope.
     if (scopeTree.isGlobal())
     {
@@ -109,7 +110,7 @@ void IRGen::visit(AssignmentNode& node)
     // create the store instruction
     builder.CreateStore(initialValue, alloca);
     // add to current scope
-    if (!scopeTree.set(node.name, { node.type.get(), alloca }))
+    if (!scopeTree.set(node.name, { node.type, alloca }))
     {
         errors << node.location << ": error: variable " <<
             node.name.str() << " was already defined\n";
@@ -119,22 +120,32 @@ void IRGen::visit(AssignmentNode& node)
 
 void IRGen::visit(FunctionNode& node)
 {
-    // create the function
-    auto& type = static_cast<FunctionType&>(*node.type);
-    auto ft = type.toLLVMType(context);
-    auto f = llvm::Function::Create(static_cast<llvm::FunctionType*>(ft),
-        llvm::GlobalValue::ExternalLinkage, node.name, &module);
+    // fill in the function type
+    std::vector<const Type*> paramTypes;
+    paramTypes.resize(node.params.size());
+    std::transform(node.params.begin(), node.params.end(), paramTypes.begin(),
+        [](const FunctionNode::Param& param) -> const Type*
+        {
+            return param.type;
+        });
+    node.type = vslContext.getFunctionType(std::move(paramTypes),
+        node.returnType);
+    // create the llvm function
+    auto* ft = static_cast<llvm::FunctionType*>(node.type->toLLVMType(context));
+    auto* f = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
+        node.name, &module);
     // add to current scope
-    scopeTree.set(node.name, { &type, f });
+    scopeTree.set(node.name, { node.type, f });
     // setup the parameters to be referenced as mutable variables
-    auto bb = llvm::BasicBlock::Create(context, "entry", f);
+    auto* bb = llvm::BasicBlock::Create(context, "entry", f);
     builder.SetInsertPoint(bb);
-    scopeTree.enter(type.returnType.get());
+    const auto* type = static_cast<const FunctionType*>(node.type);
+    scopeTree.enter(type->returnType);
     auto argIt = f->arg_begin();
-    for (size_t i = 0; i < node.paramNames.size(); ++i, ++argIt)
+    for (size_t i = 0; i < node.params.size(); ++i, ++argIt)
     {
-        llvm::StringRef paramName = node.paramNames[i].str;
-        Type* paramType = type.params[i].get();
+        llvm::StringRef paramName = node.params[i].name;
+        const Type* paramType = type->params[i];
         llvm::Value* alloca = createEntryAlloca(f,
             paramType->toLLVMType(context), paramName);
         builder.CreateStore(argIt, alloca);
@@ -150,8 +161,8 @@ void IRGen::visit(ReturnNode& node)
 {
     // make sure the type of the value to return matches the actual return type
     node.value->accept(*this);
-    node.type = node.value->type->clone();
-    if (node.type->kind != scopeTree.getReturnType()->kind)
+    node.type = node.value->type;
+    if (node.type != scopeTree.getReturnType())
     {
         errors << node.location <<
             ": error: cannot convert expression of type " <<
@@ -170,11 +181,11 @@ void IRGen::visit(IdentExprNode& node)
     {
         errors << node.location << ": error: unknown variable " <<
             node.name.str() << '\n';
-        node.type = std::make_unique<SimpleType>(Type::ERROR);
+        node.type = vslContext.getSimpleType(Type::ERROR);
         result = nullptr;
         return;
     }
-    node.type = i.type->clone();
+    node.type = i.type;
     // an identifier can reference either a variable or a function
     if (node.type->kind == Type::FUNCTION)
     {
@@ -205,7 +216,7 @@ void IRGen::visit(IntExprNode& node)
             "-bit integers\n";
         k = Type::ERROR;
     }
-    node.type = std::make_unique<SimpleType>(k);
+    node.type = vslContext.getSimpleType(k);
     result = llvm::ConstantInt::get(context, node.value);
 }
 
@@ -219,7 +230,7 @@ void IRGen::visit(UnaryExprNode& node)
     {
     // valid types go here
     case Type::INT:
-        node.type = std::make_unique<SimpleType>(k);
+        node.type = vslContext.getSimpleType(k);
         break;
     // errors are propagated down the expression tree
     default:
@@ -229,7 +240,7 @@ void IRGen::visit(UnaryExprNode& node)
             expr.type->toString() << '\n';
         // fallthrough
     case Type::ERROR:
-        node.type = std::make_unique<SimpleType>(Type::ERROR);
+        node.type = vslContext.getSimpleType(Type::ERROR);
         result = nullptr;
         return;
     }
@@ -270,7 +281,7 @@ void IRGen::visit(BinaryExprNode& node)
             {
                 // make sure the types match up
                 node.right->accept(*this);
-                if (i.type->kind != node.right->type->kind)
+                if (i.type != node.right->type)
                 {
                     errors << node.right->location <<
                         ": error: cannot convert expression of type " <<
@@ -285,7 +296,7 @@ void IRGen::visit(BinaryExprNode& node)
                 }
             }
         }
-        node.type = std::make_unique<SimpleType>(Type::ERROR);
+        node.type = vslContext.getSimpleType(Type::ERROR);
         result = nullptr;
         return;
     }
@@ -296,7 +307,7 @@ void IRGen::visit(BinaryExprNode& node)
     llvm::Value* right = result;
     if (left == nullptr || right == nullptr)
     {
-        node.type = std::make_unique<SimpleType>(Type::ERROR);
+        node.type = vslContext.getSimpleType(Type::ERROR);
         return;
     }
     if (node.left->type->kind != Type::INT)
@@ -315,7 +326,7 @@ void IRGen::visit(BinaryExprNode& node)
     }
     if (result == nullptr)
     {
-        node.type = std::make_unique<SimpleType>(Type::ERROR);
+        node.type = vslContext.getSimpleType(Type::ERROR);
         return;
     }
     // create the corresponding instruction based on the operator
@@ -368,43 +379,43 @@ void IRGen::visit(BinaryExprNode& node)
         k = Type::ERROR;
         result = nullptr;
     }
-    node.type = std::make_unique<SimpleType>(k);
+    node.type = vslContext.getSimpleType(k);
 }
 
 void IRGen::visit(CallExprNode& node)
 {
     // make sure the callee is an actual function
     node.callee->accept(*this);
-    Type& t = *node.callee->type;
-    FunctionType& f = static_cast<FunctionType&>(t);
-    if (t.kind != Type::FUNCTION)
+    const auto* calleeType =
+        static_cast<const FunctionType*>(node.callee->type);
+    if (calleeType->kind != Type::FUNCTION)
     {
         errors << node.location << ": error: called object of type " <<
-            t.toString() << " is not a function\n";
+            calleeType->toString() << " is not a function\n";
     }
     // make sure the right amount of arguments is used
-    else if (f.params.size() != node.args.size())
+    else if (calleeType->params.size() != node.args.size())
     {
         errors << node.location <<
             ": error: mismatched number of arguments " <<
             node.args.size() << " versus parameters " <<
-            f.params.size() << '\n';
+            calleeType->params.size() << '\n';
     }
     else
     {
         llvm::Value* func = result;
         std::vector<llvm::Value*> llvmArgs;
         // verify each argument
-        for (size_t i = 0; i < f.params.size(); ++i)
+        for (size_t i = 0; i < calleeType->params.size(); ++i)
         {
-            Type& param = *f.params[i];
+            const Type* param = calleeType->params[i];
             Node& arg = *node.args[i];
             arg.accept(*this);
             // check that the types match
-            if (arg.type->kind != param.kind)
+            if (arg.type->kind != param->kind)
             {
                 errors << arg.location << ": error: cannot convert type " <<
-                    arg.type->toString() << " to type " << param.toString() <<
+                    arg.type->toString() << " to type " << param->toString() <<
                     '\n';
             }
             else
@@ -413,15 +424,15 @@ void IRGen::visit(CallExprNode& node)
             }
         }
         // create the call instruction if all args were successfully validated
-        if (f.params.size() == llvmArgs.size())
+        if (calleeType->params.size() == llvmArgs.size())
         {
-            node.type = f.returnType->clone();
+            node.type = calleeType->returnType;
             result = builder.CreateCall(func, llvmArgs);
             return;
         }
     }
     // if any sort of error occured, then this happens
-    node.type = std::make_unique<SimpleType>(Type::ERROR);
+    node.type = vslContext.getSimpleType(Type::ERROR);
     result = nullptr;
 }
 
@@ -429,7 +440,7 @@ void IRGen::visit(ArgNode& node)
 {
     // nothing special here
     node.value->accept(*this);
-    node.type = node.value->type->clone();
+    node.type = node.value->type;
 }
 
 std::string IRGen::getIR() const

@@ -2,6 +2,7 @@
 #define VSLPARSER_HPP
 
 #include "ast/node.hpp"
+#include "irgen/vslContext.hpp"
 #include "lexer/lexer.hpp"
 #include "lexer/token.hpp"
 #include "parser/parser.hpp"
@@ -19,10 +20,12 @@ public:
     /**
      * Creates a VSLParser.
      *
+     * @param vslContext The VSLContext object to be used.
      * @param lexer The Lexer to get the tokens from.
      * @param errors The stream to print errors to.
      */
-    VSLParser(Lexer& lexer, std::ostream& errors = std::cerr);
+    VSLParser(VSLContext& vslContext, Lexer& lexer,
+        std::ostream& errors = std::cerr);
     /**
      * Destroys a VSLParser.
      */
@@ -124,7 +127,7 @@ private:
      *
      * @returns A VSL type.
      */
-    std::unique_ptr<Type> parseType();
+    const Type* parseType();
     /**
      * Parses an expression.
      *
@@ -183,21 +186,15 @@ private:
      * @returns A number expression.
      */
     std::unique_ptr<Node> parseNumber(const Token& token);
-    /**
-     * The Lexer to get the tokens from.
-     */
+    /** Reference to the VSLContext. */
+    VSLContext& vslContext;
+    /** The Lexer to get the tokens from. */
     Lexer& lexer;
-    /**
-     * Cache of tokens used in lookahead.
-     */
+    /** Cache of tokens used in lookahead. */
     std::deque<Token> cache;
-    /**
-     * The stream to print errors to.
-     */
+    /** The stream to print errors to. */
     std::ostream& errors;
-    /**
-     * True if an error was encountered, otherwise false.
-     */
+    /** True if an error was encountered, otherwise false. */
     bool errored;
 };
 

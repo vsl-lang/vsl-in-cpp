@@ -92,21 +92,13 @@ private:
      * Consumes a block comment.
      */
     void lexBlockComment();
-    /**
-     * The current buffer of text to insert into the next Token.
-     */
+    /** The current buffer of text to insert into the next Token. */
     llvm::StringRef text;
-    /**
-     * The location of the current character.
-     */
+    /** The location of the current character. */
     Location location;
-    /**
-     * The stream to print errors to.
-     */
+    /** The stream to print errors to. */
     std::ostream& errors;
-    /**
-     * True if an error was encountered, otherwise false.
-     */
+    /** True if an error was encountered, otherwise false. */
     bool errored;
 };
 

@@ -1,7 +1,8 @@
 #include "parser/vslparser.hpp"
 
-VSLParser::VSLParser(Lexer& lexer, std::ostream& errors)
-    : lexer{ lexer }, errors{ errors }, errored{ false }
+VSLParser::VSLParser(VSLContext& vslContext, Lexer& lexer, std::ostream& errors)
+    : vslContext{ vslContext }, lexer{ lexer }, errors{ errors },
+    errored{ false }
 {
 }
 
@@ -210,7 +211,7 @@ std::unique_ptr<Node> VSLParser::parseAssignment()
         return errorExpected("':'");
     }
     next();
-    std::unique_ptr<Type> type = parseType();
+    const Type* type = parseType();
     if (current().kind != TokenKind::ASSIGN)
     {
         return errorExpected("'='");
@@ -222,8 +223,8 @@ std::unique_ptr<Node> VSLParser::parseAssignment()
         return errorExpected("';'");
     }
     next();
-    return std::make_unique<AssignmentNode>(id.text, std::move(type),
-        std::move(value), qualifiers, savedLocation);
+    return std::make_unique<AssignmentNode>(id.text, type, std::move(value),
+        qualifiers, savedLocation);
 }
 
 // function -> func identifier lparen param (comma param)* arrow type block
@@ -267,10 +268,10 @@ std::unique_ptr<Node> VSLParser::parseFunction()
         return errorExpected("'->'");
     }
     next();
-    std::unique_ptr<Type> returnType = parseType();
+    const Type* returnType = parseType();
     std::unique_ptr<Node> body = parseBlock();
     return std::make_unique<FunctionNode>(id.text, std::move(params),
-        std::move(returnType), std::move(body), savedLocation);
+        returnType, std::move(body), savedLocation);
 }
 
 // return -> 'return' expr ';'
@@ -296,28 +297,27 @@ std::unique_ptr<Node> VSLParser::parseReturn()
 FunctionNode::Param VSLParser::parseParam()
 {
     const Token& id = current();
-    llvm::StringRef str;
+    llvm::StringRef name;
     if (id.kind != TokenKind::IDENTIFIER)
     {
         errorExpected("identifier");
-        str = "";
+        name = "";
     }
     else
     {
-        str = id.text;
+        name = id.text;
     }
-    FunctionNode::ParamName name{ str, id.location };
     if (next().kind != TokenKind::COLON)
     {
         errorExpected("':'");
     }
     next();
-    std::unique_ptr<Type> type = parseType();
-    return { name, std::move(type) };
+    const Type* type = parseType();
+    return { name, type, id.location };
 }
 
 // type -> 'Bool' | 'Int' | 'Void'
-std::unique_ptr<Type> VSLParser::parseType()
+const Type* VSLParser::parseType()
 {
     const Token& name = current();
     Type::Kind kind;
@@ -337,7 +337,7 @@ std::unique_ptr<Type> VSLParser::parseType()
         kind = Type::ERROR;
     }
     next();
-    return std::make_unique<SimpleType>(kind);
+    return vslContext.getSimpleType(kind);
 }
 
 // Pratt parsing/TDOP (Top Down Operator Precedence) is used for expressions

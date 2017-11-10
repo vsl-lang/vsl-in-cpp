@@ -31,21 +31,13 @@ public:
      * @param argv Argument vector.
      */
     void parse(int argc, const char* const* argv);
-    /**
-     * The action the compiler should take.
-     */
+    /** The action the compiler should take. */
     Action action;
-    /**
-     * True if the compiler should optimize the LLVM IR output.
-     */
+    /** True if the compiler should optimize the LLVM IR output. */
     bool optimize;
-    /**
-     * The file name to take input from.
-     */
+    /** The file name to take input from. */
     const char* infile;
-    /**
-     * The file name to emit output to.
-     */
+    /** The file name to emit output to. */
     const char* outfile;
 };
 

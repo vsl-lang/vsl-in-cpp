@@ -49,7 +49,7 @@ public:
      *
      * @param returnType The return type for the new scope.
      */
-    void enter(Type* returnType);
+    void enter(const Type* returnType);
     /**
      * Exits the current scope.
      */
@@ -59,7 +59,7 @@ public:
      *
      * @returns The return type of the innermost scope.
      */
-    Type* getReturnType();
+    const Type* getReturnType();
 
 private:
     /** The list of scopes being encapsulated. */

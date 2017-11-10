@@ -34,7 +34,7 @@ public:
          */
         bool operator!=(const Item& rhs) const;
         /** VSL Type. */
-        Type* type;
+        const Type* type;
         /** LLVM Value. */
         llvm::Value* value;
     };
@@ -44,7 +44,7 @@ public:
      * @param returnType The scope's return type. Used when verifying a return
      * statement.
      */
-    Scope(Type* returnType);
+    Scope(const Type* returnType);
     /**
      * Gets an Item from the symbol table.
      *
@@ -67,13 +67,13 @@ public:
      *
      * @returns The scope's return type.
      */
-    Type* getReturnType();
+    const Type* getReturnType();
 
 private:
     /** Internal symbol table. */
     std::unordered_map<std::string, Item> symtab;
     /** Scope's return type. */
-    Type* returnType;
+    const Type* returnType;
 };
 
 #endif // SCOPE_HPP
