@@ -29,6 +29,6 @@ TEST(LexerTest, HandlesNumbers)
 {
     // small numberes are ok
     valid("1337");
-    // but not big numbers like these
-    invalid("999999999999999999999999999999999");
+    // and so are big numbers like these
+    valid("999999999999999999999999999999999");
 }
