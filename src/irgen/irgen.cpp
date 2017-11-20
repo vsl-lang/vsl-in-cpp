@@ -10,22 +10,14 @@ IRGen::IRGen(VSLContext& vslContext, llvm::Module& module, std::ostream& errors)
 {
 }
 
-void IRGen::visit(ErrorNode& node)
+void IRGen::visitEmpty(EmptyNode& node)
 {
-    node.type = vslContext.getSimpleType(Type::ERROR);
     result = nullptr;
 }
 
-void IRGen::visit(EmptyNode& node)
+void IRGen::visitBlock(BlockNode& node)
 {
-    node.type = vslContext.getSimpleType(Type::ERROR);
-    result = nullptr;
-}
-
-void IRGen::visit(BlockNode& node)
-{
-    // this just creates a new scope and visits all the statements inside
-    node.type = vslContext.getSimpleType(Type::ERROR);
+    // create a new scope and visit all the statements inside
     scopeTree.enter();
     for (auto& statement : node.statements)
     {
@@ -35,9 +27,8 @@ void IRGen::visit(BlockNode& node)
     result = nullptr;
 }
 
-void IRGen::visit(ConditionalNode& node)
+void IRGen::visitIf(IfNode& node)
 {
-    node.type = vslContext.getSimpleType(Type::ERROR);
     // make sure that it's not in the global scope.
     if (scopeTree.isGlobal())
     {
@@ -86,10 +77,10 @@ void IRGen::visit(ConditionalNode& node)
     result = nullptr;
 }
 
-void IRGen::visit(AssignmentNode& node)
+void IRGen::visitVariable(VariableNode& node)
 {
     // make sure the type and value are valid and they match
-    Node& value = *node.value;
+    ExprNode& value = *node.value;
     value.accept(*this);
     if (node.type->kind != Type::INT)
     {
@@ -118,38 +109,34 @@ void IRGen::visit(AssignmentNode& node)
     result = nullptr;
 }
 
-void IRGen::visit(FunctionNode& node)
+void IRGen::visitFunction(FunctionNode& node)
 {
     // fill in the function type
     std::vector<const Type*> paramTypes;
     paramTypes.resize(node.params.size());
     std::transform(node.params.begin(), node.params.end(), paramTypes.begin(),
-        [](const FunctionNode::Param& param) -> const Type*
+        [](const auto& param)
         {
-            return param.type;
+            return param->type;
         });
-    node.type = vslContext.getFunctionType(std::move(paramTypes),
+    const auto* vslType = vslContext.getFunctionType(std::move(paramTypes),
         node.returnType);
     // create the llvm function
-    auto* ft = static_cast<llvm::FunctionType*>(node.type->toLLVMType(context));
+    auto* ft = static_cast<llvm::FunctionType*>(vslType->toLLVMType(context));
     auto* f = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
         node.name, &module);
     // add to current scope
-    scopeTree.set(node.name, { node.type, f });
+    scopeTree.set(node.name, { vslType, f });
     // setup the parameters to be referenced as mutable variables
     auto* bb = llvm::BasicBlock::Create(context, "entry", f);
     builder.SetInsertPoint(bb);
-    const auto* type = static_cast<const FunctionType*>(node.type);
-    scopeTree.enter(type->returnType);
-    auto argIt = f->arg_begin();
-    for (size_t i = 0; i < node.params.size(); ++i, ++argIt)
+    scopeTree.enter(node.returnType);
+    for (size_t i = 0; i < node.params.size(); ++i)
     {
-        llvm::StringRef paramName = node.params[i].name;
-        const Type* paramType = type->params[i];
-        llvm::Value* alloca = createEntryAlloca(f,
-            paramType->toLLVMType(context), paramName);
-        builder.CreateStore(argIt, alloca);
-        scopeTree.set(paramName, { paramType, alloca });
+        const ParamNode& param = *node.params[i];
+        llvm::Value* alloca = createEntryAlloca(f, ft->params()[i], param.name);
+        builder.CreateStore(&f->arg_begin()[i], alloca);
+        scopeTree.set(param.name, { param.type, alloca });
     }
     // generate the body
     node.body->accept(*this);
@@ -157,23 +144,26 @@ void IRGen::visit(FunctionNode& node)
     result = nullptr;
 }
 
-void IRGen::visit(ReturnNode& node)
+void IRGen::visitParam(ParamNode& node)
+{
+}
+
+void IRGen::visitReturn(ReturnNode& node)
 {
     // make sure the type of the value to return matches the actual return type
     node.value->accept(*this);
-    node.type = node.value->type;
-    if (node.type != scopeTree.getReturnType())
+    const Type* type = node.value->type;
+    if (type != scopeTree.getReturnType())
     {
         errors << node.location <<
-            ": error: cannot convert expression of type " <<
-            node.type->toString() << " to type " <<
-            scopeTree.getReturnType()->toString() << '\n';
+            ": error: cannot convert expression of type " << type->toString() <<
+            " to type " << scopeTree.getReturnType()->toString() << '\n';
     }
     // create the return instruction
     result = builder.CreateRet(result);
 }
 
-void IRGen::visit(IdentExprNode& node)
+void IRGen::visitIdent(IdentNode& node)
 {
     // lookup the name in the current scope
     Scope::Item i = scopeTree.get(node.name);
@@ -197,7 +187,7 @@ void IRGen::visit(IdentExprNode& node)
     }
 }
 
-void IRGen::visit(IntExprNode& node)
+void IRGen::visitLiteral(LiteralNode& node)
 {
     // create an LLVM integer
     Type::Kind k;
@@ -220,10 +210,10 @@ void IRGen::visit(IntExprNode& node)
     result = llvm::ConstantInt::get(context, node.value);
 }
 
-void IRGen::visit(UnaryExprNode& node)
+void IRGen::visitUnary(UnaryNode& node)
 {
     // validate the inner expression
-    Node& expr = *node.expr;
+    ExprNode& expr = *node.expr;
     expr.accept(*this);
     Type::Kind k = expr.type->kind;
     switch (k)
@@ -257,20 +247,20 @@ void IRGen::visit(UnaryExprNode& node)
     }
 }
 
-void IRGen::visit(BinaryExprNode& node)
+void IRGen::visitBinary(BinaryNode& node)
 {
     // handle assignment operator as a special case
     if (node.op == TokenKind::ASSIGN)
     {
         // make sure that the lhs is an identifier
-        if (node.left->kind != Node::ID_EXPR)
+        if (node.left->kind != Node::IDENT)
         {
             errors << node.location << ": error: lhs must be an identifier\n";
         }
         else
         {
             // lookup the identifier
-            auto& id = static_cast<IdentExprNode&>(*node.left);
+            auto& id = static_cast<IdentNode&>(*node.left);
             Scope::Item i = scopeTree.get(id.name);
             if (i.type == nullptr || i.value == nullptr)
             {
@@ -382,7 +372,7 @@ void IRGen::visit(BinaryExprNode& node)
     node.type = vslContext.getSimpleType(k);
 }
 
-void IRGen::visit(CallExprNode& node)
+void IRGen::visitCall(CallNode& node)
 {
     // make sure the callee is an actual function
     node.callee->accept(*this);
@@ -408,15 +398,16 @@ void IRGen::visit(CallExprNode& node)
         // verify each argument
         for (size_t i = 0; i < calleeType->params.size(); ++i)
         {
-            const Type* param = calleeType->params[i];
-            Node& arg = *node.args[i];
+            const Type* paramType = calleeType->params[i];
+            ArgNode& arg = *node.args[i];
             arg.accept(*this);
             // check that the types match
-            if (arg.type->kind != param->kind)
+            if (arg.value->type != paramType)
             {
-                errors << arg.location << ": error: cannot convert type " <<
-                    arg.type->toString() << " to type " << param->toString() <<
-                    '\n';
+                errors << arg.value->location <<
+                    ": error: cannot convert type " <<
+                    arg.value->type->toString() << " to type " <<
+                    paramType->toString() << '\n';
             }
             else
             {
@@ -436,11 +427,9 @@ void IRGen::visit(CallExprNode& node)
     result = nullptr;
 }
 
-void IRGen::visit(ArgNode& node)
+void IRGen::visitArg(ArgNode& node)
 {
-    // nothing special here
     node.value->accept(*this);
-    node.type = node.value->type;
 }
 
 std::string IRGen::getIR() const

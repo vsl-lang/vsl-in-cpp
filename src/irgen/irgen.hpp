@@ -33,19 +33,19 @@ public:
      * Destroys an IRGen object.
      */
     virtual ~IRGen() override = default;
-    virtual void visit(ErrorNode& node) override;
-    virtual void visit(EmptyNode& node) override;
-    virtual void visit(BlockNode& node) override;
-    virtual void visit(ConditionalNode& node) override;
-    virtual void visit(AssignmentNode& node) override;
-    virtual void visit(FunctionNode& node) override;
-    virtual void visit(ReturnNode& node) override;
-    virtual void visit(IdentExprNode& node) override;
-    virtual void visit(IntExprNode& node) override;
-    virtual void visit(UnaryExprNode& node) override;
-    virtual void visit(BinaryExprNode& node) override;
-    virtual void visit(CallExprNode& node) override;
-    virtual void visit(ArgNode& node) override;
+    virtual void visitEmpty(EmptyNode& node) override;
+    virtual void visitBlock(BlockNode& node) override;
+    virtual void visitIf(IfNode& node) override;
+    virtual void visitVariable(VariableNode& node) override;
+    virtual void visitFunction(FunctionNode& node) override;
+    virtual void visitParam(ParamNode& node) override;
+    virtual void visitReturn(ReturnNode& node) override;
+    virtual void visitIdent(IdentNode& node) override;
+    virtual void visitLiteral(LiteralNode& node) override;
+    virtual void visitUnary(UnaryNode& node) override;
+    virtual void visitBinary(BinaryNode& node) override;
+    virtual void visitCall(CallNode& node) override;
+    virtual void visitArg(ArgNode& node) override;
     /**
      * Dumps the generated LLVM IR in string form.
      *

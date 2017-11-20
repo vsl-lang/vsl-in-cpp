@@ -2,19 +2,19 @@
 #define NODE_HPP
 
 class Node;
-class ErrorNode;
 class EmptyNode;
 class BlockNode;
-class ConditionalNode;
-class AssignmentNode;
+class IfNode;
+class VariableNode;
 class FunctionNode;
+class ParamNode;
 class ReturnNode;
 class ExprNode;
-class IdentExprNode;
-class IntExprNode;
-class UnaryExprNode;
-class BinaryExprNode;
-class CallExprNode;
+class IdentNode;
+class LiteralNode;
+class UnaryNode;
+class BinaryNode;
+class CallNode;
 class ArgNode;
 
 #include "ast/nodevisitor.hpp"
@@ -52,44 +52,40 @@ public:
      */
     enum Kind
     {
-        /** An error occured. */
-        ERROR,
         /** Empty statement. */
         EMPTY,
         /** Code block. */
         BLOCK,
         /** If/else statement. */
-        CONDITIONAL,
-        /** Variable declaration. */
-        ASSIGNMENT,
+        IF,
+        /** Variable definition. */
+        VARIABLE,
         /** Function. */
         FUNCTION,
         /** Return statement. */
         RETURN,
         /** Identifier. */
-        ID_EXPR,
-        /** Number (for now, just an integer). */
-        NUMBER_EXPR,
+        IDENT,
+        /** Integer literal. */
+        LITERAL,
         /** Unary expression. */
-        UNARY_EXPR,
+        UNARY,
         /** Binary expression. */
-        BINARY_EXPR,
+        BINARY,
         /** Function call. */
-        CALL_EXPR,
-        /** Function argument. */
-        ARG
+        CALL,
+        /** Function parameter. */
+        PARAM,
+        /** Function call argument. */
+        ARG,
     };
     /**
      * Creates a Node object.
      *
      * @param kind The kind of Node this is.
      * @param location The source location.
-     * @param type The VSL type this Node represents.
      */
-    Node(Kind kind, Location location, const Type* type = nullptr);
-    /**
-     * Destroys a Node object.
-     */
+    Node(Kind kind, Location location);
     virtual ~Node() = 0;
     /**
      * Allows a {@link NodeVisitor} to visit this object.
@@ -107,31 +103,6 @@ public:
     Kind kind;
     /** Where this Node was found in the source. */
     Location location;
-    /**
-     * VSL Type that this Node contains. This is mostly for expressions and is
-     * usually filled out by a {@link NodeVisitor} of some sort.
-     */
-    const Type* type;
-};
-
-/**
- * Represents a parser error.
- */
-class ErrorNode : public Node
-{
-public:
-    /**
-     * Creates an ErrorNode.
-     *
-     * @param location Where this ErrorNode was found in the source.
-     */
-    ErrorNode(Location location);
-    /**
-     * Destroys an ErrorNode.
-     */
-    virtual ~ErrorNode() override = default;
-    virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
 };
 
 /**
@@ -146,9 +117,6 @@ public:
      * @param location Where this EmptyNode was found in the source.
      */
     EmptyNode(Location location);
-    /**
-     * Destroys an ErrorNode.
-     */
     virtual ~EmptyNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -167,9 +135,6 @@ public:
      * @param location Where this BlockNode was found in the source.
      */
     BlockNode(std::vector<std::unique_ptr<Node>> statements, Location location);
-    /**
-     * Destroys a BlockNode.
-     */
     virtual ~BlockNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -180,28 +145,24 @@ public:
 /**
  * Represents an if/else statement.
  */
-class ConditionalNode : public Node
+class IfNode : public Node
 {
 public:
     /**
-     * Creates a ConditionalNode.
+     * Creates a IfNode.
      *
      * @param condition The condition to test.
      * @param thenCase The code to run if the condition is true.
      * @param elseCase The code to run if the condition is false.
-     * @param location Where this ConditionalNode was found in the source.
+     * @param location Where this IfNode was found in the source.
      */
-    ConditionalNode(std::unique_ptr<Node> condition,
-        std::unique_ptr<Node> thenCase, std::unique_ptr<Node> elseCase,
-        Location location);
-    /**
-     * Destroys a ConditionalNode.
-     */
-    virtual ~ConditionalNode() override = default;
+    IfNode(std::unique_ptr<ExprNode> condition, std::unique_ptr<Node> thenCase,
+        std::unique_ptr<Node> elseCase, Location location);
+    virtual ~IfNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The condition to test. */
-    std::unique_ptr<Node> condition;
+    std::unique_ptr<ExprNode> condition;
     /** The code to run if the condition is true. */
     std::unique_ptr<Node> thenCase;
     /** The code to run if the condition is false. */
@@ -211,43 +172,31 @@ public:
 /**
  * Represents a variable declaration.
  */
-class AssignmentNode : public Node
+class VariableNode : public Node
 {
 public:
     /**
-     * Bitflag enum for its type qualifiers. This should really be moved to Type
-     * later, and it's currently not implemented yet.
-     */
-    enum Qualifiers
-    {
-        /** Nonconst. */
-        NONCONST = 0,
-        /** Constant. */
-        CONST = 1
-    };
-    /**
-     * Creates an AssignmentNode.
+     * Creates a VariableNode.
      *
      * @param name The name of the variable.
      * @param type The type of the variable.
      * @param value The variable's initial value.
-     * @param qualifiers Type qualifiers for the variable.
-     * @param location Where this AssignmentNode was found in the source.
+     * @param isConst If this variable is const or not.
+     * @param location Where this VariableNode was found in the source.
      */
-    AssignmentNode(llvm::StringRef name, const Type* type,
-        std::unique_ptr<Node> value, Qualifiers qualifiers, Location location);
-    /**
-     * Destroys an AssignmentNode.
-     */
-    virtual ~AssignmentNode() override = default;
+    VariableNode(llvm::StringRef name, const Type* type,
+        std::unique_ptr<ExprNode> value, bool isConst, Location location);
+    virtual ~VariableNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The name of the variable. */
     llvm::StringRef name;
+    /** The type of the variable. */
+    const Type* type;
     /** The variable's initial value. */
-    std::unique_ptr<Node> value;
-    /** Type qualifiers for the variable. */
-    Qualifiers qualifiers;
+    std::unique_ptr<ExprNode> value;
+    /** If this variable is const or not. */
+    bool isConst;
 };
 
 /**
@@ -257,10 +206,6 @@ class FunctionNode : public Node
 {
 public:
     /**
-     * Represents a function parameter.
-     */
-    struct Param;
-    /**
      * Creates a FunctionNode.
      *
      * @param name The name of the function.
@@ -269,46 +214,43 @@ public:
      * @param body The body of the function.
      * @param location Where this FunctionNode was found in the source.
      */
-    FunctionNode(llvm::StringRef name, std::vector<Param> params,
-        const Type* returnType, std::unique_ptr<Node> body, Location location);
-    /**
-     * Destroys a FunctionNode.
-     */
+    FunctionNode(llvm::StringRef name,
+        std::vector<std::unique_ptr<ParamNode>> params, const Type* returnType,
+        std::unique_ptr<Node> body, Location location);
     virtual ~FunctionNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The name of the function. */
     llvm::StringRef name;
     /** The function's parameters. */
-    std::vector<Param> params;
+    std::vector<std::unique_ptr<ParamNode>> params;
     /** The function's return type. */
     const Type* returnType;
     /** The body of the function. */
     std::unique_ptr<Node> body;
 };
 
-struct FunctionNode::Param
+/**
+ * Represents a function parameter.
+ */
+class ParamNode : public Node
 {
+public:
     /**
-     * Creates a Param object.
+     * Creates a ParamNode.
      *
      * @param name The name of the parameter.
      * @param type The type of the parameter.
-     * @param location Where this parameter was found in the source.
+     * @param location Where this ParamNode was found in the source.
      */
-    Param(llvm::StringRef name, const Type* type, Location location);
-    /**
-     * Gets the string representation of this Param.
-     *
-     * @returns The string representation of this Param.
-     */
-    std::string toString() const;
+    ParamNode(llvm::StringRef name, const Type* type, Location location);
+    virtual ~ParamNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+    virtual std::string toString() const override;
     /** The name of the parameter. */
     llvm::StringRef name;
     /** The type of the parameter. */
     const Type* type;
-    /** Where this parameter was found in the source. */
-    Location location;
 };
 
 /**
@@ -323,15 +265,12 @@ public:
      * @param value The value to return.
      * @param location Where this ReturnNode was found in the source.
      */
-    ReturnNode(std::unique_ptr<Node> value, Location location);
-    /**
-     * Destroys a ReturnNode.
-     */
+    ReturnNode(std::unique_ptr<ExprNode> value, Location location);
     virtual ~ReturnNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The value to return. */
-    std::unique_ptr<Node> value;
+    std::unique_ptr<ExprNode> value;
 };
 
 /**
@@ -348,25 +287,27 @@ public:
      * @param location where this ExprNode was found in the source.
      */
     ExprNode(Node::Kind kind, Location location);
+    /**
+     * VSL Type that this ExprNode contains. This is usually filled in later by
+     * a {@link NodeVisitor} of some sort.
+     */
+    const Type* type;
 };
 
 /**
  * Represents an identifier.
  */
-class IdentExprNode : public ExprNode
+class IdentNode : public ExprNode
 {
 public:
     /**
-     * Creates an IdentExprNode.
+     * Creates an IdentNode.
      *
      * @param name The name of the identifier.
-     * @param location where this IdentExprNode was found in the source.
+     * @param location where this IdentNode was found in the source.
      */
-    IdentExprNode(llvm::StringRef name, Location location);
-    /**
-     * Destroys an IdentExprNode.
-     */
-    virtual ~IdentExprNode() override = default;
+    IdentNode(llvm::StringRef name, Location location);
+    virtual ~IdentNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The name of the identifier. */
@@ -374,22 +315,19 @@ public:
 };
 
 /**
- * Represents an integer.
+ * Represents an (integer) literal.
  */
-class IntExprNode : public ExprNode
+class LiteralNode : public ExprNode
 {
 public:
     /**
-     * Creates an IntExprNode.
+     * Creates an LiteralNode.
      *
      * @param value The value of the number.
-     * @param location Where this IntExprNode was found in the source.
+     * @param location Where this LiteralNode was found in the source.
      */
-    IntExprNode(llvm::APInt value, Location location);
-    /**
-     * Destroys a NumberExprNode.
-     */
-    virtual ~IntExprNode() override = default;
+    LiteralNode(llvm::APInt value, Location location);
+    virtual ~LiteralNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The value of the number. */
@@ -399,89 +337,79 @@ public:
 /**
  * Represents a unary expression.
  */
-class UnaryExprNode : public ExprNode
+class UnaryNode : public ExprNode
 {
 public:
     /**
-     * Creates a UnaryExprNode.
+     * Creates a UnaryNode.
      *
      * @param op The operator of the expression.
      * @param expr The expression to apply the operator to.
-     * @param location Where this UnaryExprNode was found in the source.
+     * @param location Where this UnaryNode was found in the source.
      */
-    UnaryExprNode(TokenKind op, std::unique_ptr<Node> expr,
-        Location location);
-    /**
-     * Destroys a UnaryExprNode.
-     */
-    virtual ~UnaryExprNode() override = default;
+    UnaryNode(TokenKind op, std::unique_ptr<ExprNode> expr, Location location);
+    virtual ~UnaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The operator of the expression. */
     TokenKind op;
     /** The expression to apply the operator to. */
-    std::unique_ptr<Node> expr;
+    std::unique_ptr<ExprNode> expr;
 };
 
 /**
  * Represents a binary expression.
  */
-class BinaryExprNode : public ExprNode
+class BinaryNode : public ExprNode
 {
 public:
     /**
-     * Creates a BinaryExprNode.
+     * Creates a BinaryNode.
      *
      * @param op The operator of the expression.
      * @param left The left hand side of the expression.
      * @param right The right hand side of the expression.
-     * @param location Where this BinaryExprNode was found in the source.
+     * @param location Where this BinaryNode was found in the source.
      */
-    BinaryExprNode(TokenKind op, std::unique_ptr<Node> left,
-        std::unique_ptr<Node> right, Location location);
-    /**
-     * Destroys a BinaryExprNode.
-     */
-    virtual ~BinaryExprNode() override = default;
+    BinaryNode(TokenKind op, std::unique_ptr<ExprNode> left,
+        std::unique_ptr<ExprNode> right, Location location);
+    virtual ~BinaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The operator of the expression. */
     TokenKind op;
     /** The left hand side of the expression. */
-    std::unique_ptr<Node> left;
+    std::unique_ptr<ExprNode> left;
     /** The right hand side of the expression. */
-    std::unique_ptr<Node> right;
+    std::unique_ptr<ExprNode> right;
 };
 
 /**
  * Represents a function call.
  */
-class CallExprNode : public ExprNode
+class CallNode : public ExprNode
 {
 public:
     /**
-     * Creates a CallExprNode.
+     * Creates a CallNode.
      *
      * @param callee The function to call.
      * @param args The arguments to pass to the callee.
-     * @param location Where this CallExprNode was found in the source.
+     * @param location Where this CallNode was found in the source.
      */
-    CallExprNode(std::unique_ptr<Node> callee,
-        std::vector<std::unique_ptr<Node>> args, Location location);
-    /**
-     * Destroys a CallExprNode.
-     */
-    virtual ~CallExprNode() override = default;
+    CallNode(std::unique_ptr<ExprNode> callee,
+        std::vector<std::unique_ptr<ArgNode>> args, Location location);
+    virtual ~CallNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The function to call. */
-    std::unique_ptr<Node> callee;
+    std::unique_ptr<ExprNode> callee;
     /** The arguments to pass to the callee. */
-    std::vector<std::unique_ptr<Node>> args;
+    std::vector<std::unique_ptr<ArgNode>> args;
 };
 
 /**
- * Represents a function argument.
+ * Represents a function call argument.
  */
 class ArgNode : public Node
 {
@@ -493,18 +421,15 @@ public:
      * @param value The value of the argument.
      * @param location Where this ArgNode was found in the source.
      */
-    ArgNode(llvm::StringRef name, std::unique_ptr<Node> value,
+    ArgNode(llvm::StringRef name, std::unique_ptr<ExprNode> value,
         Location location);
-    /**
-     * Destroys an ArgNode.
-     */
     ~ArgNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The name of the argument. */
     llvm::StringRef name;
     /** The value of the argument. */
-    std::unique_ptr<Node> value;
+    std::unique_ptr<ExprNode> value;
 };
 
 #endif // NODE_HPP

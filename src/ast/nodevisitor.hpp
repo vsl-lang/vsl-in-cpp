@@ -13,32 +13,26 @@ class NodeVisitor;
 class NodeVisitor
 {
 public:
-    /**
-     * Destroys a NodeVisitor.
-     */
     virtual ~NodeVisitor() = 0;
     /**
-     * Visits a {@link Node}. Because this method is hidden by its overloaded
-     * counterparts, subclasses must add a `using NodeVisitor::visit;` statement
-     * in order to use it. Usually, it's fine to just use {@link Node::accept}
-     * instead.
+     * Visits a {@link Node}. This is the equivalent of `node.accept(*this)`.
      *
      * @param node The node to visit.
      */
     void visit(Node& node);
-    virtual void visit(ErrorNode& node) = 0;
-    virtual void visit(EmptyNode& node) = 0;
-    virtual void visit(BlockNode& node) = 0;
-    virtual void visit(ConditionalNode& node) = 0;
-    virtual void visit(AssignmentNode& node) = 0;
-    virtual void visit(FunctionNode& node) = 0;
-    virtual void visit(ReturnNode& node) = 0;
-    virtual void visit(IdentExprNode& node) = 0;
-    virtual void visit(IntExprNode& node) = 0;
-    virtual void visit(UnaryExprNode& node) = 0;
-    virtual void visit(BinaryExprNode& node) = 0;
-    virtual void visit(CallExprNode& node) = 0;
-    virtual void visit(ArgNode& node) = 0;
+    virtual void visitEmpty(EmptyNode& node) = 0;
+    virtual void visitBlock(BlockNode& node) = 0;
+    virtual void visitIf(IfNode& node) = 0;
+    virtual void visitVariable(VariableNode& node) = 0;
+    virtual void visitFunction(FunctionNode& node) = 0;
+    virtual void visitParam(ParamNode& node) = 0;
+    virtual void visitReturn(ReturnNode& node) = 0;
+    virtual void visitIdent(IdentNode& node) = 0;
+    virtual void visitLiteral(LiteralNode& node) = 0;
+    virtual void visitUnary(UnaryNode& node) = 0;
+    virtual void visitBinary(BinaryNode& node) = 0;
+    virtual void visitCall(CallNode& node) = 0;
+    virtual void visitArg(ArgNode& node) = 0;
 };
 
 #endif // NODEVISITOR_HPP

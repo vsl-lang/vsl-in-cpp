@@ -17,9 +17,9 @@ public:
     /**
      * Parses the program.
      *
-     * @returns The AST of the program.
+     * @returns The AST of the program, wrapped in a {@link BlockNode}.
      */
-    virtual std::unique_ptr<Node> parse() = 0;
+    virtual std::unique_ptr<BlockNode> parse() = 0;
 };
 
 #endif // PARSER_HPP
