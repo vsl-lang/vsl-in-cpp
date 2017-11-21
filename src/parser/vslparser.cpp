@@ -7,17 +7,17 @@ VSLParser::VSLParser(VSLContext& vslContext, Lexer& lexer, std::ostream& errors)
 }
 
 // program -> statements eof
-std::unique_ptr<BlockNode> VSLParser::parse()
+BlockNode* VSLParser::parse()
 {
     // it's assumed that the token cache is empty, so calling next() should get
     //  the very first token from the lexer
     Location savedLocation = next().location;
-    auto statements = parseStatements();
+    std::vector<Node*> statements = parseStatements();
     if (current().kind != TokenKind::END)
     {
         errorExpected("eof");
     }
-    return std::make_unique<BlockNode>(std::move(statements), savedLocation);
+    return makeNode<BlockNode>(std::move(statements), savedLocation);
 }
 
 bool VSLParser::hasError() const
@@ -36,27 +36,27 @@ const Token& VSLParser::current()
     return cache.back();
 }
 
-std::unique_ptr<EmptyNode> VSLParser::errorExpected(const char* s)
+EmptyNode* VSLParser::errorExpected(const char* s)
 {
     const Token& t = current();
     errors << t.location << ": error: expected " << s << " but found " <<
         getTokenKindName(t.kind) << '\n';
     errored = true;
-    return std::make_unique<EmptyNode>(t.location);
+    return makeNode<EmptyNode>(t.location);
 }
 
-std::unique_ptr<EmptyNode> VSLParser::errorUnexpected(const Token& token)
+EmptyNode* VSLParser::errorUnexpected(const Token& token)
 {
     errors << token.location << ": error: unexpected token " <<
         getTokenKindName(token.kind) << '\n';
     errored = true;
-    return std::make_unique<EmptyNode>(token.location);
+    return makeNode<EmptyNode>(token.location);
 }
 
 // statements -> statement*
-std::vector<std::unique_ptr<Node>> VSLParser::parseStatements()
+std::vector<Node*> VSLParser::parseStatements()
 {
-    std::vector<std::unique_ptr<Node>> statements;
+    std::vector<Node*> statements;
     while (true)
     {
         // the cases here are in the follow set, telling when to stop expanding
@@ -74,7 +74,7 @@ std::vector<std::unique_ptr<Node>> VSLParser::parseStatements()
 
 // statement -> assignment | function | return | conditional | expr semicolon
 //            | block | empty
-std::unique_ptr<Node> VSLParser::parseStatement()
+Node* VSLParser::parseStatement()
 {
     // the cases here are first sets, distinguishing which production to go for
     //  based on a token of lookahead
@@ -97,7 +97,7 @@ std::unique_ptr<Node> VSLParser::parseStatement()
     case TokenKind::MINUS:
     case TokenKind::LPAREN:
         {
-            auto expr = parseExpr();
+            ExprNode* expr = parseExpr();
             if (current().kind != TokenKind::SEMICOLON)
             {
                 return errorExpected("';'");
@@ -112,13 +112,13 @@ std::unique_ptr<Node> VSLParser::parseStatement()
     default:
         ;
     }
-    auto e = errorUnexpected(current());
+    EmptyNode* e = errorUnexpected(current());
     next();
     return e;
 }
 
 // empty -> semicolon
-std::unique_ptr<EmptyNode> VSLParser::parseEmptyStatement()
+EmptyNode* VSLParser::parseEmptyStatement()
 {
     const Token& semicolon = current();
     if (semicolon.kind != TokenKind::SEMICOLON)
@@ -126,11 +126,11 @@ std::unique_ptr<EmptyNode> VSLParser::parseEmptyStatement()
         return errorExpected("';'");
     }
     next();
-    return std::make_unique<EmptyNode>(semicolon.location);
+    return makeNode<EmptyNode>(semicolon.location);
 }
 
 // block -> lbrace statements rbrace
-std::unique_ptr<Node> VSLParser::parseBlock()
+Node* VSLParser::parseBlock()
 {
     const Token& lbrace = current();
     if (lbrace.kind != TokenKind::LBRACE)
@@ -138,19 +138,19 @@ std::unique_ptr<Node> VSLParser::parseBlock()
         return errorExpected("'{'");
     }
     next();
-    auto statements = parseStatements();
+    std::vector<Node*> statements = parseStatements();
     if (current().kind != TokenKind::RBRACE)
     {
         return errorExpected("'}'");
     }
     next();
-    return std::make_unique<BlockNode>(std::move(statements), lbrace.location);
+    return makeNode<BlockNode>(std::move(statements), lbrace.location);
 }
 
 // conditional -> if lparen expr rparen statement (else statement)?
-std::unique_ptr<Node> VSLParser::parseIf()
+Node* VSLParser::parseIf()
 {
-    Location savedLocation = current().location;
+    Location location = current().location;
     if (current().kind != TokenKind::KW_IF)
     {
         return errorExpected("'if'");
@@ -160,14 +160,14 @@ std::unique_ptr<Node> VSLParser::parseIf()
         return errorExpected("'('");
     }
     next();
-    auto condition = parseExpr();
+    ExprNode* condition = parseExpr();
     if (current().kind != TokenKind::RPAREN)
     {
         return errorExpected("')'");
     }
     next();
-    auto thenCase = parseStatement();
-    std::unique_ptr<Node> elseCase;
+    Node* thenCase = parseStatement();
+    Node* elseCase;
     if (current().kind == TokenKind::KW_ELSE)
     {
         next();
@@ -175,14 +175,13 @@ std::unique_ptr<Node> VSLParser::parseIf()
     }
     else
     {
-        elseCase = std::make_unique<EmptyNode>(current().location);
+        elseCase = makeNode<EmptyNode>(current().location);
     }
-    return std::make_unique<IfNode>(std::move(condition), std::move(thenCase),
-        std::move(elseCase), savedLocation);
+    return makeNode<IfNode>(condition, thenCase, elseCase, location);
 }
 
 // assignment -> (var | let) identifier colon type assign expr semicolon
-std::unique_ptr<Node> VSLParser::parseVariable()
+Node* VSLParser::parseVariable()
 {
     bool isConst;
     TokenKind k = current().kind;
@@ -198,7 +197,7 @@ std::unique_ptr<Node> VSLParser::parseVariable()
     {
         return errorExpected("'let' or 'var'");
     }
-    Location savedLocation = current().location;
+    Location location = current().location;
     next();
     const Token& id = current();
     if (id.kind != TokenKind::IDENTIFIER)
@@ -217,36 +216,36 @@ std::unique_ptr<Node> VSLParser::parseVariable()
         return errorExpected("'='");
     }
     next();
-    auto value = parseExpr();
+    ExprNode* value = parseExpr();
     if (current().kind != TokenKind::SEMICOLON)
     {
         return errorExpected("';'");
     }
     next();
-    return std::make_unique<VariableNode>(id.text, type, std::move(value),
-        isConst, savedLocation);
+    return makeNode<VariableNode>(id.text, type, value, isConst, location);
 }
 
 // function -> func identifier lparen param (comma param)* arrow type block
-std::unique_ptr<Node> VSLParser::parseFunction()
+Node* VSLParser::parseFunction()
 {
     const Token& func = current();
     if (func.kind != TokenKind::KW_FUNC)
     {
         return errorExpected("'func'");
     }
-    Location savedLocation = func.location;
+    const Location& location = func.location;
     const Token& id = next();
     if (id.kind != TokenKind::IDENTIFIER)
     {
         return errorExpected("identifier");
     }
+    llvm::StringRef name = id.text;
     if (next().kind != TokenKind::LPAREN)
     {
         return errorExpected("'('");
     }
     next();
-    std::vector<std::unique_ptr<ParamNode>> params;
+    std::vector<ParamNode*> params;
     if (current().kind != TokenKind::RPAREN)
     {
         while (true)
@@ -269,15 +268,16 @@ std::unique_ptr<Node> VSLParser::parseFunction()
     }
     next();
     const Type* returnType = parseType();
-    auto body = parseBlock();
-    return std::make_unique<FunctionNode>(id.text, std::move(params),
-        returnType, std::move(body), savedLocation);
+    Node* body = parseBlock();
+    return makeNode<FunctionNode>(name, std::move(params), returnType, body,
+        location);
 }
 
 // param -> identifier ':' type
-std::unique_ptr<ParamNode> VSLParser::parseParam()
+ParamNode* VSLParser::parseParam()
 {
     const Token& id = current();
+    const Location& location = id.location;
     llvm::StringRef name;
     if (id.kind != TokenKind::IDENTIFIER)
     {
@@ -297,61 +297,59 @@ std::unique_ptr<ParamNode> VSLParser::parseParam()
         next();
     }
     const Type* type = parseType();
-    return std::make_unique<ParamNode>(name, type, id.location);
+    return makeNode<ParamNode>(name, type, location);
 }
 
 // return -> 'return' expr ';'
-std::unique_ptr<Node> VSLParser::parseReturn()
+Node* VSLParser::parseReturn()
 {
     const Token& ret = current();
     if (ret.kind != TokenKind::KW_RETURN)
     {
         return errorExpected("'return'");
     }
-    Location savedLocation = ret.location;
+    const Location& location = ret.location;
     next();
-    auto value = parseExpr();
+    ExprNode* value = parseExpr();
     if (current().kind != TokenKind::SEMICOLON)
     {
         return errorExpected("';'");
     }
     next();
-    return std::make_unique<ReturnNode>(std::move(value), savedLocation);
+    return makeNode<ReturnNode>(value, location);
 }
 
 // Pratt parsing/TDOP (Top Down Operator Precedence) is used for expressions
-std::unique_ptr<ExprNode> VSLParser::parseExpr(int rbp)
+ExprNode* VSLParser::parseExpr(int rbp)
 {
-    auto left = parseNud();
+    ExprNode* left = parseNud();
     while (rbp < getLbp(current()))
     {
-        left = parseLed(std::move(left));
+        left = parseLed(left);
     }
     return left;
 }
 
-std::unique_ptr<ExprNode> VSLParser::parseNud()
+ExprNode* VSLParser::parseNud()
 {
     const Token& token = current();
+    const Location& location = token.location;
     next();
     switch (token.kind)
     {
     case TokenKind::IDENTIFIER:
-        return std::make_unique<IdentNode>(token.text, token.location);
+        return makeNode<IdentNode>(token.text, location);
     case TokenKind::NUMBER:
         return parseNumber(token);
     case TokenKind::KW_TRUE:
-        return std::make_unique<LiteralNode>(llvm::APInt{ 1, 1 },
-            token.location);
+        return makeNode<LiteralNode>(llvm::APInt{ 1, 1 }, location);
     case TokenKind::KW_FALSE:
-        return std::make_unique<LiteralNode>(llvm::APInt{ 1, 0 },
-            token.location);
+        return makeNode<LiteralNode>(llvm::APInt{ 1, 0 }, location);
     case TokenKind::MINUS:
-        return std::make_unique<UnaryNode>(token.kind, parseExpr(100),
-            token.location);
+        return makeNode<UnaryNode>(token.kind, parseExpr(100), location);
     case TokenKind::LPAREN:
         {
-            auto expr = parseExpr();
+            ExprNode* expr = parseExpr();
             if (current().kind != TokenKind::RPAREN)
             {
                 errorExpected("')'");
@@ -361,14 +359,14 @@ std::unique_ptr<ExprNode> VSLParser::parseNud()
         }
     default:
         errorExpected("unary operator, identifier, or number");
-        return std::make_unique<LiteralNode>(llvm::APInt{ 32, 0 },
-            token.location);
+        return makeNode<LiteralNode>(llvm::APInt{ 32, 0 }, location);
     }
 }
 
-std::unique_ptr<ExprNode> VSLParser::parseLed(std::unique_ptr<ExprNode> left)
+ExprNode* VSLParser::parseLed(ExprNode* left)
 {
     const Token& token = current();
+    const Location& location = token.location;
     TokenKind k = token.kind;
     switch (k)
     {
@@ -384,15 +382,15 @@ std::unique_ptr<ExprNode> VSLParser::parseLed(std::unique_ptr<ExprNode> left)
     case TokenKind::EQUALS:
         // left associative
         next();
-        return std::make_unique<BinaryNode>(k, std::move(left),
-            parseExpr(getLbp(token)), token.location);
+        return makeNode<BinaryNode>(k, left, parseExpr(getLbp(token)),
+            location);
     case TokenKind::ASSIGN:
         // right associative
         next();
-        return std::make_unique<BinaryNode>(k, std::move(left),
-            parseExpr(getLbp(token) - 1), token.location);
+        return makeNode<BinaryNode>(k, left, parseExpr(getLbp(token) - 1),
+            location);
     case TokenKind::LPAREN:
-        return parseCall(std::move(left));
+        return parseCall(left);
     default:
         errorExpected("binary operator");
         return left;
@@ -430,15 +428,16 @@ int VSLParser::getLbp(const Token& token) const
 
 // call -> callee lparen arg (comma arg)* rparen
 // callee is passed as an argument from parseLed()
-std::unique_ptr<CallNode> VSLParser::parseCall(std::unique_ptr<ExprNode> callee)
+CallNode* VSLParser::parseCall(ExprNode* callee)
 {
     const Token& lparen = current();
+    const Location& location = lparen.location;
     if (lparen.kind != TokenKind::LPAREN)
     {
         errorExpected("'('");
     }
     next();
-    std::vector<std::unique_ptr<ArgNode>> args;
+    std::vector<ArgNode*> args;
     if (current().kind != TokenKind::RPAREN)
     {
         while (true)
@@ -456,14 +455,14 @@ std::unique_ptr<CallNode> VSLParser::parseCall(std::unique_ptr<ExprNode> callee)
         errorExpected("')'");
     }
     next();
-    return std::make_unique<CallNode>(std::move(callee), std::move(args),
-        lparen.location);
+    return makeNode<CallNode>(callee, args, location);
 }
 
 // arg -> identifier ':' expr
-std::unique_ptr<ArgNode> VSLParser::parseCallArg()
+ArgNode* VSLParser::parseCallArg()
 {
     const Token& id = current();
+    const Location& location = id.location;
     llvm::StringRef name;
     if (id.kind != TokenKind::IDENTIFIER)
     {
@@ -483,12 +482,13 @@ std::unique_ptr<ArgNode> VSLParser::parseCallArg()
     {
         next();
     }
-    auto value = parseExpr();
-    return std::make_unique<ArgNode>(name, std::move(value), id.location);
+    ExprNode* value = parseExpr();
+    return makeNode<ArgNode>(name, value, location);
 }
 
-std::unique_ptr<LiteralNode> VSLParser::parseNumber(const Token& token)
+LiteralNode* VSLParser::parseNumber(const Token& token)
 {
+    const Location& location = token.location;
     llvm::APInt value;
     if (token.text.getAsInteger(10, value))
     {
@@ -504,7 +504,7 @@ std::unique_ptr<LiteralNode> VSLParser::parseNumber(const Token& token)
         errored = true;
     }
     value = value.zextOrTrunc(32);
-    return std::make_unique<LiteralNode>(std::move(value), token.location);
+    return makeNode<LiteralNode>(std::move(value), location);
 }
 
 // type -> 'Bool' | 'Int' | 'Void'

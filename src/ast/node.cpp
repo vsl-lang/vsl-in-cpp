@@ -30,8 +30,7 @@ std::string EmptyNode::toString() const
     return "Empty {}";
 }
 
-BlockNode::BlockNode(std::vector<std::unique_ptr<Node>> statements,
-    Location location)
+BlockNode::BlockNode(std::vector<Node*> statements, Location location)
     : Node{ Node::BLOCK, location }, statements{ std::move(statements) }
 {
 }
@@ -59,11 +58,10 @@ std::string BlockNode::toString() const
     return s;
 }
 
-IfNode::IfNode(std::unique_ptr<ExprNode> condition,
-    std::unique_ptr<Node> thenCase, std::unique_ptr<Node> elseCase,
+IfNode::IfNode(ExprNode* condition, Node* thenCase, Node* elseCase,
     Location location)
-    : Node{ Node::IF, location }, condition{ std::move(condition) },
-    thenCase{ std::move(thenCase) }, elseCase{ std::move(elseCase) }
+    : Node{ Node::IF, location }, condition{ condition }, thenCase{ thenCase },
+    elseCase{ elseCase }
 {
 }
 
@@ -85,9 +83,9 @@ std::string IfNode::toString() const
 }
 
 VariableNode::VariableNode(llvm::StringRef name, const Type* type,
-    std::unique_ptr<ExprNode> value, bool isConst, Location location)
+    ExprNode* value, bool isConst, Location location)
     : Node{ Node::VARIABLE, location }, name{ name }, type{ type },
-    value{ std::move(value) }, isConst{ isConst }
+    value{ value }, isConst{ isConst }
 {
 }
 
@@ -110,12 +108,10 @@ std::string VariableNode::toString() const
     return s;
 }
 
-FunctionNode::FunctionNode(llvm::StringRef name,
-    std::vector<std::unique_ptr<ParamNode>> params, const Type* returnType,
-    std::unique_ptr<Node> body, Location location)
+FunctionNode::FunctionNode(llvm::StringRef name, std::vector<ParamNode*> params,
+    const Type* returnType, Node* body, Location location)
     : Node{ Node::FUNCTION, location }, name{ name },
-    params{ std::move(params) }, returnType{ returnType },
-    body{ std::move(body) }
+    params{ std::move(params) }, returnType{ returnType }, body{ body }
 {
 }
 
@@ -166,7 +162,7 @@ std::string ParamNode::toString() const
     return s;
 }
 
-ReturnNode::ReturnNode(std::unique_ptr<ExprNode> value, Location location)
+ReturnNode::ReturnNode(ExprNode* value, Location location)
     : Node{ Node::RETURN, location }, value{ std::move(value) }
 {
 }
@@ -225,9 +221,8 @@ std::string LiteralNode::toString() const
     return s;
 }
 
-UnaryNode::UnaryNode(TokenKind op, std::unique_ptr<ExprNode> expr,
-    Location location)
-    : ExprNode{ Node::UNARY, location }, op{ op }, expr{ std::move(expr) }
+UnaryNode::UnaryNode(TokenKind op, ExprNode* expr, Location location)
+    : ExprNode{ Node::UNARY, location }, op{ op }, expr{ expr }
 {
 }
 
@@ -246,10 +241,9 @@ std::string UnaryNode::toString() const
     return s;
 }
 
-BinaryNode::BinaryNode(TokenKind op, std::unique_ptr<ExprNode> left,
-    std::unique_ptr<ExprNode> right, Location location)
-    : ExprNode{ Node::BINARY, location }, op{ op }, left{ std::move(left) },
-    right{ std::move(right) }
+BinaryNode::BinaryNode(TokenKind op, ExprNode* left, ExprNode* right,
+    Location location)
+    : ExprNode{ Node::BINARY, location }, op{ op }, left{ left }, right{ right }
 {
 }
 
@@ -270,9 +264,9 @@ std::string BinaryNode::toString() const
     return s;
 }
 
-CallNode::CallNode(std::unique_ptr<ExprNode> callee,
-    std::vector<std::unique_ptr<ArgNode>> args, Location location)
-    : ExprNode{ Node::CALL, location }, callee{ std::move(callee) },
+CallNode::CallNode(ExprNode* callee, std::vector<ArgNode*> args,
+    Location location)
+    : ExprNode{ Node::CALL, location }, callee{ callee },
     args{ std::move(args) }
 {
 }
@@ -302,9 +296,8 @@ std::string CallNode::toString() const
     return s;
 }
 
-ArgNode::ArgNode(llvm::StringRef name, std::unique_ptr<ExprNode> value,
-    Location location)
-    : Node{ Node::ARG, location }, name{ name }, value{ std::move(value) }
+ArgNode::ArgNode(llvm::StringRef name, ExprNode* value, Location location)
+    : Node{ Node::ARG, location }, name{ name }, value{ value }
 {
 }
 

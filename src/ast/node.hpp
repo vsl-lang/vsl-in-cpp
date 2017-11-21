@@ -134,12 +134,12 @@ public:
      * @param statements The statements inside the block.
      * @param location Where this BlockNode was found in the source.
      */
-    BlockNode(std::vector<std::unique_ptr<Node>> statements, Location location);
+    BlockNode(std::vector<Node*> statements, Location location);
     virtual ~BlockNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The statements inside the block. */
-    std::vector<std::unique_ptr<Node>> statements;
+    std::vector<Node*> statements;
 };
 
 /**
@@ -156,17 +156,17 @@ public:
      * @param elseCase The code to run if the condition is false.
      * @param location Where this IfNode was found in the source.
      */
-    IfNode(std::unique_ptr<ExprNode> condition, std::unique_ptr<Node> thenCase,
-        std::unique_ptr<Node> elseCase, Location location);
+    IfNode(ExprNode* condition, Node* thenCase, Node* elseCase,
+        Location location);
     virtual ~IfNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The condition to test. */
-    std::unique_ptr<ExprNode> condition;
+    ExprNode* condition;
     /** The code to run if the condition is true. */
-    std::unique_ptr<Node> thenCase;
+    Node* thenCase;
     /** The code to run if the condition is false. */
-    std::unique_ptr<Node> elseCase;
+    Node* elseCase;
 };
 
 /**
@@ -184,8 +184,8 @@ public:
      * @param isConst If this variable is const or not.
      * @param location Where this VariableNode was found in the source.
      */
-    VariableNode(llvm::StringRef name, const Type* type,
-        std::unique_ptr<ExprNode> value, bool isConst, Location location);
+    VariableNode(llvm::StringRef name, const Type* type, ExprNode* value,
+        bool isConst, Location location);
     virtual ~VariableNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -194,7 +194,7 @@ public:
     /** The type of the variable. */
     const Type* type;
     /** The variable's initial value. */
-    std::unique_ptr<ExprNode> value;
+    ExprNode* value;
     /** If this variable is const or not. */
     bool isConst;
 };
@@ -214,20 +214,19 @@ public:
      * @param body The body of the function.
      * @param location Where this FunctionNode was found in the source.
      */
-    FunctionNode(llvm::StringRef name,
-        std::vector<std::unique_ptr<ParamNode>> params, const Type* returnType,
-        std::unique_ptr<Node> body, Location location);
+    FunctionNode(llvm::StringRef name, std::vector<ParamNode*> params,
+        const Type* returnType, Node* body, Location location);
     virtual ~FunctionNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The name of the function. */
     llvm::StringRef name;
     /** The function's parameters. */
-    std::vector<std::unique_ptr<ParamNode>> params;
+    std::vector<ParamNode*> params;
     /** The function's return type. */
     const Type* returnType;
     /** The body of the function. */
-    std::unique_ptr<Node> body;
+    Node* body;
 };
 
 /**
@@ -265,12 +264,12 @@ public:
      * @param value The value to return.
      * @param location Where this ReturnNode was found in the source.
      */
-    ReturnNode(std::unique_ptr<ExprNode> value, Location location);
+    ReturnNode(ExprNode* value, Location location);
     virtual ~ReturnNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The value to return. */
-    std::unique_ptr<ExprNode> value;
+    ExprNode* value;
 };
 
 /**
@@ -347,14 +346,14 @@ public:
      * @param expr The expression to apply the operator to.
      * @param location Where this UnaryNode was found in the source.
      */
-    UnaryNode(TokenKind op, std::unique_ptr<ExprNode> expr, Location location);
+    UnaryNode(TokenKind op, ExprNode* expr, Location location);
     virtual ~UnaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The operator of the expression. */
     TokenKind op;
     /** The expression to apply the operator to. */
-    std::unique_ptr<ExprNode> expr;
+    ExprNode* expr;
 };
 
 /**
@@ -371,17 +370,17 @@ public:
      * @param right The right hand side of the expression.
      * @param location Where this BinaryNode was found in the source.
      */
-    BinaryNode(TokenKind op, std::unique_ptr<ExprNode> left,
-        std::unique_ptr<ExprNode> right, Location location);
+    BinaryNode(TokenKind op, ExprNode* left, ExprNode* right,
+        Location location);
     virtual ~BinaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The operator of the expression. */
     TokenKind op;
     /** The left hand side of the expression. */
-    std::unique_ptr<ExprNode> left;
+    ExprNode* left;
     /** The right hand side of the expression. */
-    std::unique_ptr<ExprNode> right;
+    ExprNode* right;
 };
 
 /**
@@ -397,15 +396,14 @@ public:
      * @param args The arguments to pass to the callee.
      * @param location Where this CallNode was found in the source.
      */
-    CallNode(std::unique_ptr<ExprNode> callee,
-        std::vector<std::unique_ptr<ArgNode>> args, Location location);
+    CallNode(ExprNode* callee, std::vector<ArgNode*> args, Location location);
     virtual ~CallNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The function to call. */
-    std::unique_ptr<ExprNode> callee;
+    ExprNode* callee;
     /** The arguments to pass to the callee. */
-    std::vector<std::unique_ptr<ArgNode>> args;
+    std::vector<ArgNode*> args;
 };
 
 /**
@@ -421,15 +419,14 @@ public:
      * @param value The value of the argument.
      * @param location Where this ArgNode was found in the source.
      */
-    ArgNode(llvm::StringRef name, std::unique_ptr<ExprNode> value,
-        Location location);
+    ArgNode(llvm::StringRef name, ExprNode* value, Location location);
     ~ArgNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
     /** The name of the argument. */
     llvm::StringRef name;
     /** The value of the argument. */
-    std::unique_ptr<ExprNode> value;
+    ExprNode* value;
 };
 
 #endif // NODE_HPP

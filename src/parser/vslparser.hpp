@@ -30,7 +30,7 @@ public:
      * Destroys a VSLParser.
      */
     virtual ~VSLParser() override = default;
-    virtual std::unique_ptr<BlockNode> parse() override;
+    virtual BlockNode* parse() override;
     /**
      * Checks if an error has been encountered yet.
      *
@@ -59,7 +59,7 @@ private:
      *
      * @returns An empty node.
      */
-    std::unique_ptr<EmptyNode> errorExpected(const char* s);
+    EmptyNode* errorExpected(const char* s);
     /**
      * Prints an error saying that the parser didn't expect the given token.
      *
@@ -67,61 +67,61 @@ private:
      *
      * @returns An empty node.
      */
-    std::unique_ptr<EmptyNode> errorUnexpected(const Token& token);
+    EmptyNode* errorUnexpected(const Token& token);
     /**
      * Parses a sequence of statements.
      *
      * @returns A sequence of statements.
      */
-    std::vector<std::unique_ptr<Node>> parseStatements();
+    std::vector<Node*> parseStatements();
     /**
      * Parses a single statement.
      *
      * @returns A single statement.
      */
-    std::unique_ptr<Node> parseStatement();
+    Node* parseStatement();
     /**
      * Parses an empty statement, e.g.\ `;`.
      *
      * @returns An empty statement.
      */
-    std::unique_ptr<EmptyNode> parseEmptyStatement();
+    EmptyNode* parseEmptyStatement();
     /**
      * Parses a block of code, e.g.\ `{ statements... }`.
      *
      * @returns A block of code.
      */
-    std::unique_ptr<Node> parseBlock();
+    Node* parseBlock();
     /**
      * Parses an if/else statement, e.g.\ `if (x) { y; } else { z; }`.
      *
      * @returns An if/else statement.
      */
-    std::unique_ptr<Node> parseIf();
+    Node* parseIf();
     /**
      * Parses a variable declaration, e.g.\ `var x: Int = 1;`.
      *
      * @returns A variable declaration.
      */
-    std::unique_ptr<Node> parseVariable();
+    Node* parseVariable();
     /**
      * Parses a function, e.g.\ `func f(x: Int) -> Int { ... }`.
      *
      * @returns A function.
      */
-    std::unique_ptr<Node> parseFunction();
+    Node* parseFunction();
     /**
      * Parses a function parameter, e.g.\ `x: Int`.
      *
      * @returns A function parameter.
      */
-    std::unique_ptr<ParamNode> parseParam();
+    ParamNode* parseParam();
     /**
      * Parses a return statement, e.g.\ `return 1;`.
      *
      * @returns A return statement.
      */
-    std::unique_ptr<Node> parseReturn();
+    Node* parseReturn();
     /**
      * Parses an expression, e.g.\ `1+5*(3+4)-6/2`.
      *
@@ -130,7 +130,7 @@ private:
      *
      * @returns An expression.
      */
-    std::unique_ptr<ExprNode> parseExpr(int rbp = 0);
+    ExprNode* parseExpr(int rbp = 0);
     /**
      * Parses the null denotation of the current token, or when there is no
      * expression to the left of the current token that has a higher right
@@ -138,7 +138,7 @@ private:
      *
      * @returns The null denotation of the current token.
      */
-    std::unique_ptr<ExprNode> parseNud();
+    ExprNode* parseNud();
     /**
      * Parses the left denotation of the current token, or when there is an
      * expression to the left of the current token that has a higher right
@@ -148,7 +148,7 @@ private:
      *
      * @returns The left denotation of the current token.
      */
-    std::unique_ptr<ExprNode> parseLed(std::unique_ptr<ExprNode> left);
+    ExprNode* parseLed(ExprNode* left);
     /**
      * Gets the left binding power of a given token. Only use this if you
      * understand Pratt parsing.
@@ -165,13 +165,13 @@ private:
      *
      * @returns A function call.
      */
-    std::unique_ptr<CallNode> parseCall(std::unique_ptr<ExprNode> callee);
+    CallNode* parseCall(ExprNode* callee);
     /**
      * Parses a function argument, e.g.\ `x: 1`.
      *
      * @returns A function argument.
      */
-    std::unique_ptr<ArgNode> parseCallArg();
+    ArgNode* parseCallArg();
     /**
      * Parses a number, e.g.\ `1337`.
      *
@@ -179,7 +179,7 @@ private:
      *
      * @returns A number expression.
      */
-    std::unique_ptr<LiteralNode> parseNumber(const Token& token);
+    LiteralNode* parseNumber(const Token& token);
     /**
      * Parses a VSL type, e.g.\ `Int` or `Void`.
      *
