@@ -35,44 +35,55 @@ void IRGen::visitIf(IfNode& node)
         errors << node.location <<
             ": error: top-level control flow statements are not allowed\n";
     }
-    // visit the condition and make sure it's an Int
+    // setup the condition
     scopeTree.enter();
     node.condition->accept(*this);
-    Type::Kind k = node.condition->type->kind;
-    if (k != Type::INT)
+    const Type* type = node.condition->type;
+    llvm::Value* cond;
+    if (type == vslContext.getSimpleType(Type::BOOL))
     {
-        errors << node.condition->location <<
-            ": error: cannot convert expression of type " <<
-            Type::kindToString(k) << " to type Int\n";
-        result = nullptr;
+        // take the value as is
+        cond = result;
     }
-    // create the condition
-    llvm::Value* cond = builder.CreateICmpNE(result,
-        llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), 0));
+    else if (type == vslContext.getSimpleType(Type::INT))
+    {
+        // convert the Int to a Bool
+        cond = builder.CreateICmpNE(result,
+            llvm::ConstantInt::get(context, llvm::APInt{ 32, 0 }));
+    }
+    else
+    {
+        // error, assume false
+        errors << node.condition->location <<
+            ": error: cannot convert expression of type " << type->toString() <<
+            " to type Bool\n";
+        errored = true;
+        cond = llvm::ConstantInt::getFalse(context);
+    }
     // create the necessary basic blocks
-    llvm::Function* f = builder.GetInsertBlock()->getParent();
-    llvm::BasicBlock* thenBlock = llvm::BasicBlock::Create(context, "if.then");
-    llvm::BasicBlock* elseBlock = llvm::BasicBlock::Create(context, "if.else");
-    llvm::BasicBlock* mergeBlock = llvm::BasicBlock::Create(context, "if.end");
+    auto& blocks = builder.GetInsertBlock()->getParent()->getBasicBlockList();
+    auto* thenBlock = llvm::BasicBlock::Create(context, "if.then");
+    auto* elseBlock = llvm::BasicBlock::Create(context, "if.else");
+    auto* endBlock = llvm::BasicBlock::Create(context, "if.end");
     // create the branch instruction
     builder.CreateCondBr(cond, thenBlock, elseBlock);
     // generate then block
     scopeTree.enter();
-    f->getBasicBlockList().push_back(thenBlock);
+    blocks.push_back(thenBlock);
     builder.SetInsertPoint(thenBlock);
     node.thenCase->accept(*this);
-    builder.CreateBr(mergeBlock);
+    builder.CreateBr(endBlock);
     scopeTree.exit();
     // generate else block
     scopeTree.enter();
-    f->getBasicBlockList().push_back(elseBlock);
+    blocks.push_back(elseBlock);
     builder.SetInsertPoint(elseBlock);
     node.elseCase->accept(*this);
-    builder.CreateBr(mergeBlock);
+    builder.CreateBr(endBlock);
     scopeTree.exit();
-    // setup merge block for other code after the ConditionalNode
-    f->getBasicBlockList().push_back(mergeBlock);
-    builder.SetInsertPoint(mergeBlock);
+    // setup end block for other code after the IfNode
+    blocks.push_back(endBlock);
+    builder.SetInsertPoint(endBlock);
     scopeTree.exit();
     result = nullptr;
 }
