@@ -260,42 +260,8 @@ void IRGen::visitBinary(BinaryNode& node)
     // handle assignment operator as a special case
     if (node.op == TokenKind::ASSIGN)
     {
-        // make sure that the lhs is an identifier
-        if (node.left->kind != Node::IDENT)
-        {
-            errors << node.location << ": error: lhs must be an identifier\n";
-        }
-        else
-        {
-            // lookup the identifier
-            auto& id = static_cast<IdentNode&>(*node.left);
-            Scope::Item i = scopeTree.get(id.name);
-            if (i.type == nullptr || i.value == nullptr)
-            {
-                errors << id.location << ": error: unknown variable " <<
-                    id.name.str() << '\n';
-            }
-            else
-            {
-                // make sure the types match up
-                node.right->accept(*this);
-                if (i.type != node.right->type)
-                {
-                    errors << node.right->location <<
-                        ": error: cannot convert expression of type " <<
-                        node.right->type->toString() << " to type " <<
-                        i.type->toString() << '\n';
-                }
-                else
-                {
-                    // finally, create the store instruction
-                    result = builder.CreateStore(result, i.value);
-                    return;
-                }
-            }
-        }
         node.type = vslContext.getErrorType();
-        result = nullptr;
+        visitAssignment(*node.left, *node.right);
         return;
     }
     // verify the left and right expressions
@@ -303,28 +269,28 @@ void IRGen::visitBinary(BinaryNode& node)
     llvm::Value* left = result;
     node.right->accept(*this);
     llvm::Value* right = result;
-    if (left == nullptr || right == nullptr)
+    if (!left || !right)
     {
-        node.type = vslContext.getErrorType();
-        return;
+        result = nullptr;
     }
     if (node.left->type != vslContext.getIntType())
     {
         errors << node.left->location <<
             ": error: cannot convert expression of type " <<
-            Type::kindToString(node.left->type->kind) << " to type Int\n";
+            node.left->type->toString() << " to type Int\n";
         result = nullptr;
     }
     if (node.right->type != vslContext.getIntType())
     {
         errors << node.right->location <<
             ": error: cannot convert expression of type " <<
-            Type::kindToString(node.right->type->kind) << " to type Int\n";
+            node.right->type->toString() << " to type Int\n";
         result = nullptr;
     }
-    if (result == nullptr)
+    if (!result)
     {
         node.type = vslContext.getErrorType();
+        errored = true;
         return;
     }
     // create the corresponding instruction based on the operator
@@ -452,6 +418,46 @@ std::string IRGen::getIR() const
 bool IRGen::hasError() const
 {
     return errored;
+}
+
+void IRGen::visitAssignment(ExprNode& lhs, ExprNode& rhs)
+{
+    // make sure that the lhs is an identifier
+    if (lhs.kind != Node::IDENT)
+    {
+        errors << lhs.location << ": error: lhs must be an identifier\n";
+    }
+    else
+    {
+        // lookup the identifier
+        auto& id = static_cast<IdentNode&>(lhs);
+        Scope::Item i = scopeTree.get(id.name);
+        if (!i.type || !i.value)
+        {
+            errors << id.location << ": error: unknown variable " <<
+                id.name.str() << '\n';
+        }
+        else
+        {
+            // make sure the types match up
+            rhs.accept(*this);
+            if (i.type != rhs.type)
+            {
+                errors << rhs.location <<
+                    ": error: cannot convert expression of type " <<
+                    rhs.type->toString() << " to type " << i.type->toString() <<
+                    '\n';
+            }
+            else
+            {
+                // finally, create the store instruction
+                result = builder.CreateStore(result, i.value);
+                return;
+            }
+        }
+    }
+    errored = true;
+    result = nullptr;
 }
 
 llvm::Value* IRGen::createEntryAlloca(llvm::Function* f, llvm::Type* type,

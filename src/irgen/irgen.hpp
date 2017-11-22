@@ -61,6 +61,13 @@ public:
 
 private:
     /**
+     * Handles the assignment operator.
+     *
+     * @param lhs Left operand.
+     * @param rhs Right operand.
+     */
+    void visitAssignment(ExprNode& lhs, ExprNode& rhs);
+    /**
      * Creates an `alloca` instruction in the entry block of the current
      * function. This is useful for stuff like variables and function parameters
      * to make the `alloca`ing process a little bit easier.
