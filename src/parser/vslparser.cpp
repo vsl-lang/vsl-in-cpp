@@ -40,7 +40,7 @@ EmptyNode* VSLParser::errorExpected(const char* s)
 {
     const Token& t = current();
     errors << t.location << ": error: expected " << s << " but found " <<
-        getTokenKindName(t.kind) << '\n';
+        tokenKindName(t.kind) << '\n';
     errored = true;
     return makeNode<EmptyNode>(t.location);
 }
@@ -48,7 +48,7 @@ EmptyNode* VSLParser::errorExpected(const char* s)
 EmptyNode* VSLParser::errorUnexpected(const Token& token)
 {
     errors << token.location << ": error: unexpected token " <<
-        getTokenKindName(token.kind) << '\n';
+        tokenKindName(token.kind) << '\n';
     errored = true;
     return makeNode<EmptyNode>(token.location);
 }

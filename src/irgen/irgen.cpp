@@ -240,8 +240,7 @@ void IRGen::visitUnary(UnaryNode& node)
     if (result == nullptr)
     {
         errors << node.location << ": error: cannot apply unary operator " <<
-            getTokenKindName(node.op) << " to type " << type->toString() <<
-            '\n';
+            tokenKindName(node.op) << " to type " << type->toString() << '\n';
         errored = true;
     }
 }
@@ -320,7 +319,7 @@ void IRGen::visitBinary(BinaryNode& node)
     if (result == nullptr)
     {
         errors << node.location << ": error: cannot apply binary operator " <<
-            getTokenKindName(node.op) << " to types " <<
+            tokenKindName(node.op) << " to types " <<
             node.left->type->toString() << " and " <<
             node.right->type->toString() << '\n';
         errored = true;

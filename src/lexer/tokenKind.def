@@ -1,17 +1,17 @@
 #ifndef TOKEN
-#define TOKEN(X)
+#define TOKEN(X, Y)
 #endif
 #ifndef KEYWORD
-#define KEYWORD(X, Y) TOKEN(KW_ ## X)
+#define KEYWORD(X, Y) TOKEN(KW_ ## X, Y)
 #endif
 #ifndef SYMBOL
-#define SYMBOL(X, Y) TOKEN(X)
+#define SYMBOL(X, Y) TOKEN(X, Y)
 #endif
 
-TOKEN(UNKNOWN)
-TOKEN(END)
-TOKEN(IDENTIFIER)
-TOKEN(NUMBER)
+TOKEN(UNKNOWN, "unknown")
+TOKEN(END, "end")
+TOKEN(IDENTIFIER, "identifier")
+TOKEN(NUMBER, "number")
 
 KEYWORD(IF, "if")
 KEYWORD(ELSE, "else")
@@ -25,22 +25,26 @@ KEYWORD(BOOL, "Bool")
 KEYWORD(INT, "Int")
 KEYWORD(VOID, "Void")
 
-SYMBOL(PLUS, "+")
-SYMBOL(MINUS, "-")
-SYMBOL(STAR, "*")
-SYMBOL(SLASH, "/")
-SYMBOL(PERCENT, "%")
-SYMBOL(ASSIGN, "=")
-SYMBOL(EQUALS, "==")
-SYMBOL(GREATER, ">")
-SYMBOL(GREATER_EQUAL, ">=")
-SYMBOL(LESS, "<")
-SYMBOL(LESS_EQUAL, "<=")
-SYMBOL(ARROW, "->")
-SYMBOL(LBRACE, "{")
-SYMBOL(RBRACE, "}")
-SYMBOL(LPAREN, "(")
-SYMBOL(RPAREN, ")")
-SYMBOL(COMMA, ",")
-SYMBOL(COLON, ":")
-SYMBOL(SEMICOLON, ";")
+SYMBOL(PLUS, "'+'")
+SYMBOL(MINUS, "'-'")
+SYMBOL(STAR, "'*'")
+SYMBOL(SLASH, "'/'")
+SYMBOL(PERCENT, "'%'")
+SYMBOL(ASSIGN, "'='")
+SYMBOL(EQUALS, "'=='")
+SYMBOL(GREATER, "'>'")
+SYMBOL(GREATER_EQUAL, "'>='")
+SYMBOL(LESS, "'<'")
+SYMBOL(LESS_EQUAL, "'<='")
+SYMBOL(ARROW, "'->'")
+SYMBOL(LBRACE, "'{'")
+SYMBOL(RBRACE, "'}'")
+SYMBOL(LPAREN, "'('")
+SYMBOL(RPAREN, "')'")
+SYMBOL(COMMA, "','")
+SYMBOL(COLON, "':'")
+SYMBOL(SEMICOLON, "';'")
+
+#undef TOKEN
+#undef KEYWORD
+#undef SYMBOL

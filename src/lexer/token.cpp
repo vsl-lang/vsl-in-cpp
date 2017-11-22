@@ -3,7 +3,7 @@
 
 std::ostream& operator<<(std::ostream& os, const Token& token)
 {
-    return os << getTokenKindName(token.kind) << " '" << token.text.str() <<
+    return os << tokenKindDebugName(token.kind) << " '" << token.text.str() <<
         '\'';
 }
 

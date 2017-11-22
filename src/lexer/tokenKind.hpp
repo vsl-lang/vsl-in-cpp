@@ -9,21 +9,32 @@
  */
 enum class TokenKind
 {
-#define TOKEN(X) X,
+    // tokenKind.def automatically #undef's the macros it uses
+#define TOKEN(X, Y) X,
 #include "lexer/tokenKind.def"
-#undef TOKEN
-    COUNT /** The number of TokenKinds that exist. */
+    /** The number of TokenKinds that exist. */
+    COUNT
 };
+
+/**
+ * Gets the external name of a TokenKind. It's best to use this rather than
+ * {@link tokenKindName} wherever possible in diagnostic messages.
+ *
+ * @param k The TokenKind to get the external name of.
+ *
+ * @returns The external name of k.
+ */
+const char* tokenKindName(TokenKind k);
 
 /**
  * Gets the internal name of a TokenKind. These shouldn't be used in diagnostic
  * messages but it's fine for debugging and what not.
  *
- * @param tk The TokenKind to get the internal name of.
+ * @param k The TokenKind to get the internal name of.
  *
- * @returns The internal name of tk.
+ * @returns The internal name of k.
  */
-const char* getTokenKindName(TokenKind tk);
+const char* tokenKindDebugName(TokenKind k);
 
 /**
  * Matches the given string with the appropriate keyword. If no keyword could be

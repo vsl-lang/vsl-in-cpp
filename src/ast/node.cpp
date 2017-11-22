@@ -234,7 +234,7 @@ void UnaryNode::accept(NodeVisitor& nodeVisitor)
 std::string UnaryNode::toString() const
 {
     std::string s = "Unary { op: ";
-    s += getTokenKindName(op);
+    s += tokenKindDebugName(op);
     s += ", expr: ";
     s += expr->toString();
     s += " }";
@@ -255,7 +255,7 @@ void BinaryNode::accept(NodeVisitor& nodeVisitor)
 std::string BinaryNode::toString() const
 {
     std::string s = "Binary { op: ";
-    s += getTokenKindName(op);
+    s += tokenKindDebugName(op);
     s += ", left: ";
     s += left->toString();
     s += ", right: ";
