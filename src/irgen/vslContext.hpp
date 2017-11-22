@@ -12,13 +12,37 @@ public:
      */
     VSLContext();
     /**
+     * Gets the Bool type.
+     *
+     * @returns The Bool type.
+     */
+    const SimpleType* getBoolType() const;
+    /**
+     * Gets the Int type.
+     *
+     * @returns The Int type.
+     */
+    const SimpleType* getIntType() const;
+    /**
+     * Gets the Void type.
+     *
+     * @returns The Void type.
+     */
+    const SimpleType* getVoidType() const;
+    /**
+     * Gets the Error type.
+     *
+     * @returns The Error type.
+     */
+    const SimpleType* getErrorType() const;
+    /**
      * Gets a SimpleType.
      *
      * @param k The kind of SimpleType to get.
      *
      * @returns The corresponding SimpleType.
      */
-    const SimpleType* getSimpleType(Type::Kind k);
+    const SimpleType* getSimpleType(Type::Kind k) const;
     /**
      * Gets or constructs a FunctionType.
      *

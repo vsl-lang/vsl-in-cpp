@@ -40,12 +40,12 @@ void IRGen::visitIf(IfNode& node)
     node.condition->accept(*this);
     const Type* type = node.condition->type;
     llvm::Value* cond;
-    if (type == vslContext.getSimpleType(Type::BOOL))
+    if (type == vslContext.getBoolType())
     {
         // take the value as is
         cond = result;
     }
-    else if (type == vslContext.getSimpleType(Type::INT))
+    else if (type == vslContext.getIntType())
     {
         // convert the Int to a Bool
         cond = builder.CreateICmpNE(result,
@@ -93,12 +93,12 @@ void IRGen::visitVariable(VariableNode& node)
     // make sure the type and value are valid and they match
     ExprNode& value = *node.value;
     value.accept(*this);
-    if (node.type->kind != Type::INT)
+    if (node.type != vslContext.getIntType())
     {
         errors << node.location << ": error: " << node.type->toString() <<
             " is not a valid type for a variable\n";
     }
-    else if (node.type->kind != value.type->kind)
+    else if (node.type != value.type)
     {
         errors << value.location <<
             ": error: mismatching types when initializing variable " <<
@@ -182,7 +182,7 @@ void IRGen::visitIdent(IdentNode& node)
     {
         errors << node.location << ": error: unknown variable " <<
             node.name.str() << '\n';
-        node.type = vslContext.getSimpleType(Type::ERROR);
+        node.type = vslContext.getErrorType();
         result = nullptr;
         return;
     }
@@ -201,23 +201,21 @@ void IRGen::visitIdent(IdentNode& node)
 void IRGen::visitLiteral(LiteralNode& node)
 {
     // create an LLVM integer
-    Type::Kind k;
     unsigned width = node.value.getBitWidth();
     switch (width)
     {
     case 1:
-        k = Type::BOOL;
+        node.type = vslContext.getBoolType();
         break;
     case 32:
-        k = Type::INT;
+        node.type = vslContext.getIntType();
         break;
     default:
         // should never happen
         errors << node.location << ": error: VSL does not support " << width <<
             "-bit integers\n";
-        k = Type::ERROR;
+        node.type = vslContext.getErrorType();
     }
-    node.type = vslContext.getSimpleType(k);
     result = llvm::ConstantInt::get(context, node.value);
 }
 
@@ -226,12 +224,11 @@ void IRGen::visitUnary(UnaryNode& node)
     // validate the inner expression
     ExprNode& expr = *node.expr;
     expr.accept(*this);
-    Type::Kind k = expr.type->kind;
-    switch (k)
+    switch (expr.type->kind)
     {
     // valid types go here
     case Type::INT:
-        node.type = vslContext.getSimpleType(k);
+        node.type = expr.type;
         break;
     // errors are propagated down the expression tree
     default:
@@ -241,7 +238,7 @@ void IRGen::visitUnary(UnaryNode& node)
             expr.type->toString() << '\n';
         // fallthrough
     case Type::ERROR:
-        node.type = vslContext.getSimpleType(Type::ERROR);
+        node.type = vslContext.getErrorType();
         result = nullptr;
         return;
     }
@@ -297,7 +294,7 @@ void IRGen::visitBinary(BinaryNode& node)
                 }
             }
         }
-        node.type = vslContext.getSimpleType(Type::ERROR);
+        node.type = vslContext.getErrorType();
         result = nullptr;
         return;
     }
@@ -308,17 +305,17 @@ void IRGen::visitBinary(BinaryNode& node)
     llvm::Value* right = result;
     if (left == nullptr || right == nullptr)
     {
-        node.type = vslContext.getSimpleType(Type::ERROR);
+        node.type = vslContext.getErrorType();
         return;
     }
-    if (node.left->type->kind != Type::INT)
+    if (node.left->type != vslContext.getIntType())
     {
         errors << node.left->location <<
             ": error: cannot convert expression of type " <<
             Type::kindToString(node.left->type->kind) << " to type Int\n";
         result = nullptr;
     }
-    if (node.right->type->kind != Type::INT)
+    if (node.right->type != vslContext.getIntType())
     {
         errors << node.right->location <<
             ": error: cannot convert expression of type " <<
@@ -327,60 +324,58 @@ void IRGen::visitBinary(BinaryNode& node)
     }
     if (result == nullptr)
     {
-        node.type = vslContext.getSimpleType(Type::ERROR);
+        node.type = vslContext.getErrorType();
         return;
     }
     // create the corresponding instruction based on the operator
-    Type::Kind k;
     switch (node.op)
     {
     case TokenKind::PLUS:
-        k = node.left->type->kind;
+        node.type = node.left->type;
         result = builder.CreateAdd(left, right, "");
         break;
     case TokenKind::MINUS:
-        k = node.left->type->kind;
+        node.type = node.left->type;
         result = builder.CreateSub(left, right, "");
         break;
     case TokenKind::STAR:
-        k = node.left->type->kind;
+        node.type = node.left->type;
         result = builder.CreateMul(left, right, "");
         break;
     case TokenKind::SLASH:
-        k = node.left->type->kind;
+        node.type = node.left->type;
         result = builder.CreateSDiv(left, right, "");
         break;
     case TokenKind::PERCENT:
-        k = node.left->type->kind;
+        node.type = node.left->type;
         result = builder.CreateSRem(left, right, "");
         break;
     case TokenKind::EQUALS:
-        k = Type::BOOL;
+        node.type = vslContext.getBoolType();
         result = builder.CreateICmpEQ(left, right, "");
         break;
     case TokenKind::GREATER:
-        k = Type::BOOL;
+        node.type = vslContext.getBoolType();
         result = builder.CreateICmpSGT(left, right, "");
         break;
     case TokenKind::GREATER_EQUAL:
-        k = Type::BOOL;
+        node.type = vslContext.getBoolType();
         result = builder.CreateICmpSGE(left, right, "");
         break;
     case TokenKind::LESS:
-        k = Type::BOOL;
+        node.type = vslContext.getBoolType();
         result = builder.CreateICmpSLT(left, right, "");
         break;
     case TokenKind::LESS_EQUAL:
-        k = Type::BOOL;
+        node.type = vslContext.getBoolType();
         result = builder.CreateICmpSLE(left, right, "");
         break;
     default:
         errors << node.location <<
             ": error: invalid binary operator on types Int and Int\n";
-        k = Type::ERROR;
+        node.type = vslContext.getErrorType();
         result = nullptr;
     }
-    node.type = vslContext.getSimpleType(k);
 }
 
 void IRGen::visitCall(CallNode& node)
@@ -434,7 +429,7 @@ void IRGen::visitCall(CallNode& node)
         }
     }
     // if any sort of error occured, then this happens
-    node.type = vslContext.getSimpleType(Type::ERROR);
+    node.type = vslContext.getErrorType();
     result = nullptr;
 }
 

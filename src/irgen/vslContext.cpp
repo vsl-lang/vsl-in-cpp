@@ -6,18 +6,38 @@ VSLContext::VSLContext()
 {
 }
 
-const SimpleType* VSLContext::getSimpleType(Type::Kind k)
+const SimpleType* VSLContext::getBoolType() const
+{
+    return &boolType;
+}
+
+const SimpleType* VSLContext::getIntType() const
+{
+    return &intType;
+}
+
+const SimpleType* VSLContext::getVoidType() const
+{
+    return &voidType;
+}
+
+const SimpleType* VSLContext::getErrorType() const
+{
+    return &errorType;
+}
+
+const SimpleType* VSLContext::getSimpleType(Type::Kind k) const
 {
     switch (k)
     {
     case Type::BOOL:
-        return &boolType;
+        return getBoolType();
     case Type::INT:
-        return &intType;
+        return getIntType();
     case Type::VOID:
-        return &voidType;
+        return getVoidType();
     default:
-        return &errorType;
+        return getErrorType();
     }
 }
 
