@@ -60,13 +60,22 @@ public:
     bool hasError() const;
 
 private:
-    /**
-     * Handles the assignment operator.
-     *
-     * @param lhs Left operand.
-     * @param rhs Right operand.
-     */
-    void visitAssignment(ExprNode& lhs, ExprNode& rhs);
+    // unary
+    void genNeg(const Type* type, llvm::Value* value);
+    // special
+    void genAssign(BinaryNode& node);
+    // arithmetic
+    void genAdd(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    void genSub(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    void genMul(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    void genDiv(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    void genMod(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    // comparison
+    void genEQ(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    void genGT(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    void genGE(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    void genLT(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    void genLE(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
     /**
      * Creates an `alloca` instruction in the entry block of the current
      * function. This is useful for stuff like variables and function parameters
@@ -80,7 +89,7 @@ private:
      */
     static llvm::Value* createEntryAlloca(llvm::Function* f, llvm::Type* type,
         llvm::StringRef name);
-    /* The VSLContext object to be used. */
+    /** The VSLContext object to be used. */
     VSLContext& vslContext;
     /** The module to emit LLVM IR into. */
     llvm::Module& module;

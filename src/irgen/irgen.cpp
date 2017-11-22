@@ -221,37 +221,28 @@ void IRGen::visitLiteral(LiteralNode& node)
 
 void IRGen::visitUnary(UnaryNode& node)
 {
-    // validate the inner expression
-    ExprNode& expr = *node.expr;
-    expr.accept(*this);
-    switch (expr.type->kind)
-    {
-    // valid types go here
-    case Type::INT:
-        node.type = expr.type;
-        break;
-    // errors are propagated down the expression tree
-    default:
-        errors << expr.location <<
-            ": error: cannot apply unary operator " <<
-            getTokenKindName(node.op) << " to type " <<
-            expr.type->toString() << '\n';
-        // fallthrough
-    case Type::ERROR:
-        node.type = vslContext.getErrorType();
-        result = nullptr;
-        return;
-    }
-    // create instruction based on corresponding operator
+    // verify the contained expression
+    node.expr->accept(*this);
+    node.type = node.expr->type;
+    const Type* type = node.type;
+    llvm::Value* value = result;
+    result = nullptr;
+    // choose the appropriate operator to generate code for
     switch (node.op)
     {
     case TokenKind::MINUS:
-        result = builder.CreateNeg(result);
+        genNeg(type, value);
         break;
     default:
-        errors << node.location <<
-            ": error: invalid unary operator for type Int\n";
-        result = nullptr;
+        // should never happen
+        ;
+    }
+    if (result == nullptr)
+    {
+        errors << node.location << ": error: cannot apply unary operator " <<
+            getTokenKindName(node.op) << " to type " << type->toString() <<
+            '\n';
+        errored = true;
     }
 }
 
@@ -260,87 +251,79 @@ void IRGen::visitBinary(BinaryNode& node)
     // handle assignment operator as a special case
     if (node.op == TokenKind::ASSIGN)
     {
-        node.type = vslContext.getErrorType();
-        visitAssignment(*node.left, *node.right);
+        genAssign(node);
         return;
     }
     // verify the left and right expressions
     node.left->accept(*this);
-    llvm::Value* left = result;
+    llvm::Value* lhs = result;
     node.right->accept(*this);
-    llvm::Value* right = result;
-    if (!left || !right)
+    llvm::Value* rhs = result;
+    result = nullptr;
+    // make sure the types match
+    if (node.left->type == node.right->type)
     {
-        result = nullptr;
+        // choose the appropriate operator to generate code for
+        const Type* type = node.left->type;
+        switch (node.op)
+        {
+        case TokenKind::PLUS:
+            node.type = node.left->type;
+            genAdd(type, lhs, rhs);
+            break;
+        case TokenKind::MINUS:
+            node.type = node.left->type;
+            genSub(type, lhs, rhs);
+            break;
+        case TokenKind::STAR:
+            node.type = node.left->type;
+            genMul(type, lhs, rhs);
+            break;
+        case TokenKind::SLASH:
+            node.type = node.left->type;
+            genDiv(type, lhs, rhs);
+            break;
+        case TokenKind::PERCENT:
+            node.type = node.left->type;
+            genMod(type, lhs, rhs);
+            break;
+        case TokenKind::EQUALS:
+            node.type = vslContext.getBoolType();
+            genEQ(type, lhs, rhs);
+            break;
+        case TokenKind::GREATER:
+            node.type = vslContext.getBoolType();
+            genGT(type, lhs, rhs);
+            break;
+        case TokenKind::GREATER_EQUAL:
+            node.type = vslContext.getBoolType();
+            genGE(type, lhs, rhs);
+            break;
+        case TokenKind::LESS:
+            node.type = vslContext.getBoolType();
+            genLT(type, lhs, rhs);
+            break;
+        case TokenKind::LESS_EQUAL:
+            node.type = vslContext.getBoolType();
+            genLE(type, lhs, rhs);
+            break;
+        default:
+            // should never happen
+            node.type = node.left->type;
+        }
     }
-    if (node.left->type != vslContext.getIntType())
+    else
     {
-        errors << node.left->location <<
-            ": error: cannot convert expression of type " <<
-            node.left->type->toString() << " to type Int\n";
-        result = nullptr;
+        // types mismatch, assume lhs' type
+        node.type = node.left->type;
     }
-    if (node.right->type != vslContext.getIntType())
+    if (result == nullptr)
     {
-        errors << node.right->location <<
-            ": error: cannot convert expression of type " <<
-            node.right->type->toString() << " to type Int\n";
-        result = nullptr;
-    }
-    if (!result)
-    {
-        node.type = vslContext.getErrorType();
+        errors << node.location << ": error: cannot apply binary operator " <<
+            getTokenKindName(node.op) << " to types " <<
+            node.left->type->toString() << " and " <<
+            node.right->type->toString() << '\n';
         errored = true;
-        return;
-    }
-    // create the corresponding instruction based on the operator
-    switch (node.op)
-    {
-    case TokenKind::PLUS:
-        node.type = node.left->type;
-        result = builder.CreateAdd(left, right, "");
-        break;
-    case TokenKind::MINUS:
-        node.type = node.left->type;
-        result = builder.CreateSub(left, right, "");
-        break;
-    case TokenKind::STAR:
-        node.type = node.left->type;
-        result = builder.CreateMul(left, right, "");
-        break;
-    case TokenKind::SLASH:
-        node.type = node.left->type;
-        result = builder.CreateSDiv(left, right, "");
-        break;
-    case TokenKind::PERCENT:
-        node.type = node.left->type;
-        result = builder.CreateSRem(left, right, "");
-        break;
-    case TokenKind::EQUALS:
-        node.type = vslContext.getBoolType();
-        result = builder.CreateICmpEQ(left, right, "");
-        break;
-    case TokenKind::GREATER:
-        node.type = vslContext.getBoolType();
-        result = builder.CreateICmpSGT(left, right, "");
-        break;
-    case TokenKind::GREATER_EQUAL:
-        node.type = vslContext.getBoolType();
-        result = builder.CreateICmpSGE(left, right, "");
-        break;
-    case TokenKind::LESS:
-        node.type = vslContext.getBoolType();
-        result = builder.CreateICmpSLT(left, right, "");
-        break;
-    case TokenKind::LESS_EQUAL:
-        node.type = vslContext.getBoolType();
-        result = builder.CreateICmpSLE(left, right, "");
-        break;
-    default:
-        errors << node.location <<
-            ": error: invalid binary operator on types Int and Int\n";
-        node.type = vslContext.getErrorType();
-        result = nullptr;
     }
 }
 
@@ -420,44 +403,114 @@ bool IRGen::hasError() const
     return errored;
 }
 
-void IRGen::visitAssignment(ExprNode& lhs, ExprNode& rhs)
+void IRGen::genNeg(const Type* type, llvm::Value* value)
 {
+    result = (type == vslContext.getIntType()) ?
+        builder.CreateNeg(value, "neg") : nullptr;
+}
+
+void IRGen::genAssign(BinaryNode& node)
+{
+    ExprNode& lhs = *node.left;
+    ExprNode& rhs = *node.right;
+    rhs.accept(*this);
+    node.type = vslContext.getVoidType();
+    result = nullptr;
     // make sure that the lhs is an identifier
-    if (lhs.kind != Node::IDENT)
-    {
-        errors << lhs.location << ": error: lhs must be an identifier\n";
-    }
-    else
+    if (lhs.kind == Node::IDENT)
     {
         // lookup the identifier
         auto& id = static_cast<IdentNode&>(lhs);
         Scope::Item i = scopeTree.get(id.name);
-        if (!i.type || !i.value)
-        {
-            errors << id.location << ": error: unknown variable " <<
-                id.name.str() << '\n';
-        }
-        else
+        if (i.type && i.value)
         {
             // make sure the types match up
-            rhs.accept(*this);
-            if (i.type != rhs.type)
+            if (i.type == rhs.type)
+            {
+                // finally, create the store instruction
+                builder.CreateStore(result, i.value);
+                return;
+            }
+            else
             {
                 errors << rhs.location <<
                     ": error: cannot convert expression of type " <<
                     rhs.type->toString() << " to type " << i.type->toString() <<
                     '\n';
             }
-            else
-            {
-                // finally, create the store instruction
-                result = builder.CreateStore(result, i.value);
-                return;
-            }
+        }
+        else
+        {
+            errors << id.location << ": error: unknown variable " <<
+                id.name.str() << '\n';
         }
     }
+    else
+    {
+        errors << lhs.location << ": error: lhs must be an identifier\n";
+    }
     errored = true;
-    result = nullptr;
+}
+
+void IRGen::genAdd(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
+{
+    result = (type == vslContext.getIntType()) ?
+        builder.CreateAdd(lhs, rhs, "add") : nullptr;
+}
+
+void IRGen::genSub(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
+{
+    result = (type == vslContext.getIntType()) ?
+        builder.CreateSub(lhs, rhs, "sub") : nullptr;
+}
+
+void IRGen::genMul(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
+{
+    result = (type == vslContext.getIntType()) ?
+        builder.CreateMul(lhs, rhs, "mul") : nullptr;
+}
+
+void IRGen::genDiv(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
+{
+    result = (type == vslContext.getIntType()) ?
+        builder.CreateSDiv(lhs, rhs, "sdiv") : nullptr;
+}
+
+void IRGen::genMod(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
+{
+    result = (type == vslContext.getIntType()) ?
+        builder.CreateSRem(lhs, rhs, "srem") : nullptr;
+}
+
+void IRGen::genEQ(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
+{
+    result = (type == vslContext.getIntType() ||
+            type == vslContext.getBoolType()) ?
+        builder.CreateICmpEQ(lhs, rhs, "cmp") : nullptr;
+}
+
+void IRGen::genGT(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
+{
+    result = (type == vslContext.getIntType()) ?
+        builder.CreateICmpSGT(lhs, rhs, "cmp") : nullptr;
+}
+
+void IRGen::genGE(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
+{
+    result = (type == vslContext.getIntType()) ?
+        builder.CreateICmpSGE(lhs, rhs, "cmp") : nullptr;
+}
+
+void IRGen::genLT(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
+{
+    result = (type == vslContext.getIntType()) ?
+        builder.CreateICmpSLT(lhs, rhs, "cmp") : nullptr;
+}
+
+void IRGen::genLE(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
+{
+    result = (type == vslContext.getIntType()) ?
+        builder.CreateICmpSLE(lhs, rhs, "cmp") : nullptr;
 }
 
 llvm::Value* IRGen::createEntryAlloca(llvm::Function* f, llvm::Type* type,
