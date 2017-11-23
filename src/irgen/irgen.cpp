@@ -5,8 +5,9 @@
 
 IRGen::IRGen(VSLContext& vslContext, llvm::Module& module, std::ostream& errors)
     : vslContext{ vslContext }, module{ module },
-    context{ module.getContext() }, builder{ context }, result{ nullptr },
-    errors { errors }, errored{ false }
+    context{ module.getContext() }, builder{ context },
+    allocaInsertPoint{ nullptr }, result{ nullptr }, errors { errors },
+    errored{ false }
 {
 }
 
@@ -106,9 +107,7 @@ void IRGen::visitVariable(VariableNode& node)
     }
     // create the alloca instruction
     auto initialValue = result;
-    llvm::Function* f = builder.GetInsertBlock()->getParent();
-    auto alloca = createEntryAlloca(f, node.type->toLLVMType(context),
-        node.name);
+    auto alloca = createEntryAlloca(node.type->toLLVMType(context), node.name);
     // create the store instruction
     builder.CreateStore(initialValue, alloca);
     // add to current scope
@@ -132,25 +131,27 @@ void IRGen::visitFunction(FunctionNode& node)
         });
     const auto* vslType = vslContext.getFunctionType(std::move(paramTypes),
         node.returnType);
-    // create the llvm function
+    // create the llvm function and the entry block
     auto* ft = static_cast<llvm::FunctionType*>(vslType->toLLVMType(context));
     auto* f = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
         node.name, &module);
+    auto* entry = llvm::BasicBlock::Create(context, "entry", f);
     // add to current scope
     scopeTree.set(node.name, { vslType, f });
-    // setup the parameters to be referenced as mutable variables
-    auto* bb = llvm::BasicBlock::Create(context, "entry", f);
-    builder.SetInsertPoint(bb);
     scopeTree.enter(node.returnType);
+    // setup the parameters to be referenced as mutable variables
+    builder.SetInsertPoint(entry);
     for (size_t i = 0; i < node.params.size(); ++i)
     {
         const ParamNode& param = *node.params[i];
-        llvm::Value* alloca = createEntryAlloca(f, ft->params()[i], param.name);
+        llvm::Value* alloca = createEntryAlloca(ft->params()[i], param.name);
         builder.CreateStore(&f->arg_begin()[i], alloca);
         scopeTree.set(param.name, { param.type, alloca });
     }
     // generate the body
     node.body->accept(*this);
+    // exit all the scope stuff
+    allocaInsertPoint = nullptr;
     scopeTree.exit();
     result = nullptr;
 }
@@ -523,15 +524,21 @@ void IRGen::genLE(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
         builder.CreateICmpSLE(lhs, rhs, "cmp") : nullptr;
 }
 
-llvm::Value* IRGen::createEntryAlloca(llvm::Function* f, llvm::Type* type,
-    llvm::StringRef name)
+llvm::AllocaInst* IRGen::createEntryAlloca(llvm::Type* type,
+    const llvm::Twine& name)
 {
-    // construct a temporary llvm::IRBuilder to create the alloca instruction
-    // i don't want to modify the builder field because it may be inserting at a
-    //  different block
-    // it might be better to save a temporary llvm::BasicBlock reference to
-    //  restore the current block after creating the alloca but oh well
-    auto& entry = f->getEntryBlock();
-    llvm::IRBuilder<> b{ &entry, entry.begin() };
-    return b.CreateAlloca(type, nullptr, name);
+    auto ip = builder.saveIP();
+    if (!allocaInsertPoint)
+    {
+        // insert a no-op as a reference for allocas to be inserted in order at
+        //  the beginning of the entry block
+        llvm::BasicBlock* entry = &ip.getBlock()->getParent()->getEntryBlock();
+        llvm::Value* zero = builder.getFalse();
+        allocaInsertPoint = llvm::BinaryOperator::Create(llvm::Instruction::Add,
+            zero, zero, "allocapoint", entry);
+    }
+    builder.SetInsertPoint(allocaInsertPoint);
+    llvm::AllocaInst* inst = builder.CreateAlloca(type, nullptr, name);
+    builder.restoreIP(ip);
+    return inst;
 }

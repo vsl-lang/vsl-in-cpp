@@ -82,14 +82,13 @@ private:
      * function. This is useful for stuff like variables and function parameters
      * to make the `alloca`ing process a little bit easier.
      *
-     * @param f The function to insert the `alloca` into.
      * @param type An LLVM type representing the memory block to allocate.
      * @param name The name of the memory block.
      *
-     * @returns An LLVM AllocaInst.
+     * @returns An alloca instruction.
      */
-    static llvm::Value* createEntryAlloca(llvm::Function* f, llvm::Type* type,
-        llvm::StringRef name);
+    llvm::AllocaInst* createEntryAlloca(llvm::Type* type,
+        const llvm::Twine& name = "");
     /** The VSLContext object to be used. */
     VSLContext& vslContext;
     /** The module to emit LLVM IR into. */
@@ -98,6 +97,8 @@ private:
     llvm::LLVMContext& context;
     /** Used to build the IR. */
     llvm::IRBuilder<> builder;
+    /** Points to the instruction where allocas should be inserted before. */
+    llvm::Instruction* allocaInsertPoint;
     /** Manages the current scope. */
     ScopeTree scopeTree;
     /**
