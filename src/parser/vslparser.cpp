@@ -370,16 +370,17 @@ ExprNode* VSLParser::parseLed(ExprNode* left)
     TokenKind k = token.kind;
     switch (k)
     {
+    case TokenKind::PLUS:
+    case TokenKind::MINUS:
     case TokenKind::STAR:
     case TokenKind::SLASH:
     case TokenKind::PERCENT:
-    case TokenKind::PLUS:
-    case TokenKind::MINUS:
+    case TokenKind::EQUAL:
+    case TokenKind::NOT_EQUAL:
     case TokenKind::GREATER:
     case TokenKind::GREATER_EQUAL:
     case TokenKind::LESS:
     case TokenKind::LESS_EQUAL:
-    case TokenKind::EQUALS:
         // left associative
         next();
         return makeNode<BinaryNode>(k, left, parseExpr(getLbp(token)),
@@ -417,7 +418,8 @@ int VSLParser::getLbp(const Token& token) const
     case TokenKind::LESS:
     case TokenKind::LESS_EQUAL:
         return 3;
-    case TokenKind::EQUALS:
+    case TokenKind::EQUAL:
+    case TokenKind::NOT_EQUAL:
         return 2;
     case TokenKind::ASSIGN:
         return 1;

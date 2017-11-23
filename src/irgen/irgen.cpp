@@ -286,9 +286,13 @@ void IRGen::visitBinary(BinaryNode& node)
             node.type = node.left->type;
             genMod(type, lhs, rhs);
             break;
-        case TokenKind::EQUALS:
+        case TokenKind::EQUAL:
             node.type = vslContext.getBoolType();
             genEQ(type, lhs, rhs);
+            break;
+        case TokenKind::NOT_EQUAL:
+            node.type = vslContext.getBoolType();
+            genNE(type, lhs, rhs);
             break;
         case TokenKind::GREATER:
             node.type = vslContext.getBoolType();
@@ -486,6 +490,13 @@ void IRGen::genEQ(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
     result = (type == vslContext.getIntType() ||
             type == vslContext.getBoolType()) ?
         builder.CreateICmpEQ(lhs, rhs, "cmp") : nullptr;
+}
+
+void IRGen::genNE(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
+{
+    result = (type == vslContext.getIntType() ||
+            type == vslContext.getBoolType()) ?
+        builder.CreateICmpNE(lhs, rhs, "cmp") : nullptr;
 }
 
 void IRGen::genGT(const Type* type, llvm::Value* lhs, llvm::Value* rhs)

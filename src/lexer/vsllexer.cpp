@@ -44,7 +44,7 @@ Token VSLLexer::nextToken()
             if (peek() == '=')
             {
                 next();
-                return createToken(TokenKind::EQUALS);
+                return createToken(TokenKind::EQUAL);
             }
             return createToken(TokenKind::ASSIGN);
         case '>':
@@ -77,6 +77,13 @@ Token VSLLexer::nextToken()
             return createToken(TokenKind::SEMICOLON);
         case '\n':
             break;
+        case '!':
+            if (peek() == '=')
+            {
+                next();
+                return createToken(TokenKind::NOT_EQUAL);
+            }
+            // fallthrough
         default:
             if (isalpha(current()))
             {

@@ -72,6 +72,7 @@ private:
     void genMod(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
     // comparison
     void genEQ(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    void genNE(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
     void genGT(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
     void genGE(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
     void genLT(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
