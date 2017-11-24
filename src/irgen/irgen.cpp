@@ -148,9 +148,16 @@ void IRGen::visitFunction(FunctionNode& node)
     }
     // generate the body
     node.body->accept(*this);
-    // exit all the scope stuff
-    allocaInsertPoint = nullptr;
+    // prevent additional instructions from being inserted
+    builder.ClearInsertionPoint();
+    // exit the current scope
     scopeTree.exit();
+    // erase the alloca point because nobody needs to see it
+    if (allocaInsertPoint)
+    {
+        allocaInsertPoint->eraseFromParent();
+        allocaInsertPoint = nullptr;
+    }
     result = nullptr;
 }
 
