@@ -10,6 +10,7 @@ class FunctionNode;
 class ParamNode;
 class ReturnNode;
 class ExprNode;
+class VoidNode;
 class IdentNode;
 class LiteralNode;
 class UnaryNode;
@@ -68,6 +69,8 @@ public:
         IDENT,
         /** Integer literal. */
         LITERAL,
+        /** Void (nullary) expression. */
+        VOID,
         /** Unary expression. */
         UNARY,
         /** Binary expression. */
@@ -331,6 +334,23 @@ public:
     virtual std::string toString() const override;
     /** The value of the number. */
     llvm::APInt value;
+};
+
+/**
+ * Represents a void (nullary) expression.
+ */
+class VoidNode : public ExprNode
+{
+public:
+    /**
+     * Creates a VoidNode.
+     *
+     * @param location Where this VoidNode was found in the source.
+     */
+    VoidNode(Location location);
+    virtual ~VoidNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+    virtual std::string toString() const override;
 };
 
 /**

@@ -221,6 +221,21 @@ std::string LiteralNode::toString() const
     return s;
 }
 
+VoidNode::VoidNode(Location location)
+    : ExprNode{ Node::VOID, location }
+{
+}
+
+void VoidNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitVoid(*this);
+}
+
+std::string VoidNode::toString() const
+{
+    return "Void {}";
+}
+
 UnaryNode::UnaryNode(TokenKind op, ExprNode* expr, Location location)
     : ExprNode{ Node::UNARY, location }, op{ op }, expr{ expr }
 {

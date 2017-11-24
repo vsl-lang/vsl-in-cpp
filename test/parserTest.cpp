@@ -47,6 +47,7 @@ TEST(ParserTest, HandlesFunction)
 
 TEST(ParserTest, HandlesReturn)
 {
+    valid("return;");
     valid("return x;");
 }
 

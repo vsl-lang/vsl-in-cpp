@@ -225,6 +225,12 @@ void IRGen::visitLiteral(LiteralNode& node)
     result = llvm::ConstantInt::get(context, node.value);
 }
 
+void IRGen::visitVoid(VoidNode& node)
+{
+    node.type = vslContext.getVoidType();
+    result = llvm::UndefValue::get(builder.getVoidTy());
+}
+
 void IRGen::visitUnary(UnaryNode& node)
 {
     // verify the contained expression

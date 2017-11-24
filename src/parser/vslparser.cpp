@@ -302,12 +302,23 @@ Node* VSLParser::parseReturn()
     }
     const Location& location = ret.location;
     next();
-    ExprNode* value = parseExpr();
-    if (current().kind != TokenKind::SEMICOLON)
+    ExprNode* value;
+    if (current().kind == TokenKind::SEMICOLON)
     {
-        return errorExpected("';'");
+        // return without a value (void)
+        next();
+        value = makeNode<VoidNode>(location);
     }
-    next();
+    else
+    {
+        // return with a value
+        value = parseExpr();
+        if (current().kind != TokenKind::SEMICOLON)
+        {
+            return errorExpected("';'");
+        }
+        next();
+    }
     return makeNode<ReturnNode>(value, location);
 }
 

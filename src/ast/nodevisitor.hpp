@@ -29,6 +29,7 @@ public:
     virtual void visitReturn(ReturnNode& node) = 0;
     virtual void visitIdent(IdentNode& node) = 0;
     virtual void visitLiteral(LiteralNode& node) = 0;
+    virtual void visitVoid(VoidNode& node) = 0;
     virtual void visitUnary(UnaryNode& node) = 0;
     virtual void visitBinary(BinaryNode& node) = 0;
     virtual void visitCall(CallNode& node) = 0;
