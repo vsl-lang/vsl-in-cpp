@@ -9,8 +9,8 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 
-CodeGen::CodeGen(llvm::Module& module, std::ostream& errors)
-    : module{ module }, fpm{ &module }, errors{ errors }, errored{ false }
+CodeGen::CodeGen(VSLContext& vslContext, llvm::Module& module)
+    : vslContext{ vslContext }, module{ module }, fpm{ &module }
 {
 }
 
@@ -28,8 +28,8 @@ void CodeGen::compile(llvm::raw_pwrite_stream& output)
         targetTriple, error);
     if (target == nullptr)
     {
-        errors << "error: couldn't find requested target: " << error << '\n';
-        errored = true;
+        vslContext.error() << "couldn't find requested target: " <<
+            error << '\n';
         return;
     }
     const char* cpu = "generic";
@@ -45,17 +45,12 @@ void CodeGen::compile(llvm::raw_pwrite_stream& output)
     if (targetMachine->addPassesToEmitFile(pm, output,
             llvm::TargetMachine::CGFT_ObjectFile))
     {
-        errors << "error: target machine cannot emit a file of type object\n";
-        errored = true;
+        vslContext.error() <<
+            "target machine cannot emit a file of type object\n";
         return;
     }
     pm.run(module);
     output.flush();
-}
-
-bool CodeGen::hasError() const
-{
-    return errored;
 }
 
 void CodeGen::optimize()

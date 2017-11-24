@@ -1,8 +1,6 @@
 #include "lexer/location.hpp"
-#include <cstddef>
-#include <ostream>
 
-std::ostream& operator<<(std::ostream& os, const Location& location)
+llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Location& location)
 {
     return os << "file:" << location.line << ':' << location.col;
 }

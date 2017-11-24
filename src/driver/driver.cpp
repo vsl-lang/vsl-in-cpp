@@ -8,7 +8,6 @@
 #include "llvm/Support/FileSystem.h"
 #include <cstring>
 #include <fstream>
-#include <iostream>
 #include <memory>
 #include <string>
 
@@ -22,9 +21,10 @@ int Driver::main(int argc, const char* const* argv)
     case OptionParser::COMPILE:
         return compile();
     case OptionParser::REPL_LEX:
-        return repl([](const std::string& in, std::ostream& out)
+        return repl([](const std::string& in, llvm::raw_ostream& out)
             {
-                VSLLexer lexer{ in.c_str(), out };
+                VSLContext vslContext;
+                VSLLexer lexer{ vslContext, in.c_str() };
                 Token token;
                 do
                 {
@@ -34,31 +34,34 @@ int Driver::main(int argc, const char* const* argv)
                 while (token.kind != TokenKind::END);
             });
     case OptionParser::REPL_PARSE:
-        return repl([](const std::string& in, std::ostream& out)
+        return repl([](const std::string& in, llvm::raw_ostream& out)
             {
-                VSLLexer lexer{ in.c_str(), out };
                 VSLContext vslContext;
-                VSLParser parser{ vslContext, lexer, out };
+                VSLLexer lexer{ vslContext, in.c_str() };
+                VSLParser parser{ vslContext, lexer };
                 out << parser.parse()->toString() << '\n';
             });
     case OptionParser::REPL_GENERATE:
-        return repl([&](const std::string& in, std::ostream& out)
+        return repl([&](const std::string& in, llvm::raw_ostream& out)
             {
-                VSLLexer lexer{ in.c_str(), out };
                 VSLContext vslContext;
-                VSLParser parser{ vslContext, lexer, out };
+                VSLLexer lexer{ vslContext, in.c_str() };
+                VSLParser parser{ vslContext, lexer };
                 auto ast = parser.parse();
-                llvm::LLVMContext llvmContext;
-                auto module = std::make_unique<llvm::Module>("repl",
-                    llvmContext);
-                IRGen irGen{ vslContext, *module };
-                ast->accept(irGen);
-                CodeGen codeGen{ *module };
-                if (op.optimize)
+                if (!vslContext.getErrorCount())
                 {
-                    codeGen.optimize();
+                    llvm::LLVMContext llvmContext;
+                    auto module = std::make_unique<llvm::Module>("repl",
+                        llvmContext);
+                    IRGen irGen{ vslContext, *module };
+                    ast->accept(irGen);
+                    CodeGen codeGen{ vslContext, *module };
+                    if (op.optimize)
+                    {
+                        codeGen.optimize();
+                    }
+                    out << *module << '\n';
                 }
-                std::cerr << irGen.getIR() << '\n';
             });
     }
     return 0;
@@ -66,7 +69,7 @@ int Driver::main(int argc, const char* const* argv)
 
 int Driver::displayHelp()
 {
-    std::cout <<
+    llvm::outs() <<
         "Usage: vsl [options] [file]\n"
         "Options:\n"
         "  -h --help Display this information.\n"
@@ -85,22 +88,23 @@ int Driver::compile()
         llvm::MemoryBuffer::getFileOrSTDIN(op.infile);
     if (std::error_code ec = in.getError())
     {
-        std::cerr << ec << '\n';
+        llvm::errs() << "Error: could not open file '" << op.infile << "': " <<
+            ec.message() << '\n';
         return 1;
     }
-    VSLLexer lexer{ in.get()->getBuffer().data() };
     VSLContext vslContext;
+    VSLLexer lexer{ vslContext, in.get()->getBuffer().data() };
     VSLParser parser{ vslContext, lexer };
     auto ast = parser.parse();
     llvm::LLVMContext llvmContext;
     auto module = std::make_unique<llvm::Module>(op.infile, llvmContext);
     IRGen irGen{ vslContext, *module };
     ast->accept(irGen);
-    if (lexer.hasError() || parser.hasError() || irGen.hasError())
+    if (vslContext.getErrorCount())
     {
         return 1;
     }
-    CodeGen codeGen{ *module };
+    CodeGen codeGen{ vslContext, *module };
     if (op.optimize)
     {
         codeGen.optimize();
@@ -109,26 +113,29 @@ int Driver::compile()
     llvm::raw_fd_ostream out{ op.outfile, ec, llvm::sys::fs::F_None };
     if (ec)
     {
-        std::cerr << ec << '\n';
+        llvm::errs() << "Error: could not open file '" << op.outfile << "': " <<
+            ec.message() << '\n';
         return 1;
     }
     codeGen.compile(out);
-    if (codeGen.hasError())
+    if (vslContext.getErrorCount())
     {
         return 1;
     }
     return 0;
 }
 
-int Driver::repl(std::function<void(const std::string&, std::ostream&)>
-    evaluator)
+int Driver::repl(
+    std::function<void(const std::string&, llvm::raw_ostream&)> evaluator)
 {
+    // std::cin is needed here because of its line-based input unlike
+    //  llvm::MemoryBuffer
     std::string input;
     while (std::cout.good() && std::cin.good())
     {
         std::cout << "> ";
         std::getline(std::cin, input);
-        evaluator(input, std::cerr);
+        evaluator(input, llvm::errs());
         input.clear();
     }
     return 0;

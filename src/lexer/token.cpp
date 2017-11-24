@@ -1,7 +1,7 @@
 #include "lexer/token.hpp"
 #include <utility>
 
-std::ostream& operator<<(std::ostream& os, const Token& token)
+llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Token& token)
 {
     return os << tokenKindDebugName(token.kind) << " '" << token.text.str() <<
         '\'';

@@ -1,14 +1,11 @@
 #ifndef VSLLEXER_HPP
 #define VSLLEXER_HPP
 
+#include "irgen/vslContext.hpp"
 #include "lexer/lexer.hpp"
 #include "lexer/location.hpp"
 #include "lexer/token.hpp"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/ADT/StringSet.h"
-#include <cstddef>
-#include <iostream>
-#include <memory>
 
 /**
  * Lexer for VSL.
@@ -19,22 +16,16 @@ public:
     /**
      * Creates a VSLLexer.
      *
+     * @param vslContext The VSLContext object to be used.
      * @param src The source code to lex.
-     * @param errors The stream to print errors to.
      */
-    VSLLexer(const char* src, std::ostream& errors = std::cerr);
+    VSLLexer(VSLContext& vslContext, const char* src);
     /**
      * Destroys a VSLLexer.
      */
     virtual ~VSLLexer() override = default;
     virtual Token nextToken() override;
     virtual bool empty() const override;
-    /**
-     * Checks if an error has been encountered yet.
-     *
-     * @returns True if an error was encountered, false otherwise.
-     */
-    bool hasError() const;
 
 private:
     /**
@@ -92,14 +83,12 @@ private:
      * Consumes a block comment.
      */
     void lexBlockComment();
+    /** Reference to the VSLContext. */
+    VSLContext& vslContext;
     /** The current buffer of text to insert into the next Token. */
     llvm::StringRef text;
     /** The location of the current character. */
     Location location;
-    /** The stream to print errors to. */
-    std::ostream& errors;
-    /** True if an error was encountered, otherwise false. */
-    bool errored;
 };
 
 #endif // VSLLEXER_HPP

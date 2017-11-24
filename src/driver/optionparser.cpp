@@ -1,6 +1,6 @@
 #include "driver/optionparser.hpp"
+#include "llvm/Support/raw_ostream.h"
 #include <cstring>
-#include <iostream>
 
 OptionParser::OptionParser()
     : action{ COMPILE }, optimize{ false }, infile { nullptr },
@@ -37,14 +37,14 @@ void OptionParser::parse(int argc, const char* const* argv)
             }
             else
             {
-                std::cerr << "Error: no output file given\n";
+                llvm::errs() << "Error: no output file given\n";
             }
         }
         else if (!strncmp(arg, "-O", 2))
         {
             if (arg[2] == '\0')
             {
-                std::cerr << "Error: No optimization level specified.\n";
+                llvm::errs() << "Error: No optimization level specified.\n";
             }
             else if (arg[2] == '0')
             {
@@ -56,18 +56,18 @@ void OptionParser::parse(int argc, const char* const* argv)
             }
             else
             {
-                std::cerr << "Error: Unknown optimization level '" << &arg[2] <<
-                    "'\n";
+                llvm::errs() << "Error: Unknown optimization level '" <<
+                    &arg[2] << "'\n";
             }
         }
         // any other unknown flag, except "-" which means stdin
         else if (arg[0] == '-' && arg[1] != '\0')
         {
-            std::cerr << "Error: unknown flag '" << arg << "'\n";
+            llvm::errs() << "Error: unknown flag '" << arg << "'\n";
         }
         else if (infile != nullptr)
         {
-            std::cerr <<
+            llvm::errs() <<
                 "Error: VSL currently doesn't support multiple input files\n";
         }
         else

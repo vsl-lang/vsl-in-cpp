@@ -22,21 +22,13 @@ public:
      *
      * @param vslContext The VSLContext object to be used.
      * @param lexer The Lexer to get the tokens from.
-     * @param errors The stream to print errors to.
      */
-    VSLParser(VSLContext& vslContext, Lexer& lexer,
-        std::ostream& errors = std::cerr);
+    VSLParser(VSLContext& vslContext, Lexer& lexer);
     /**
      * Destroys a VSLParser.
      */
     virtual ~VSLParser() override = default;
     virtual BlockNode* parse() override;
-    /**
-     * Checks if an error has been encountered yet.
-     *
-     * @returns True if an error was encountered, false otherwise.
-     */
-    bool hasError() const;
 
 private:
     /**
@@ -192,10 +184,6 @@ private:
     Lexer& lexer;
     /** Cache of tokens used in lookahead. */
     std::deque<Token> cache;
-    /** The stream to print errors to. */
-    std::ostream& errors;
-    /** True if an error was encountered, otherwise false. */
-    bool errored;
 };
 
 #endif // VSLPARSER_HPP

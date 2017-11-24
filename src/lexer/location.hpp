@@ -1,8 +1,8 @@
 #ifndef LOCATION_HPP
 #define LOCATION_HPP
 
+#include "llvm/Support/raw_ostream.h"
 #include <cstddef>
-#include <ostream>
 
 class Location;
 
@@ -14,7 +14,7 @@ class Location;
  *
  * @returns The given output stream.
  */
-std::ostream& operator<<(std::ostream& os, const Location& location);
+llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Location& location);
 
 /**
  * Represents the location of an object in the source code of a program. Used

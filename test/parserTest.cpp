@@ -6,18 +6,15 @@
 #define valid(src) EXPECT_TRUE(parse(src))
 #define invalid(src) EXPECT_FALSE(parse(src))
 
-namespace
+// returns true if the syntax is valid, false otherwise
+static bool parse(const char* src)
 {
-// returns true if there's a syntax error, false otherwise
-bool parse(const char* src)
-{
-    VSLLexer lexer{ src };
-    VSLContext vslContext;
+    VSLContext vslContext{ llvm::nulls() };
+    VSLLexer lexer{ vslContext, src };
     VSLParser parser{ vslContext, lexer };
     parser.parse();
-    return !parser.hasError();
+    return !vslContext.getErrorCount();
 }
-} // namespace
 
 TEST(ParserTest, HandlesEmptyStatement)
 {

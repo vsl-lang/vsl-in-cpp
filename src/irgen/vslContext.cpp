@@ -1,8 +1,9 @@
 #include "irgen/vslContext.hpp"
+#include <iostream>
 
-VSLContext::VSLContext()
+VSLContext::VSLContext(llvm::raw_ostream& errors)
     : errorType{ Type::ERROR }, boolType{ Type::BOOL }, intType{ Type::INT },
-    voidType{ Type::VOID }
+    voidType{ Type::VOID }, errors{ errors }, errorCount{ 0 }
 {
 }
 
@@ -47,4 +48,24 @@ const FunctionType* VSLContext::getFunctionType(std::vector<const Type*> params,
     // can't construct the FunctionType by emplace() because ctor is protected
     FunctionType ft{ std::move(params), returnType };
     return &*functionTypes.emplace(std::move(ft)).first;
+}
+
+llvm::raw_ostream& VSLContext::error()
+{
+    ++errorCount;
+    errors.changeColor(llvm::raw_ostream::RED, true) << "error:";
+    errors.resetColor() << ' ';
+    return errors;
+}
+
+llvm::raw_ostream& VSLContext::error(Location location)
+{
+    errors.changeColor(llvm::raw_ostream::SAVEDCOLOR, true) << location << ':';
+    errors.resetColor() << ' ';
+    return error();
+}
+
+size_t VSLContext::getErrorCount() const
+{
+    return errorCount;
 }

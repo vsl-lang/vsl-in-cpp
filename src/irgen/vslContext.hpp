@@ -2,6 +2,8 @@
 #define VSLCONTEXT_HPP
 
 #include "ast/type.hpp"
+#include "lexer/location.hpp"
+#include "llvm/Support/raw_ostream.h"
 #include <unordered_set>
 
 class VSLContext
@@ -9,8 +11,10 @@ class VSLContext
 public:
     /**
      * Constructs a VSLContext.
+     *
+     * @param errors The stream to print errors to.
      */
-    VSLContext();
+    VSLContext(llvm::raw_ostream& errors = llvm::errs());
     /**
      * Gets the Bool type.
      *
@@ -53,6 +57,29 @@ public:
      */
     const FunctionType* getFunctionType(std::vector<const Type*> params,
         const Type* returnType);
+    /**
+     * Prints an error, allowing the caller to add on any other useful info.
+     *
+     * @param location Where the error occured.
+     *
+     * @returns A stream to insert a diagnostic message.
+     */
+    llvm::raw_ostream& error();
+    /**
+     * Prints an error, allowing the caller to add on any other useful info. The
+     * location is prefixed in bold to let the user know where it occured.
+     *
+     * @param location Where the error occured.
+     *
+     * @returns A stream to insert a diagnostic message.
+     */
+    llvm::raw_ostream& error(Location location);
+    /**
+     * Gets the amount of errors encountered.
+     *
+     * @returns The amount of erros encountered.
+     */
+    size_t getErrorCount() const;
 
 private:
     /** Placeholder for any type errors. */
@@ -65,6 +92,10 @@ private:
     SimpleType voidType;
     /** Contains all the FunctionTypes. */
     std::unordered_set<FunctionType> functionTypes;
+    /** Stream to print errors to. */
+    llvm::raw_ostream& errors;
+    /** Amount of errors encountered. */
+    size_t errorCount;
 };
 
 #endif // VSLCONTEXT_HPP

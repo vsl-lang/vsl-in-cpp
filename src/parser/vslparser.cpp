@@ -1,8 +1,7 @@
 #include "parser/vslparser.hpp"
 
-VSLParser::VSLParser(VSLContext& vslContext, Lexer& lexer, std::ostream& errors)
-    : vslContext{ vslContext }, lexer{ lexer }, errors{ errors },
-    errored{ false }
+VSLParser::VSLParser(VSLContext& vslContext, Lexer& lexer)
+    : vslContext{ vslContext }, lexer{ lexer }
 {
 }
 
@@ -20,11 +19,6 @@ BlockNode* VSLParser::parse()
     return makeNode<BlockNode>(std::move(statements), savedLocation);
 }
 
-bool VSLParser::hasError() const
-{
-    return errored;
-}
-
 const Token& VSLParser::next()
 {
     cache.emplace_back(lexer.nextToken());
@@ -39,17 +33,15 @@ const Token& VSLParser::current()
 EmptyNode* VSLParser::errorExpected(const char* s)
 {
     const Token& t = current();
-    errors << t.location << ": error: expected " << s << " but found " <<
+    vslContext.error(t.location) << "expected " << s << " but found " <<
         tokenKindName(t.kind) << '\n';
-    errored = true;
     return makeNode<EmptyNode>(t.location);
 }
 
 EmptyNode* VSLParser::errorUnexpected(const Token& token)
 {
-    errors << token.location << ": error: unexpected token " <<
+    vslContext.error(token.location) << "unexpected token " <<
         tokenKindName(token.kind) << '\n';
-    errored = true;
     return makeNode<EmptyNode>(token.location);
 }
 
@@ -494,16 +486,14 @@ LiteralNode* VSLParser::parseNumber(const Token& token)
     llvm::APInt value;
     if (token.text.getAsInteger(10, value))
     {
-        errors << token.location << ": error: invalid integer '" <<
-            token.text.str() << "'\n";
+        vslContext.error(location) << "invalid integer '" << token.text <<
+            "'\n";
         value = 0;
-        errored = true;
     }
     else if (value.getActiveBits() > 32)
     {
-        errors << token.location << ": error: overflow detected in number '" <<
-            token.text.str() << "'\n";
-        errored = true;
+        vslContext.error(location) << "overflow detected in number '" <<
+            token.text<< "'\n";
     }
     value = value.zextOrTrunc(32);
     return makeNode<LiteralNode>(std::move(value), location);

@@ -4,8 +4,8 @@
 #include "lexer/location.hpp"
 #include "lexer/tokenKind.hpp"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/Support/raw_ostream.h"
 #include <cstddef>
-#include <ostream>
 #include <string>
 #include <unordered_map>
 
@@ -19,7 +19,7 @@ class Token;
  *
  * @returns The same output stream that was given.
  */
-std::ostream& operator<<(std::ostream& os, const Token& token);
+llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Token& token);
 
 /**
  * Represents a lexer token.

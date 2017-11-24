@@ -2,6 +2,7 @@
 #define DRIVER_HPP
 
 #include "driver/optionparser.hpp"
+#include "llvm/Support/raw_ostream.h"
 #include <functional>
 
 /**
@@ -40,7 +41,9 @@ private:
      *
      * @returns 0 on success, 1 on failure.
      */
-    int repl(std::function<void(const std::string&, std::ostream&)> evaluator);
+    int repl(
+        std::function<void(const std::string&, llvm::raw_ostream&)> evaluator);
+    /** The option parser. */
     OptionParser op;
 };
 

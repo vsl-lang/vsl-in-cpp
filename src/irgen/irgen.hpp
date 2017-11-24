@@ -25,10 +25,8 @@ public:
      *
      * @param vslContext The VSLContext object to be used.
      * @param module The module to emit LLVM IR into.
-     * @param errors The stream to print errors to.
      */
-    IRGen(VSLContext& vslContext, llvm::Module& module,
-        std::ostream& errors = std::cerr);
+    IRGen(VSLContext& vslContext, llvm::Module& module);
     /**
      * Destroys an IRGen object.
      */
@@ -46,18 +44,6 @@ public:
     virtual void visitBinary(BinaryNode& node) override;
     virtual void visitCall(CallNode& node) override;
     virtual void visitArg(ArgNode& node) override;
-    /**
-     * Dumps the generated LLVM IR in string form.
-     *
-     * @returns The string representation of the IR.
-     */
-    std::string getIR() const;
-    /**
-     * Checks if an error has been encountered yet.
-     *
-     * @returns True if an error was encountered, false otherwise.
-     */
-    bool hasError() const;
 
 private:
     // unary
@@ -107,10 +93,6 @@ private:
      * set it to `nullptr` otherwise.
      */
     llvm::Value* result;
-    /** The stream to print errors to. */
-    std::ostream& errors;
-    /** True if an error was encountered, otherwise false. */
-    bool errored;
 };
 
 #endif // LLVMGEN_HPP

@@ -1,10 +1,8 @@
 #include "lexer/vsllexer.hpp"
 #include <cctype>
-#include <cstdlib>
-#include <utility>
 
-VSLLexer::VSLLexer(const char* src, std::ostream& errors)
-    : text{ src, 1 }, location{ 1, 1 }, errors{ errors }, errored{ false }
+VSLLexer::VSLLexer(VSLContext& vslContext, const char* src)
+    : vslContext{ vslContext }, text{ src, 1 }, location{ 1, 1 }
 {
 }
 
@@ -95,9 +93,8 @@ Token VSLLexer::nextToken()
             }
             if (!isspace(current()))
             {
-                errors << location << ": error: unknown symbol '" <<
-                    current() << "'\n";
-                errored = true;
+                vslContext.error(location) << "unknown symbol '" << current() <<
+                    "'\n";
             }
         }
         resetBuffer();
@@ -108,11 +105,6 @@ Token VSLLexer::nextToken()
 bool VSLLexer::empty() const
 {
     return current() == '\0';
-}
-
-bool VSLLexer::hasError() const
-{
-    return errored;
 }
 
 char VSLLexer::current() const
