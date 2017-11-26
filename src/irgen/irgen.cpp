@@ -100,8 +100,8 @@ void IRGen::visitVariable(VariableNode& node)
     else if (node.type != value.type)
     {
         vslContext.error(value.location) <<
-            "mismatching types when initializing variable " <<
-            node.name.str() << '\n';
+            "mismatching types when initializing variable " << node.name <<
+            '\n';
     }
     // create the alloca instruction
     auto initialValue = result;
@@ -111,7 +111,7 @@ void IRGen::visitVariable(VariableNode& node)
     // add to current scope
     if (!scopeTree.set(node.name, { node.type, alloca }))
     {
-        vslContext.error(node.location) << "variable " << node.name.str() <<
+        vslContext.error(node.location) << "variable " << node.name <<
             " was already defined in this scope\n";
     }
     result = nullptr;
