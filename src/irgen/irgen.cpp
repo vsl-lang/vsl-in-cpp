@@ -142,9 +142,18 @@ void IRGen::visitFunction(FunctionNode& node)
     for (size_t i = 0; i < node.params.size(); ++i)
     {
         const ParamNode& param = *node.params[i];
-        llvm::Value* alloca = createEntryAlloca(ft->params()[i], param.name);
-        builder.CreateStore(&f->arg_begin()[i], alloca);
-        scopeTree.set(param.name, { param.type, alloca });
+        if (param.type != vslContext.getVoidType())
+        {
+            llvm::Value* alloca = createEntryAlloca(ft->params()[i],
+                param.name);
+            builder.CreateStore(&f->arg_begin()[i], alloca);
+            scopeTree.set(param.name, { param.type, alloca });
+        }
+        else
+        {
+            vslContext.error(param.location) << param.type->toString() <<
+                " is invalid for parameter " << param.name << '\n';
+        }
     }
     // generate the body
     node.body->accept(*this);
