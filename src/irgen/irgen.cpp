@@ -177,17 +177,30 @@ void IRGen::visitParam(ParamNode& node)
 
 void IRGen::visitReturn(ReturnNode& node)
 {
-    // make sure the type of the value to return matches the actual return type
-    node.value->accept(*this);
-    const Type* type = node.value->type;
-    if (type != scopeTree.getReturnType())
+    if (node.value)
     {
-        vslContext.error(node.location) <<
-            "cannot convert expression of type " << type->toString() <<
-            " to type " << scopeTree.getReturnType()->toString() << '\n';
+        node.value->accept(*this);
+        const Type* type = node.value->type;
+        if (type == vslContext.getVoidType())
+        {
+            vslContext.error(node.location) <<
+                "cannot return a value of type Void\n";
+            result = nullptr;
+        }
+        else if (type != scopeTree.getReturnType())
+        {
+            vslContext.error(node.location) << "return value of type " <<
+                type->toString() << " does not match return type " <<
+                scopeTree.getReturnType()->toString() << '\n';
+        }
     }
-    // create the return instruction
-    result = builder.CreateRet(result);
+    else
+    {
+        result = nullptr;
+    }
+    // a ret instruction with a nullptr assumes void
+    builder.CreateRet(result);
+    result = nullptr;
 }
 
 void IRGen::visitIdent(IdentNode& node)
@@ -233,12 +246,6 @@ void IRGen::visitLiteral(LiteralNode& node)
         node.type = vslContext.getErrorType();
     }
     result = llvm::ConstantInt::get(context, node.value);
-}
-
-void IRGen::visitVoid(VoidNode& node)
-{
-    node.type = vslContext.getVoidType();
-    result = llvm::UndefValue::get(builder.getVoidTy());
 }
 
 void IRGen::visitUnary(UnaryNode& node)

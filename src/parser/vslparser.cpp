@@ -307,7 +307,7 @@ Node* VSLParser::parseReturn()
     {
         // return without a value (void)
         next();
-        value = makeNode<VoidNode>(location);
+        value = nullptr;
     }
     else
     {

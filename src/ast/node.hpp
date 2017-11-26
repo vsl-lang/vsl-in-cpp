@@ -337,23 +337,6 @@ public:
 };
 
 /**
- * Represents a void (nullary) expression.
- */
-class VoidNode : public ExprNode
-{
-public:
-    /**
-     * Creates a VoidNode.
-     *
-     * @param location Where this VoidNode was found in the source.
-     */
-    VoidNode(Location location);
-    virtual ~VoidNode() override = default;
-    virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
-};
-
-/**
  * Represents a unary expression.
  */
 class UnaryNode : public ExprNode

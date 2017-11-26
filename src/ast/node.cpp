@@ -174,9 +174,17 @@ void ReturnNode::accept(NodeVisitor& nodeVisitor)
 
 std::string ReturnNode::toString() const
 {
-    std::string s = "Return { value: ";
-    s += value->toString();
-    s += " }";
+    std::string s;
+    if (value)
+    {
+        s = "Return { value: ";
+        s += value->toString();
+        s += " }";
+    }
+    else
+    {
+        s = "Return { value: <void> }";
+    }
     return s;
 }
 
@@ -219,21 +227,6 @@ std::string LiteralNode::toString() const
     s += value.toString(10, false);
     s += " }";
     return s;
-}
-
-VoidNode::VoidNode(Location location)
-    : ExprNode{ Node::VOID, location }
-{
-}
-
-void VoidNode::accept(NodeVisitor& nodeVisitor)
-{
-    nodeVisitor.visitVoid(*this);
-}
-
-std::string VoidNode::toString() const
-{
-    return "Void {}";
 }
 
 UnaryNode::UnaryNode(TokenKind op, ExprNode* expr, Location location)
