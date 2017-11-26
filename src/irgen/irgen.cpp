@@ -94,7 +94,7 @@ void IRGen::visitVariable(VariableNode& node)
     value.accept(*this);
     if (node.type != vslContext.getIntType())
     {
-        vslContext.error(node.location) << node.type->toString() <<
+        vslContext.error(node.location) << "type " << node.type->toString() <<
             " is not a valid type for a variable\n";
     }
     else if (node.type != value.type)
@@ -151,8 +151,9 @@ void IRGen::visitFunction(FunctionNode& node)
         }
         else
         {
-            vslContext.error(param.location) << param.type->toString() <<
-                " is invalid for parameter " << param.name << '\n';
+            vslContext.error(param.location) << "type " <<
+                param.type->toString() << " is invalid for parameter " <<
+                param.name << '\n';
         }
     }
     // generate the body
