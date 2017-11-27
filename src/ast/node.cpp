@@ -96,7 +96,7 @@ void VariableNode::accept(NodeVisitor& nodeVisitor)
 
 std::string VariableNode::toString() const
 {
-    std::string s = "Assignment { name: ";
+    std::string s = "Variable { name: ";
     s += name;
     s += ", type: ";
     s += type->toString();
@@ -316,10 +316,8 @@ void ArgNode::accept(NodeVisitor& nodeVisitor)
 
 std::string ArgNode::toString() const
 {
-    std::string s = "Arg { name: ";
-    s += name;
-    s += ", value: ";
+    std::string s = name;
+    s += ": ";
     s += value->toString();
-    s += " }";
     return s;
 }
