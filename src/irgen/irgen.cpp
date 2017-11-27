@@ -420,6 +420,7 @@ void IRGen::genAssign(BinaryNode& node)
     ExprNode& lhs = *node.left;
     ExprNode& rhs = *node.right;
     rhs.accept(*this);
+    llvm::Value* rightValue = result;
     node.type = vslContext.getVoidType();
     result = nullptr;
     // make sure that the lhs is an identifier
@@ -434,7 +435,7 @@ void IRGen::genAssign(BinaryNode& node)
             if (i.type == rhs.type)
             {
                 // finally, create the store instruction
-                builder.CreateStore(result, i.value);
+                builder.CreateStore(rightValue, i.value);
                 return;
             }
             else
