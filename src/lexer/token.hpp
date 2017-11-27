@@ -12,7 +12,7 @@
 class Token;
 
 /**
- * Allows a {@link Token} to be printed to an output stream.
+ * Allows a Token to be printed to an output stream.
  *
  * @param os The stream to print to.
  * @param token The Token to print.

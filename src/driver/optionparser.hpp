@@ -1,6 +1,9 @@
 #ifndef OPTIONPARSER_HPP
 #define OPTIONPARSER_HPP
 
+/**
+ * Parses command-line arguments.
+ */
 class OptionParser
 {
 public:

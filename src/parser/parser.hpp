@@ -17,10 +17,10 @@ public:
      */
     virtual ~Parser() = 0;
     /**
-     * Parses the program. The {@link BlockNode} returned is owned by the
-     * Parser and will be invalidated once this Parser is destructed.
+     * Parses the program. The BlockNode returned is owned by the Parser and
+     * will be invalidated once this Parser is destructed.
      *
-     * @returns The AST of the program, wrapped in a {@link BlockNode}.
+     * @returns The AST of the program, wrapped in a BlockNode.
      */
     virtual BlockNode* parse() = 0;
 

@@ -4,13 +4,15 @@
 #include "llvm/ADT/StringRef.h"
 
 /**
- * Specifies the kind of token that a {@link Token} can be. They can be found in
+ * Specifies the kind of token that a Token can be. They can be found in
  * the file `lexer/tokenKind.def`.
  */
 enum class TokenKind
 {
     // tokenKind.def automatically #undef's the macros it uses
+    /** @cond */
 #define TOKEN(X, Y) X,
+    /** @endcond */
 #include "lexer/tokenKind.def"
     /** The number of TokenKinds that exist. */
     COUNT
@@ -18,7 +20,7 @@ enum class TokenKind
 
 /**
  * Gets the external name of a TokenKind. It's best to use this rather than
- * {@link tokenKindName} wherever possible in diagnostic messages.
+ * tokenKindDebugName wherever possible in diagnostic messages.
  *
  * @param k The TokenKind to get the external name of.
  *

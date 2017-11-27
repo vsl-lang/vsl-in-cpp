@@ -15,7 +15,7 @@
 #include <string>
 
 /**
- * Generates LLVM IR by visiting a {@link Node}.
+ * Generates LLVM IR by visiting a Node.
  */
 class IRGen : public NodeVisitor
 {
@@ -46,30 +46,114 @@ public:
     virtual void visitArg(ArgNode& node) override;
 
 private:
-    // unary
-    void genNeg(const Type* type, llvm::Value* value);
-    // special
+    /**
+     * Generates a variable assignment.
+     *
+     * @param node The expression to generate code for.
+     */
     void genAssign(BinaryNode& node);
-    // arithmetic
+    /**
+     * Generates a unary `neg` instruction.
+     *
+     * @param type The VSL type of the operand.
+     * @param value The LLVM value to operate on.
+     */
+    void genNeg(const Type* type, llvm::Value* value);
+    /**
+     * Generates a binary add instruction.
+     *
+     * @param type The VSL type of the operand.
+     * @param lhs Left operand.
+     * @param rhs Right operand.
+     */
     void genAdd(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    /**
+     * Generates a binary subtract instruction.
+     *
+     * @param type The VSL type of the operand.
+     * @param lhs Left operand.
+     * @param rhs Right operand.
+     */
     void genSub(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    /**
+     * Generates a binary multiply instruction.
+     *
+     * @param type The VSL type of the operand.
+     * @param lhs Left operand.
+     * @param rhs Right operand.
+     */
     void genMul(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    /**
+     * Generates a binary divide instruction.
+     *
+     * @param type The VSL type of the operand.
+     * @param lhs Left operand.
+     * @param rhs Right operand.
+     */
     void genDiv(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    /**
+     * Generates a binary remainder instruction.
+     *
+     * @param type The VSL type of the operand.
+     * @param lhs Left operand.
+     * @param rhs Right operand.
+     */
     void genMod(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
-    // comparison
+    /**
+     * Generates an equals comparison.
+     *
+     * @param type The VSL type of the operand.
+     * @param lhs Left operand.
+     * @param rhs Right operand.
+     */
     void genEQ(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    /**
+     * Generates a not equals comparison.
+     *
+     * @param type The VSL type of the operand.
+     * @param lhs Left operand.
+     * @param rhs Right operand.
+     */
     void genNE(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    /**
+     * Generates a greater than comparison.
+     *
+     * @param type The VSL type of the operand.
+     * @param lhs Left operand.
+     * @param rhs Right operand.
+     */
     void genGT(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    /**
+     * Generates a greater than or equal comparison.
+     *
+     * @param type The VSL type of the operand.
+     * @param lhs Left operand.
+     * @param rhs Right operand.
+     */
     void genGE(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    /**
+     * Generates a less than comparison.
+     *
+     * @param type The VSL type of the operand.
+     * @param lhs Left operand.
+     * @param rhs Right operand.
+     */
     void genLT(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+    /**
+     * Generates a less than or equal comparison.
+     *
+     * @param type The VSL type of the operand.
+     * @param lhs Left operand.
+     * @param rhs Right operand.
+     */
     void genLE(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
     /**
      * Creates an `alloca` instruction in the entry block of the current
      * function. This is useful for stuff like variables and function parameters
      * to make the `alloca`ing process a little bit easier.
      *
-     * @param type An LLVM type representing the memory block to allocate.
-     * @param name The name of the memory block.
+     * @param type LLVM type representing the memory block to allocate.
+     * @param name Name of the memory block.
      *
      * @returns An alloca instruction.
      */
@@ -89,8 +173,8 @@ private:
     ScopeTree scopeTree;
     /**
      * Used as a temporary return value for some visitor methods. Most of the
-     * time this is used in the {@link ExprNode} visitors so it's best to just
-     * set it to `nullptr` otherwise.
+     * time this is used in the ExprNode visitors so it's best to just set it to
+     * `nullptr` otherwise.
      */
     llvm::Value* result;
 };

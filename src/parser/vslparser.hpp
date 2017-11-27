@@ -109,7 +109,7 @@ private:
      */
     ParamNode* parseParam();
     /**
-     * Parses a return statement, e.g.\ `return 1;`.
+     * Parses a return statement, e.g.\ `return 1;` or just `return;`.
      *
      * @returns A return statement.
      */

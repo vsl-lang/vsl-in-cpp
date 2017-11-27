@@ -6,16 +6,16 @@ class NodeVisitor;
 #include "ast/node.hpp"
 
 /**
- * Base class for visiting {@link Node Nodes}, implementing the Visitor Pattern.
- * Subclasses can override the visit methods to perform some operation on a
- * {@link Node} through double dispatch.
+ * Base class for visiting a Node, implementing the Visitor Pattern.
+ * Subclasses can override the visit methods to perform some operation on a Node
+ * through double dispatch.
  */
 class NodeVisitor
 {
 public:
     virtual ~NodeVisitor() = 0;
     /**
-     * Visits a {@link Node}. This is the equivalent of `node.accept(*this)`.
+     * Visits a Node. This is the equivalent of `node.accept(*this)`.
      *
      * @param node The node to visit.
      */

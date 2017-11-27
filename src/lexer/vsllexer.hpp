@@ -53,7 +53,7 @@ private:
      */
     char peek() const;
     /**
-     * Creates a token with the specified {@link TokenKind}. Before returning,
+     * Creates a token with the specified TokenKind. Before returning,
      * this method will also setup the lexer for getting the next token.
      */
     Token createToken(TokenKind kind);

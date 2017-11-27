@@ -6,6 +6,10 @@
 #include "llvm/Support/raw_ostream.h"
 #include <unordered_set>
 
+/**
+ * Context object that owns/manages VSL AST-specific data that shouldn't be kept
+ * in the AST itself.
+ */
 class VSLContext
 {
 public:
@@ -59,8 +63,6 @@ public:
         const Type* returnType);
     /**
      * Prints an error, allowing the caller to add on any other useful info.
-     *
-     * @param location Where the error occured.
      *
      * @returns A stream to insert a diagnostic message.
      */

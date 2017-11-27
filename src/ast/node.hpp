@@ -10,7 +10,6 @@ class FunctionNode;
 class ParamNode;
 class ReturnNode;
 class ExprNode;
-class VoidNode;
 class IdentNode;
 class LiteralNode;
 class UnaryNode;
@@ -21,18 +20,15 @@ class ArgNode;
 #include "ast/nodevisitor.hpp"
 #include "ast/type.hpp"
 #include "lexer/location.hpp"
-#include "lexer/token.hpp"
 #include "lexer/tokenKind.hpp"
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/StringRef.h"
-#include <cstddef>
-#include <memory>
 #include <ostream>
 #include <string>
 #include <vector>
 
 /**
- * Allows a {@link Node} to be printed to an output stream.
+ * Allows a Node to be pretty-printed to an output stream.
  *
  * @param os The stream to print to.
  * @param ast The Node to print.
@@ -69,8 +65,6 @@ public:
         IDENT,
         /** Integer literal. */
         LITERAL,
-        /** Void (nullary) expression. */
-        VOID,
         /** Unary expression. */
         UNARY,
         /** Binary expression. */
@@ -91,7 +85,7 @@ public:
     Node(Kind kind, Location location);
     virtual ~Node() = 0;
     /**
-     * Allows a {@link NodeVisitor} to visit this object.
+     * Allows a NodeVisitor to visit this object.
      *
      * @param nodeVisitor The visitor object.
      */
@@ -276,8 +270,7 @@ public:
 };
 
 /**
- * Base class for expressions. This may not actually be needed if no one takes
- * advantage of the inheritance relationship.
+ * Base class for expressions.
  */
 class ExprNode : public Node
 {
@@ -291,7 +284,7 @@ public:
     ExprNode(Node::Kind kind, Location location);
     /**
      * VSL Type that this ExprNode contains. This is usually filled in later by
-     * a {@link NodeVisitor} of some sort.
+     * a NodeVisitor of some sort.
      */
     const Type* type;
 };

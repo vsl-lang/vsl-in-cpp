@@ -415,12 +415,6 @@ void IRGen::visitArg(ArgNode& node)
     node.value->accept(*this);
 }
 
-void IRGen::genNeg(const Type* type, llvm::Value* value)
-{
-    result = (type == vslContext.getIntType()) ?
-        builder.CreateNeg(value, "neg") : nullptr;
-}
-
 void IRGen::genAssign(BinaryNode& node)
 {
     ExprNode& lhs = *node.left;
@@ -461,6 +455,12 @@ void IRGen::genAssign(BinaryNode& node)
     {
         vslContext.error(lhs.location) << "lhs must be an identifier\n";
     }
+}
+
+void IRGen::genNeg(const Type* type, llvm::Value* value)
+{
+    result = (type == vslContext.getIntType()) ?
+        builder.CreateNeg(value, "neg") : nullptr;
 }
 
 void IRGen::genAdd(const Type* type, llvm::Value* lhs, llvm::Value* rhs)

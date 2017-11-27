@@ -7,7 +7,6 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Support/FileSystem.h"
 #include <cstring>
-#include <fstream>
 #include <memory>
 #include <string>
 
