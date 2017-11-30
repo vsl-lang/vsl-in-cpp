@@ -5,14 +5,10 @@
 #include "ast/nodevisitor.hpp"
 #include "irgen/scopetree.hpp"
 #include "irgen/vslContext.hpp"
-#include "llvm/ADT/StringRef.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Value.h"
-#include "llvm/Support/raw_ostream.h"
-#include <iostream>
-#include <string>
 
 /**
  * Generates LLVM IR by visiting a Node.

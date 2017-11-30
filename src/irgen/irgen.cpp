@@ -1,6 +1,8 @@
 #include "irgen/irgen.hpp"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/Verifier.h"
+#include "llvm/Support/raw_ostream.h"
 #include <limits>
 
 IRGen::IRGen(VSLContext& vslContext, llvm::Module& module)
@@ -169,6 +171,12 @@ void IRGen::visitFunction(FunctionNode& node)
         allocaInsertPoint = nullptr;
     }
     result = nullptr;
+    // make sure the function is valid
+    if (llvm::verifyFunction(*f, &llvm::errs()))
+    {
+        vslContext.error(node.location) <<
+            "LLVM encountered the above errors (SHOULD NEVER HAPPEN)\n";
+    }
 }
 
 void IRGen::visitParam(ParamNode& node)
