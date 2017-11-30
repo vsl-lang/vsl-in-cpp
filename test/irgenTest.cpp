@@ -36,6 +36,18 @@ TEST(IRGenTest, IfStatements)
 {
     // else case is optional
     valid("func f(x: Int) -> Int { if (x % 2 == 0) return 1337; return x; }");
+    // if/else can be nested
+    valid("func f(x: Int) -> Int "
+        "{ "
+            "if (x > 0) "
+                "if (x > 1337) "
+                    "x = 5; "
+                "else "
+                    "return 1; "
+            "else "
+                "return 2; "
+            "return x; "
+        "}");
     // if/else can be chained
     valid("func fibonacci(x: Int) -> Int "
         "{ "

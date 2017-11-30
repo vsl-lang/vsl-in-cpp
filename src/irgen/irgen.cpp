@@ -73,19 +73,34 @@ void IRGen::visitIf(IfNode& node)
     blocks.push_back(thenBlock);
     builder.SetInsertPoint(thenBlock);
     node.thenCase->accept(*this);
-    builder.CreateBr(endBlock);
+    if (!builder.GetInsertBlock()->getTerminator())
+    {
+        builder.CreateBr(endBlock);
+    }
     scopeTree.exit();
     // generate else block
     scopeTree.enter();
     blocks.push_back(elseBlock);
     builder.SetInsertPoint(elseBlock);
     node.elseCase->accept(*this);
-    builder.CreateBr(endBlock);
+    if (!builder.GetInsertBlock()->getTerminator())
+    {
+        builder.CreateBr(endBlock);
+    }
     scopeTree.exit();
-    // setup end block for other code after the IfNode
-    blocks.push_back(endBlock);
-    builder.SetInsertPoint(endBlock);
+    // setup end block for other code after the IfNode if needed
     scopeTree.exit();
+    if (!endBlock->use_empty())
+    {
+        blocks.push_back(endBlock);
+        builder.SetInsertPoint(endBlock);
+    }
+    else
+    {
+        // endBlock shouldn't've been created in the first place
+        delete endBlock;
+        builder.ClearInsertionPoint();
+    }
     result = nullptr;
 }
 
