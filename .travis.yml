@@ -1,4 +1,4 @@
-language: cpp
+language: generic
 os: linux
 dist: trusty
 sudo: false
@@ -14,11 +14,11 @@ addons:
       - cmake
       - doxygen
       - graphviz
-env: COMPILER=g++-6
+env:
+  - CC=gcc-6 CXX=g++-6
 before_script:
   - mkdir build && cd build
-  - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=$COMPILER
-    -DVSL_INCLUDE_TESTS=On ..
+  - cmake -DCMAKE_BUILD_TYPE=Debug -DVSL_INCLUDE_TESTS=On ..
 script:
   - make
   - make check
