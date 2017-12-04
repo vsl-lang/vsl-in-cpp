@@ -62,7 +62,7 @@ void IRGen::visitIf(IfNode& node)
         cond = llvm::ConstantInt::getFalse(context);
     }
     // create the necessary basic blocks
-    auto& blocks = builder.GetInsertBlock()->getParent()->getBasicBlockList();
+    llvm::Function* currentFunc = builder.GetInsertBlock()->getParent();
     auto* thenBlock = llvm::BasicBlock::Create(context, "if.then");
     auto* elseBlock = llvm::BasicBlock::Create(context, "if.else");
     auto* endBlock = llvm::BasicBlock::Create(context, "if.end");
@@ -70,35 +70,32 @@ void IRGen::visitIf(IfNode& node)
     builder.CreateCondBr(cond, thenBlock, elseBlock);
     // generate then block
     scopeTree.enter();
-    blocks.push_back(thenBlock);
+    thenBlock->insertInto(currentFunc);
     builder.SetInsertPoint(thenBlock);
     node.thenCase->accept(*this);
-    if (!builder.GetInsertBlock()->getTerminator())
-    {
-        builder.CreateBr(endBlock);
-    }
+    branchTo(endBlock);
     scopeTree.exit();
     // generate else block
     scopeTree.enter();
-    blocks.push_back(elseBlock);
+    elseBlock->insertInto(currentFunc);
     builder.SetInsertPoint(elseBlock);
     node.elseCase->accept(*this);
-    if (!builder.GetInsertBlock()->getTerminator())
-    {
-        builder.CreateBr(endBlock);
-    }
+    branchTo(endBlock);
     scopeTree.exit();
     // setup end block for other code after the IfNode if needed
+    // this handles when both then and else cases have a return statement
     scopeTree.exit();
     if (!endBlock->use_empty())
     {
-        blocks.push_back(endBlock);
+        // insert the end block
+        endBlock->insertInto(currentFunc);
         builder.SetInsertPoint(endBlock);
     }
     else
     {
         // endBlock shouldn't've been created in the first place
         delete endBlock;
+        // all code after the IfNode is unreachable
         builder.ClearInsertionPoint();
     }
     result = nullptr;
@@ -175,6 +172,22 @@ void IRGen::visitFunction(FunctionNode& node)
     }
     // generate the body
     node.body->accept(*this);
+    // make sure the last block is terminated and not waiting to insert anymore
+    //  instructions afterward
+    auto* bb = builder.GetInsertBlock();
+    if (bb && !bb->getTerminator())
+    {
+        if (node.returnType == vslContext.getVoidType())
+        {
+            builder.CreateRetVoid();
+        }
+        else
+        {
+            vslContext.error(node.location) <<
+                "missing return statement at the end of function '" <<
+                node.name << "'\n";
+        }
+    }
     // prevent additional instructions from being inserted
     builder.ClearInsertionPoint();
     // exit the current scope
@@ -572,4 +585,13 @@ llvm::AllocaInst* IRGen::createEntryAlloca(llvm::Type* type,
     llvm::AllocaInst* inst = builder.CreateAlloca(type, nullptr, name);
     builder.restoreIP(ip);
     return inst;
+}
+
+llvm::BranchInst* IRGen::branchTo(llvm::BasicBlock* target)
+{
+    if (builder.GetInsertBlock() && !builder.GetInsertBlock()->getTerminator())
+    {
+        return builder.CreateBr(target);
+    }
+    return nullptr;
 }

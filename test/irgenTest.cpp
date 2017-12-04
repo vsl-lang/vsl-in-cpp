@@ -49,6 +49,8 @@ TEST(IRGenTest, IfStatements)
             "return x; "
         "}");
     // if/else can be chained
+    valid("func f(x: Int) -> Int { if (x == 0) return 0; "
+        "else if (x == 1) return 1; else return x; }");
     valid("func fibonacci(x: Int) -> Int "
         "{ "
             "if (x <= 0) return 0; "

@@ -155,6 +155,16 @@ private:
      */
     llvm::AllocaInst* createEntryAlloca(llvm::Type* type,
         const llvm::Twine& name = "");
+    /**
+     * Creates a branch instruction to the target block. If there is no
+     * insertion point, or the current block is already terminated, then this
+     * method does nothing.
+     *
+     * @param target The block to branch to.
+     *
+     * @returns The branch instruction that was created, or nullptr otherwise.
+     */
+    llvm::BranchInst* branchTo(llvm::BasicBlock* target);
     /** The VSLContext object to be used. */
     VSLContext& vslContext;
     /** The module to emit LLVM IR into. */
