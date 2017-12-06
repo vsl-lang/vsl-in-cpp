@@ -574,12 +574,13 @@ llvm::AllocaInst* IRGen::createEntryAlloca(llvm::Type* type,
     auto ip = builder.saveIP();
     if (!allocaInsertPoint)
     {
-        // insert a no-op as a reference for allocas to be inserted in order at
-        //  the beginning of the entry block
-        llvm::BasicBlock* entry = &ip.getBlock()->getParent()->getEntryBlock();
+        // create a no-op at the beginning of the entry block as a reference for
+        //  allocas to be inserted before so that they're in order
         llvm::Value* zero = builder.getFalse();
         allocaInsertPoint = llvm::BinaryOperator::Create(llvm::Instruction::Add,
-            zero, zero, "allocapoint", entry);
+            zero, zero, "allocapoint");
+        llvm::BasicBlock* entry = &ip.getBlock()->getParent()->getEntryBlock();
+        entry->getInstList().push_front(allocaInsertPoint);
     }
     builder.SetInsertPoint(allocaInsertPoint);
     llvm::AllocaInst* inst = builder.CreateAlloca(type, nullptr, name);
