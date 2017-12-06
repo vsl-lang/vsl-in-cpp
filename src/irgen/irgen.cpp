@@ -135,12 +135,24 @@ void IRGen::visitFunction(FunctionNode& node)
 {
     // fill in the function type
     std::vector<const Type*> paramTypes;
-    paramTypes.resize(node.params.size());
-    std::transform(node.params.begin(), node.params.end(), paramTypes.begin(),
-        [](const auto& param)
+    paramTypes.reserve(node.params.size());
+    for(auto it = node.params.begin(); it != node.params.end(); ++it)
+    {
+        const ParamNode& param = **it;
+        if (param.type != vslContext.getVoidType())
         {
-            return param->type;
-        });
+            paramTypes.emplace_back(param.type);
+        }
+        else
+        {
+            // remove void parameters that make no sense
+            vslContext.error(param.location) << "type " <<
+                param.type->toString() << " is invalid for parameter " <<
+                param.name << '\n';
+            node.params.erase(it);
+            --it;
+        }
+    }
     const auto* vslType = vslContext.getFunctionType(std::move(paramTypes),
         node.returnType);
     // create the llvm function and the entry block
@@ -156,19 +168,9 @@ void IRGen::visitFunction(FunctionNode& node)
     for (size_t i = 0; i < node.params.size(); ++i)
     {
         const ParamNode& param = *node.params[i];
-        if (param.type != vslContext.getVoidType())
-        {
-            llvm::Value* alloca = createEntryAlloca(ft->params()[i],
-                param.name);
-            builder.CreateStore(&f->arg_begin()[i], alloca);
-            scopeTree.set(param.name, { param.type, alloca });
-        }
-        else
-        {
-            vslContext.error(param.location) << "type " <<
-                param.type->toString() << " is invalid for parameter " <<
-                param.name << '\n';
-        }
+        llvm::Value* alloca = createEntryAlloca(ft->params()[i], param.name);
+        builder.CreateStore(&f->arg_begin()[i], alloca);
+        scopeTree.set(param.name, { param.type, alloca });
     }
     // generate the body
     node.body->accept(*this);
