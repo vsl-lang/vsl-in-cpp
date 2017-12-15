@@ -47,20 +47,17 @@ int Driver::main(int argc, const char* const* argv)
                 VSLLexer lexer{ vslContext, in.c_str() };
                 VSLParser parser{ vslContext, lexer };
                 auto ast = parser.parse();
-                if (!vslContext.getErrorCount())
+                llvm::LLVMContext llvmContext;
+                auto module = std::make_unique<llvm::Module>("repl",
+                    llvmContext);
+                IRGen irGen{ vslContext, *module };
+                ast->accept(irGen);
+                CodeGen codeGen{ vslContext, *module };
+                if (op.optimize)
                 {
-                    llvm::LLVMContext llvmContext;
-                    auto module = std::make_unique<llvm::Module>("repl",
-                        llvmContext);
-                    IRGen irGen{ vslContext, *module };
-                    ast->accept(irGen);
-                    CodeGen codeGen{ vslContext, *module };
-                    if (op.optimize)
-                    {
-                        codeGen.optimize();
-                    }
-                    out << *module << '\n';
+                    codeGen.optimize();
                 }
+                out << *module << '\n';
             });
     }
     return 0;
@@ -99,10 +96,6 @@ int Driver::compile()
     auto module = std::make_unique<llvm::Module>(op.infile, llvmContext);
     IRGen irGen{ vslContext, *module };
     ast->accept(irGen);
-    if (vslContext.getErrorCount())
-    {
-        return 1;
-    }
     CodeGen codeGen{ vslContext, *module };
     if (op.optimize)
     {
