@@ -32,17 +32,27 @@ public:
 
 private:
     /**
-     * Gets the next token, consuming the current one.
+     * Gets the current token while consuming it. Any previous references
+     * returned by `current()` will be invalidated.
      *
-     * @returns The next token.
+     * @returns The current token by value.
      */
-    const Token& next();
+    Token consume();
     /**
-     * Gets the current token.
+     * Gets the current token without consuming it. This is equivalent to
+     * calling `peek(0)`.
      *
      * @returns The current token.
      */
     const Token& current();
+    /**
+     * Look `depth` tokens ahead of the current token without consuming them.
+     *
+     * @param depth The amount of tokens to look ahead.
+     *
+     * @returns The next token without consuming it.
+     */
+    const Token& peek(size_t depth = 1);
     /**
      * Prints an error saying that the parser expected `s` but was given
      * something else.
@@ -61,7 +71,9 @@ private:
      */
     EmptyNode* errorUnexpected(const Token& token);
     /**
-     * Parses a sequence of statements.
+     * Parses a sequence of statements. Each statement production must consume
+     * all tokens involved in that production, and each production must start
+     * with `current()` being the first token consumed.
      *
      * @returns A sequence of statements.
      */
