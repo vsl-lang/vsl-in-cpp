@@ -209,10 +209,12 @@ public:
      * @param params The function's parameters.
      * @param returnType The type that the function returns.
      * @param body The body of the function.
+     * @param ft Used for symbol table lookup.
      * @param location Where this FunctionNode was found in the source.
      */
     FunctionNode(llvm::StringRef name, std::vector<ParamNode*> params,
-        const Type* returnType, Node* body, Location location);
+        const Type* returnType, Node* body, const FunctionType* ft,
+        Location location);
     virtual ~FunctionNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -224,6 +226,8 @@ public:
     const Type* returnType;
     /** The body of the function. */
     Node* body;
+    /** Used for symbol table lookup. */
+    const FunctionType* ft;
 };
 
 /**

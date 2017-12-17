@@ -108,9 +108,11 @@ std::string VariableNode::toString() const
 }
 
 FunctionNode::FunctionNode(llvm::StringRef name, std::vector<ParamNode*> params,
-    const Type* returnType, Node* body, Location location)
+    const Type* returnType, Node* body, const FunctionType* ft,
+    Location location)
     : Node{ Node::FUNCTION, location }, name{ name },
-    params{ std::move(params) }, returnType{ returnType }, body{ body }
+    params{ std::move(params) }, returnType{ returnType }, body{ body },
+    ft{ ft }
 {
 }
 

@@ -252,7 +252,18 @@ Node* VSLParser::parseFunction()
     {
         while (true)
         {
-            params.emplace_back(parseParam());
+            ParamNode* param = parseParam();
+            if (param->type != vslContext.getVoidType())
+            {
+                params.push_back(param);
+            }
+            else
+            {
+                vslContext.error(param->location) << "type " <<
+                    param->type->toString() << " is invalid for parameter " <<
+                    param->name << '\n';
+                // FIXME: delete the invalid ParamNode
+            }
             if (current().kind != TokenKind::COMMA)
             {
                 break;
@@ -272,7 +283,16 @@ Node* VSLParser::parseFunction()
     consume();
     const Type* returnType = parseType();
     Node* body = parseBlock();
-    return makeNode<FunctionNode>(name, std::move(params), returnType, body,
+    std::vector<const Type*> paramTypes;
+    paramTypes.resize(params.size());
+    std::transform(params.begin(), params.end(), paramTypes.begin(),
+        [](ParamNode* p)
+        {
+            return p->type;
+        });
+    const FunctionType* ft = vslContext.getFunctionType(std::move(paramTypes),
+        returnType);
+    return makeNode<FunctionNode>(name, std::move(params), returnType, body, ft,
         location);
 }
 

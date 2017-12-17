@@ -133,35 +133,13 @@ void IRGen::visitVariable(VariableNode& node)
 
 void IRGen::visitFunction(FunctionNode& node)
 {
-    // fill in the function type
-    std::vector<const Type*> paramTypes;
-    paramTypes.reserve(node.params.size());
-    for(auto it = node.params.begin(); it != node.params.end(); ++it)
-    {
-        const ParamNode& param = **it;
-        if (param.type != vslContext.getVoidType())
-        {
-            paramTypes.emplace_back(param.type);
-        }
-        else
-        {
-            // remove void parameters that make no sense
-            vslContext.error(param.location) << "type " <<
-                param.type->toString() << " is invalid for parameter " <<
-                param.name << '\n';
-            node.params.erase(it);
-            --it;
-        }
-    }
-    const auto* vslType = vslContext.getFunctionType(std::move(paramTypes),
-        node.returnType);
     // create the llvm function and the entry block
-    auto* ft = static_cast<llvm::FunctionType*>(vslType->toLLVMType(context));
+    auto* ft = static_cast<llvm::FunctionType*>(node.ft->toLLVMType(context));
     auto* f = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
         node.name, &module);
     auto* entry = llvm::BasicBlock::Create(context, "entry", f);
     // add to current scope
-    scopeTree.set(node.name, { vslType, f });
+    scopeTree.set(node.name, { node.ft, f });
     scopeTree.enter(node.returnType);
     // setup the parameters to be referenced as mutable variables
     builder.SetInsertPoint(entry);
