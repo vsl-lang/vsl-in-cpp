@@ -28,9 +28,9 @@ int Driver::main(int argc, const char* const* argv)
                 do
                 {
                     token = lexer.nextToken();
-                    out << token << " at " << token.location << '\n';
+                    out << token << " at " << token.getLoc() << '\n';
                 }
-                while (token.kind != TokenKind::END);
+                while (token.isNot(TokenKind::END));
             });
     case OptionParser::REPL_PARSE:
         return repl([](const std::string& in, llvm::raw_ostream& out)

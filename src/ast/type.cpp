@@ -2,14 +2,19 @@
 #include "llvm/IR/DerivedTypes.h"
 #include <algorithm>
 
+bool Type::isFunctionType() const
+{
+    return kind == FUNCTION;
+}
+
 Type::Type(Kind kind)
     : kind{ kind }
 {
 }
 
-const char* Type::kindToString(Type::Kind kind)
+const char* Type::getKindName(Kind k)
 {
-    switch (kind)
+    switch (k)
     {
     case ERROR:
         return "ErrorType";
@@ -24,6 +29,11 @@ const char* Type::kindToString(Type::Kind kind)
     }
 }
 
+Type::Kind Type::getKind() const
+{
+    return kind;
+}
+
 SimpleType::SimpleType(Type::Kind kind)
     : Type{ kind }
 {
@@ -31,12 +41,12 @@ SimpleType::SimpleType(Type::Kind kind)
 
 std::string SimpleType::toString() const
 {
-    return kindToString(kind);
+    return getKindName(getKind());
 }
 
 llvm::Type* SimpleType::toLLVMType(llvm::LLVMContext& context) const
 {
-    switch (kind)
+    switch (getKind())
     {
     case Type::BOOL:
         return llvm::Type::getInt1Ty(context);
@@ -47,13 +57,6 @@ llvm::Type* SimpleType::toLLVMType(llvm::LLVMContext& context) const
     default:
         return nullptr;
     }
-}
-
-FunctionType::FunctionType(std::vector<const Type*> params,
-    const Type* returnType)
-    : Type{ Type::FUNCTION }, params{ std::move(params) },
-    returnType{ returnType }
-{
 }
 
 std::string FunctionType::toString() const
@@ -91,4 +94,31 @@ bool FunctionType::operator==(const FunctionType& ft) const
 {
     return returnType == ft.returnType && params.size() == ft.params.size() &&
         std::equal(params.begin(), params.end(), ft.params.begin());
+}
+
+size_t FunctionType::getNumParams() const
+{
+    return params.size();
+}
+
+const Type* FunctionType::getParamType(size_t i) const
+{
+    return params[i];
+}
+
+llvm::ArrayRef<const Type*> FunctionType::getParams() const
+{
+    return params;
+}
+
+const Type* FunctionType::getReturnType() const
+  {
+    return returnType;
+}
+
+FunctionType::FunctionType(std::vector<const Type*> params,
+    const Type* returnType)
+    : Type{ Type::FUNCTION }, params{ std::move(params) },
+    returnType{ returnType }
+{
 }

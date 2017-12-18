@@ -15,6 +15,28 @@ class Type
     friend class VSLContext;
 public:
     /**
+     * Converts the Type into a string.
+     *
+     * @returns A string representation of the Type.
+     */
+    virtual std::string toString() const = 0;
+    /**
+     * Resolves the Type into an LLVM type.
+     *
+     * @param context The context object that owns the LLVM type.
+     *
+     * @returns An LLVM representation of the Type.
+     */
+    virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const = 0;
+    /**
+     * Checks whether this type is a FunctionType.
+     *
+     * @returns True if this type is a FunctionType, false otherwise.
+     */
+    bool isFunctionType() const;
+
+protected:
+    /**
      * Specifies the kind of Type object being represented. Keep in mind that
      * one Type subclass can be represented by multiple Kinds.
      */
@@ -32,37 +54,24 @@ public:
         VOID
     };
     /**
-     * Gets the string representation of a given Kind.
-     *
-     * @param kind The kind to get the string representation for.
-     *
-     * @returns The string representation of a given Kind
-     */
-    static const char* kindToString(Type::Kind kind);
-    /**
-     * Converts the Type into a string.
-     *
-     * @returns A string representation of the Type.
-     */
-    virtual std::string toString() const = 0;
-    /**
-     * Resolves the Type into an LLVM type.
-     *
-     * @param context The context object that owns the LLVM type.
-     *
-     * @returns An LLVM representation of the Type.
-     */
-    virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const = 0;
-    /** Represents what kind of Type object this is. */
-    Kind kind;
-
-protected:
-    /**
      * Creates a Type object.
      *
      * @param kind The kind of Type being created.
      */
     Type(Kind kind);
+    /**
+     * Gets the Type::Kind in a more human-readable format.
+     *
+     * @param k The Kind to get the name for.
+     *
+     * @returns The string representation of the Type kind.
+     */
+    static const char* getKindName(Kind k);
+    Kind getKind() const;
+
+private:
+    /** Represents what kind of Type object this is. */
+    Kind kind;
 };
 
 /**
@@ -102,10 +111,10 @@ public:
      * @returns True if they are equal, false otherwise.
      */
     bool operator==(const FunctionType& ft) const;
-    /** The parameters that the function takes. */
-    std::vector<const Type*> params;
-    /** What type the function returns. */
-    const Type* returnType;
+    size_t getNumParams() const;
+    const Type* getParamType(size_t i) const;
+    llvm::ArrayRef<const Type*> getParams() const;
+    const Type* getReturnType() const;
 
 protected:
     /**
@@ -115,6 +124,12 @@ protected:
      * @param returnType What type the function returns.
      */
     FunctionType(std::vector<const Type*> params, const Type* returnType);
+
+private:
+    /** The parameters that the function takes. */
+    std::vector<const Type*> params;
+    /** What type the function returns. */
+    const Type* returnType;
 };
 
 namespace std

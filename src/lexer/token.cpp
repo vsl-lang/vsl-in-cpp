@@ -16,3 +16,33 @@ Token::Token(TokenKind kind, llvm::StringRef text, Location location)
     : kind{ kind }, text{ text }, location{ location }
 {
 }
+
+TokenKind Token::getKind() const
+{
+    return kind;
+}
+
+bool Token::is(TokenKind k) const
+{
+    return kind == k;
+}
+
+bool Token::isNot(TokenKind k) const
+{
+    return kind != k;
+}
+
+const char* Token::getKindName() const
+{
+    return tokenKindName(kind);
+}
+
+llvm::StringRef Token::getText() const
+{
+    return text;
+}
+
+Location Token::getLoc() const
+{
+    return location;
+}

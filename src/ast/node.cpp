@@ -14,6 +14,21 @@ Node::~Node()
 {
 }
 
+bool Node::is(Kind k) const
+{
+    return kind == k;
+}
+
+bool Node::isNot(Kind k) const
+{
+    return kind != k;
+}
+
+Location Node::getLoc() const
+{
+    return location;
+}
+
 EmptyNode::EmptyNode(Location location)
     : Node{ Node::EMPTY, location }
 {
@@ -57,6 +72,11 @@ std::string BlockNode::toString() const
     return s;
 }
 
+llvm::ArrayRef<Node*> BlockNode::getStatements() const
+{
+    return statements;
+}
+
 IfNode::IfNode(ExprNode* condition, Node* thenCase, Node* elseCase,
     Location location)
     : Node{ Node::IF, location }, condition{ condition }, thenCase{ thenCase },
@@ -81,10 +101,25 @@ std::string IfNode::toString() const
     return s;
 }
 
+ExprNode* IfNode::getCondition() const
+{
+    return condition;
+}
+
+Node* IfNode::getThen() const
+{
+    return thenCase;
+}
+
+Node* IfNode::getElse() const
+{
+    return elseCase;
+}
+
 VariableNode::VariableNode(llvm::StringRef name, const Type* type,
-    ExprNode* value, bool isConst, Location location)
+    ExprNode* init, bool constness, Location location)
     : Node{ Node::VARIABLE, location }, name{ name }, type{ type },
-    value{ value }, isConst{ isConst }
+    init{ init }, constness{ constness }
 {
 }
 
@@ -100,11 +135,31 @@ std::string VariableNode::toString() const
     s += ", type: ";
     s += type->toString();
     s += ", value: ";
-    s += value ? value->toString() : "null";
+    s += init->toString();
     s += ", const: ";
-    s += isConst ? "true" : "false";
+    s += constness ? "true" : "false";
     s += " }";
     return s;
+}
+
+llvm::StringRef VariableNode::getName() const
+{
+    return name;
+}
+
+const Type* VariableNode::getType() const
+{
+    return type;
+}
+
+ExprNode* VariableNode::getInit() const
+{
+    return init;
+}
+
+bool VariableNode::isConst() const
+{
+    return constness;
 }
 
 FunctionNode::FunctionNode(llvm::StringRef name, std::vector<ParamNode*> params,
@@ -145,6 +200,41 @@ std::string FunctionNode::toString() const
     return s;
 }
 
+llvm::StringRef FunctionNode::getName() const
+{
+    return name;
+}
+
+llvm::ArrayRef<ParamNode*> FunctionNode::getParams() const
+{
+    return params;
+}
+
+size_t FunctionNode::getNumParams() const
+{
+    return params.size();
+}
+
+ParamNode* FunctionNode::getParam(size_t i) const
+{
+    return params[i];
+}
+
+const Type* FunctionNode::getReturnType() const
+{
+    return returnType;
+}
+
+Node* FunctionNode::getBody() const
+{
+    return body;
+}
+
+const FunctionType* FunctionNode::getFunctionType() const
+{
+    return ft;
+}
+
 ParamNode::ParamNode(llvm::StringRef name, const Type* type, Location location)
     : Node{ Node::PARAM, location }, name{ name }, type{ type }
 {
@@ -163,6 +253,16 @@ std::string ParamNode::toString() const
     return s;
 }
 
+llvm::StringRef ParamNode::getName() const
+{
+    return name;
+}
+
+const Type* ParamNode::getType() const
+{
+    return type;
+}
+
 ReturnNode::ReturnNode(ExprNode* value, Location location)
     : Node{ Node::RETURN, location }, value{ std::move(value) }
 {
@@ -176,7 +276,7 @@ void ReturnNode::accept(NodeVisitor& nodeVisitor)
 std::string ReturnNode::toString() const
 {
     std::string s;
-    if (value)
+    if (hasValue())
     {
         s = "Return { value: ";
         s += value->toString();
@@ -189,9 +289,29 @@ std::string ReturnNode::toString() const
     return s;
 }
 
+bool ReturnNode::hasValue() const
+{
+    return value;
+}
+
+ExprNode* ReturnNode::getValue() const
+{
+    return value;
+}
+
 ExprNode::ExprNode(Node::Kind kind, Location location)
     : Node{ kind, location }, type{ nullptr }
 {
+}
+
+const Type* ExprNode::getType() const
+{
+    return type;
+}
+
+void ExprNode::setType(const Type* t)
+{
+    type = t;
 }
 
 IdentNode::IdentNode(llvm::StringRef name, Location location)
@@ -212,6 +332,11 @@ std::string IdentNode::toString() const
     return s;
 }
 
+llvm::StringRef IdentNode::getName() const
+{
+    return name;
+}
+
 LiteralNode::LiteralNode(llvm::APInt value, Location location)
     : ExprNode{ Node::LITERAL, location }, value{ std::move(value) }
 {
@@ -228,6 +353,11 @@ std::string LiteralNode::toString() const
     s += value.toString(10, false);
     s += " }";
     return s;
+}
+
+llvm::APInt LiteralNode::getValue() const
+{
+    return value;
 }
 
 UnaryNode::UnaryNode(TokenKind op, ExprNode* expr, Location location)
@@ -248,6 +378,16 @@ std::string UnaryNode::toString() const
     s += expr->toString();
     s += " }";
     return s;
+}
+
+TokenKind UnaryNode::getOp() const
+{
+    return op;
+}
+
+ExprNode* UnaryNode::getExpr() const
+{
+    return expr;
 }
 
 BinaryNode::BinaryNode(TokenKind op, ExprNode* left, ExprNode* right,
@@ -271,6 +411,21 @@ std::string BinaryNode::toString() const
     s += right->toString();
     s += " }";
     return s;
+}
+
+TokenKind BinaryNode::getOp() const
+{
+    return op;
+}
+
+ExprNode* BinaryNode::getLhs() const
+{
+    return left;
+}
+
+ExprNode* BinaryNode::getRhs() const
+{
+    return right;
 }
 
 CallNode::CallNode(ExprNode* callee, std::vector<ArgNode*> args,
@@ -305,6 +460,26 @@ std::string CallNode::toString() const
     return s;
 }
 
+ExprNode* CallNode::getCallee() const
+{
+    return callee;
+}
+
+llvm::ArrayRef<ArgNode*> CallNode::getArgs() const
+{
+    return args;
+}
+
+size_t CallNode::getNumArgs() const
+{
+    return args.size();
+}
+
+ArgNode* CallNode::getArg(size_t i) const
+{
+    return args[i];
+}
+
 ArgNode::ArgNode(llvm::StringRef name, ExprNode* value, Location location)
     : Node{ Node::ARG, location }, name{ name }, value{ value }
 {
@@ -321,4 +496,14 @@ std::string ArgNode::toString() const
     s += ": ";
     s += value->toString();
     return s;
+}
+
+llvm::StringRef ArgNode::getName() const
+{
+    return name;
+}
+
+ExprNode* ArgNode::getValue() const
+{
+    return value;
 }

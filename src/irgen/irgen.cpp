@@ -21,7 +21,7 @@ void IRGen::visitBlock(BlockNode& node)
 {
     // create a new scope and visit all the statements inside
     scopeTree.enter();
-    for (auto& statement : node.statements)
+    for (Node* statement : node.getStatements())
     {
         statement->accept(*this);
     }
@@ -34,13 +34,13 @@ void IRGen::visitIf(IfNode& node)
     // make sure that it's not in the global scope.
     if (scopeTree.isGlobal())
     {
-        vslContext.error(node.location) <<
+        vslContext.error(node.getLoc()) <<
             "top-level control flow statements are not allowed\n";
     }
     // setup the condition
     scopeTree.enter();
-    node.condition->accept(*this);
-    const Type* type = node.condition->type;
+    node.getCondition()->accept(*this);
+    const Type* type = node.getCondition()->getType();
     llvm::Value* cond;
     if (type == vslContext.getBoolType())
     {
@@ -56,7 +56,7 @@ void IRGen::visitIf(IfNode& node)
     else
     {
         // error, assume false
-        vslContext.error(node.condition->location) <<
+        vslContext.error(node.getCondition()->getLoc()) <<
             "cannot convert expression of type " << type->toString() <<
             " to type Bool\n";
         cond = llvm::ConstantInt::getFalse(context);
@@ -72,14 +72,14 @@ void IRGen::visitIf(IfNode& node)
     scopeTree.enter();
     thenBlock->insertInto(currentFunc);
     builder.SetInsertPoint(thenBlock);
-    node.thenCase->accept(*this);
+    node.getThen()->accept(*this);
     branchTo(endBlock);
     scopeTree.exit();
     // generate else block
     scopeTree.enter();
     elseBlock->insertInto(currentFunc);
     builder.SetInsertPoint(elseBlock);
-    node.elseCase->accept(*this);
+    node.getElse()->accept(*this);
     branchTo(endBlock);
     scopeTree.exit();
     // setup end block for other code after the IfNode if needed
@@ -104,28 +104,30 @@ void IRGen::visitIf(IfNode& node)
 void IRGen::visitVariable(VariableNode& node)
 {
     // make sure the type and value are valid and they match
-    ExprNode& value = *node.value;
-    value.accept(*this);
-    if (node.type != vslContext.getIntType())
+    ExprNode& init = *node.getInit();
+    init.accept(*this);
+    if (node.getType() != vslContext.getIntType())
     {
-        vslContext.error(node.location) << "type " << node.type->toString() <<
+        vslContext.error(node.getLoc()) << "type " <<
+            node.getType()->toString() <<
             " is not a valid type for a variable\n";
     }
-    else if (node.type != value.type)
+    else if (node.getType() != init.getType())
     {
-        vslContext.error(value.location) <<
-            "mismatching types when initializing variable " << node.name <<
+        vslContext.error(init.getLoc()) <<
+            "mismatching types when initializing variable " << node.getName() <<
             '\n';
     }
     // create the alloca instruction
     auto initialValue = result;
-    auto alloca = createEntryAlloca(node.type->toLLVMType(context), node.name);
+    auto alloca = createEntryAlloca(node.getType()->toLLVMType(context),
+        node.getName());
     // create the store instruction
     builder.CreateStore(initialValue, alloca);
     // add to current scope
-    if (!scopeTree.set(node.name, { node.type, alloca }))
+    if (!scopeTree.set(node.getName(), { node.getType(), alloca }))
     {
-        vslContext.error(node.location) << "variable " << node.name <<
+        vslContext.error(node.getLoc()) << "variable " << node.getName() <<
             " was already defined in this scope\n";
     }
     result = nullptr;
@@ -134,38 +136,40 @@ void IRGen::visitVariable(VariableNode& node)
 void IRGen::visitFunction(FunctionNode& node)
 {
     // create the llvm function and the entry block
-    auto* ft = static_cast<llvm::FunctionType*>(node.ft->toLLVMType(context));
+    auto* ft = static_cast<llvm::FunctionType*>(
+        node.getFunctionType()->toLLVMType(context));
     auto* f = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
-        node.name, &module);
+        node.getName(), &module);
     auto* entry = llvm::BasicBlock::Create(context, "entry", f);
     // add to current scope
-    scopeTree.set(node.name, { node.ft, f });
-    scopeTree.enter(node.returnType);
+    scopeTree.set(node.getName(), { node.getFunctionType(), f });
+    scopeTree.enter(node.getReturnType());
     // setup the parameters to be referenced as mutable variables
     builder.SetInsertPoint(entry);
-    for (size_t i = 0; i < node.params.size(); ++i)
+    for (size_t i = 0; i < node.getNumParams(); ++i)
     {
-        const ParamNode& param = *node.params[i];
-        llvm::Value* alloca = createEntryAlloca(ft->params()[i], param.name);
+        const ParamNode& param = *node.getParam(i);
+        llvm::Value* alloca = createEntryAlloca(ft->getParamType(i),
+            param.getName());
         builder.CreateStore(&f->arg_begin()[i], alloca);
-        scopeTree.set(param.name, { param.type, alloca });
+        scopeTree.set(param.getName(), { param.getType(), alloca });
     }
     // generate the body
-    node.body->accept(*this);
+    node.getBody()->accept(*this);
     // make sure the last block is terminated and not waiting to insert anymore
     //  instructions afterward
     auto* bb = builder.GetInsertBlock();
     if (bb && !bb->getTerminator())
     {
-        if (node.returnType == vslContext.getVoidType())
+        if (node.getReturnType() == vslContext.getVoidType())
         {
             builder.CreateRetVoid();
         }
         else
         {
-            vslContext.error(node.location) <<
+            vslContext.error(node.getLoc()) <<
                 "missing return statement at the end of function '" <<
-                node.name << "'\n";
+                node.getName() << "'\n";
         }
     }
     // prevent additional instructions from being inserted
@@ -182,7 +186,7 @@ void IRGen::visitFunction(FunctionNode& node)
     // make sure the function is valid
     if (llvm::verifyFunction(*f, &llvm::errs()))
     {
-        vslContext.error(node.location) <<
+        vslContext.error(node.getLoc()) <<
             "LLVM encountered the above errors (SHOULD NEVER HAPPEN)\n";
     }
 }
@@ -193,19 +197,19 @@ void IRGen::visitParam(ParamNode& node)
 
 void IRGen::visitReturn(ReturnNode& node)
 {
-    if (node.value)
+    if (node.getValue())
     {
-        node.value->accept(*this);
-        const Type* type = node.value->type;
+        node.getValue()->accept(*this);
+        const Type* type = node.getValue()->getType();
         if (type == vslContext.getVoidType())
         {
-            vslContext.error(node.location) <<
+            vslContext.error(node.getLoc()) <<
                 "cannot return a value of type Void\n";
             result = nullptr;
         }
         else if (type != scopeTree.getReturnType())
         {
-            vslContext.error(node.location) << "return value of type " <<
+            vslContext.error(node.getLoc()) << "return value of type " <<
                 type->toString() << " does not match return type " <<
                 scopeTree.getReturnType()->toString() << '\n';
         }
@@ -222,18 +226,18 @@ void IRGen::visitReturn(ReturnNode& node)
 void IRGen::visitIdent(IdentNode& node)
 {
     // lookup the name in the current scope
-    Scope::Item i = scopeTree.get(node.name);
+    Scope::Item i = scopeTree.get(node.getName());
     if (i.type == nullptr || i.value == nullptr)
     {
-        vslContext.error(node.location) << "unknown variable " << node.name <<
-            '\n';
-        node.type = vslContext.getErrorType();
+        vslContext.error(node.getLoc()) << "unknown variable " <<
+            node.getName() << '\n';
+        node.setType(vslContext.getErrorType());
         result = nullptr;
         return;
     }
-    node.type = i.type;
+    node.setType(i.type);
     // an identifier can reference either a variable or a function
-    if (node.type->kind == Type::FUNCTION)
+    if (node.getType()->isFunctionType())
     {
         result = i.value;
     }
@@ -246,34 +250,34 @@ void IRGen::visitIdent(IdentNode& node)
 void IRGen::visitLiteral(LiteralNode& node)
 {
     // create an LLVM integer
-    unsigned width = node.value.getBitWidth();
+    unsigned width = node.getValue().getBitWidth();
     switch (width)
     {
     case 1:
-        node.type = vslContext.getBoolType();
+        node.setType(vslContext.getBoolType());
         break;
     case 32:
-        node.type = vslContext.getIntType();
+        node.setType(vslContext.getIntType());
         break;
     default:
         // should never happen
-        vslContext.error(node.location) << "VSL does not support " << width <<
+        vslContext.error(node.getLoc()) << "VSL does not support " << width <<
             "-bit integers\n";
-        node.type = vslContext.getErrorType();
+        node.setType(vslContext.getErrorType());
     }
-    result = llvm::ConstantInt::get(context, node.value);
+    result = llvm::ConstantInt::get(context, node.getValue());
 }
 
 void IRGen::visitUnary(UnaryNode& node)
 {
     // verify the contained expression
-    node.expr->accept(*this);
-    node.type = node.expr->type;
-    const Type* type = node.type;
+    node.getExpr()->accept(*this);
+    const Type* type = node.getExpr()->getType();
+    node.setType(type);
     llvm::Value* value = result;
     result = nullptr;
     // choose the appropriate operator to generate code for
-    switch (node.op)
+    switch (node.getOp())
     {
     case TokenKind::MINUS:
         genNeg(type, value);
@@ -284,129 +288,131 @@ void IRGen::visitUnary(UnaryNode& node)
     }
     if (result == nullptr)
     {
-        vslContext.error(node.location) << "cannot apply unary operator " <<
-            tokenKindName(node.op) << " to type " << type->toString() << '\n';
+        vslContext.error(node.getLoc()) << "cannot apply unary operator " <<
+            tokenKindName(node.getOp()) << " to type " << type->toString() <<
+            '\n';
     }
 }
 
 void IRGen::visitBinary(BinaryNode& node)
 {
     // handle assignment operator as a special case
-    if (node.op == TokenKind::ASSIGN)
+    if (node.getOp() == TokenKind::ASSIGN)
     {
         genAssign(node);
         return;
     }
     // verify the left and right expressions
-    node.left->accept(*this);
+    node.getLhs()->accept(*this);
     llvm::Value* lhs = result;
-    node.right->accept(*this);
+    node.getRhs()->accept(*this);
     llvm::Value* rhs = result;
     result = nullptr;
     // make sure the types match
-    if (node.left->type == node.right->type)
+    if (node.getLhs()->getType() == node.getRhs()->getType())
     {
         // choose the appropriate operator to generate code for
-        const Type* type = node.left->type;
-        switch (node.op)
+        const Type* type = node.getLhs()->getType();
+        switch (node.getOp())
         {
         case TokenKind::PLUS:
-            node.type = node.left->type;
+            node.setType(node.getLhs()->getType());
             genAdd(type, lhs, rhs);
             break;
         case TokenKind::MINUS:
-            node.type = node.left->type;
+            node.setType(node.getLhs()->getType());
             genSub(type, lhs, rhs);
             break;
         case TokenKind::STAR:
-            node.type = node.left->type;
+            node.setType(node.getLhs()->getType());
             genMul(type, lhs, rhs);
             break;
         case TokenKind::SLASH:
-            node.type = node.left->type;
+            node.setType(node.getLhs()->getType());
             genDiv(type, lhs, rhs);
             break;
         case TokenKind::PERCENT:
-            node.type = node.left->type;
+            node.setType(node.getLhs()->getType());
             genMod(type, lhs, rhs);
             break;
         case TokenKind::EQUAL:
-            node.type = vslContext.getBoolType();
+            node.setType(vslContext.getBoolType());
             genEQ(type, lhs, rhs);
             break;
         case TokenKind::NOT_EQUAL:
-            node.type = vslContext.getBoolType();
+            node.setType(vslContext.getBoolType());
             genNE(type, lhs, rhs);
             break;
         case TokenKind::GREATER:
-            node.type = vslContext.getBoolType();
+            node.setType(vslContext.getBoolType());
             genGT(type, lhs, rhs);
             break;
         case TokenKind::GREATER_EQUAL:
-            node.type = vslContext.getBoolType();
+            node.setType(vslContext.getBoolType());
             genGE(type, lhs, rhs);
             break;
         case TokenKind::LESS:
-            node.type = vslContext.getBoolType();
+            node.setType(vslContext.getBoolType());
             genLT(type, lhs, rhs);
             break;
         case TokenKind::LESS_EQUAL:
-            node.type = vslContext.getBoolType();
+            node.setType(vslContext.getBoolType());
             genLE(type, lhs, rhs);
             break;
         default:
             // should never happen
-            node.type = node.left->type;
+            node.setType(node.getLhs()->getType());
         }
     }
     else
     {
         // types mismatch, assume lhs' type
-        node.type = node.left->type;
+        node.setType(node.getLhs()->getType());
     }
     if (result == nullptr)
     {
-        vslContext.error(node.location) << "cannot apply binary operator " <<
-            tokenKindName(node.op) << " to types " <<
-            node.left->type->toString() << " and " <<
-            node.right->type->toString() << '\n';
+        vslContext.error(node.getLoc()) << "cannot apply binary operator " <<
+            tokenKindName(node.getOp()) << " to types " <<
+            node.getLhs()->getType()->toString() << " and " <<
+            node.getRhs()->getType()->toString() << '\n';
     }
 }
 
 void IRGen::visitCall(CallNode& node)
 {
     // make sure the callee is an actual function
-    node.callee->accept(*this);
+    node.getCallee()->accept(*this);
     const auto* calleeType =
-        static_cast<const FunctionType*>(node.callee->type);
-    if (calleeType->kind != Type::FUNCTION)
+        static_cast<const FunctionType*>(node.getCallee()->getType());
+    if (!calleeType->isFunctionType())
     {
-        vslContext.error(node.location) << "called object of type " <<
+        vslContext.error(node.getLoc()) << "called object of type " <<
             calleeType->toString() << " is not a function\n";
     }
     // make sure the right amount of arguments is used
-    else if (calleeType->params.size() != node.args.size())
+    else if (calleeType->getNumParams() != node.getNumArgs())
     {
-        vslContext.error(node.location) << "mismatched number of arguments " <<
-            node.args.size() << " versus parameters " <<
-            calleeType->params.size() << '\n';
+        vslContext.error(node.getLoc()) << "mismatched number of arguments " <<
+            node.getNumArgs() << " versus parameters " <<
+            calleeType->getNumParams() << '\n';
     }
     else
     {
         llvm::Value* func = result;
         std::vector<llvm::Value*> llvmArgs;
         // verify each argument
-        for (size_t i = 0; i < calleeType->params.size(); ++i)
+        for (size_t i = 0; i < calleeType->getNumParams(); ++i)
         {
-            const Type* paramType = calleeType->params[i];
-            ArgNode& arg = *node.args[i];
+            const Type* paramType = calleeType->getParamType(i);
+            ArgNode& arg = *node.getArg(i);
             arg.accept(*this);
             // check that the types match
-            if (arg.value->type != paramType)
+            if (arg.getValue()->getType() != paramType)
             {
-                vslContext.error(arg.value->location) <<
-                    "cannot convert type " << arg.value->type->toString() <<
-                    " to type " << paramType->toString() << '\n';
+                vslContext.error(arg.getValue()->getLoc()) <<
+                    "cannot convert type " <<
+                    arg.getValue()->getType()->toString() << " to type " <<
+                    paramType->toString() << '\n';
             }
             else
             {
@@ -414,41 +420,41 @@ void IRGen::visitCall(CallNode& node)
             }
         }
         // create the call instruction if all args were successfully validated
-        if (calleeType->params.size() == llvmArgs.size())
+        if (calleeType->getNumParams() == llvmArgs.size())
         {
-            node.type = calleeType->returnType;
+            node.setType(calleeType->getReturnType());
             result = builder.CreateCall(func, llvmArgs);
             return;
         }
     }
     // if any sort of error occured, then this happens
-    node.type = vslContext.getErrorType();
+    node.setType(vslContext.getErrorType());
     result = nullptr;
 }
 
 void IRGen::visitArg(ArgNode& node)
 {
-    node.value->accept(*this);
+    node.getValue()->accept(*this);
 }
 
 void IRGen::genAssign(BinaryNode& node)
 {
-    ExprNode& lhs = *node.left;
-    ExprNode& rhs = *node.right;
+    ExprNode& lhs = *node.getLhs();
+    ExprNode& rhs = *node.getRhs();
     rhs.accept(*this);
     llvm::Value* rightValue = result;
-    node.type = vslContext.getVoidType();
+    node.setType(vslContext.getVoidType());
     result = nullptr;
     // make sure that the lhs is an identifier
-    if (lhs.kind == Node::IDENT)
+    if (lhs.is(Node::IDENT))
     {
         // lookup the identifier
         auto& id = static_cast<IdentNode&>(lhs);
-        Scope::Item i = scopeTree.get(id.name);
+        Scope::Item i = scopeTree.get(id.getName());
         if (i.type && i.value)
         {
             // make sure the types match up
-            if (i.type == rhs.type)
+            if (i.type == rhs.getType())
             {
                 // finally, create the store instruction
                 builder.CreateStore(rightValue, i.value);
@@ -456,21 +462,21 @@ void IRGen::genAssign(BinaryNode& node)
             }
             else
             {
-                vslContext.error(rhs.location) <<
+                vslContext.error(rhs.getLoc()) <<
                     "cannot convert expression of type " <<
-                    rhs.type->toString() << " to type " << i.type->toString() <<
-                    '\n';
+                    rhs.getType()->toString() << " to type " <<
+                    i.type->toString() << '\n';
             }
         }
         else
         {
-            vslContext.error(id.location) << "unknown variable " << id.name <<
-                '\n';
+            vslContext.error(id.getLoc()) << "unknown variable " <<
+                id.getName() << '\n';
         }
     }
     else
     {
-        vslContext.error(lhs.location) << "lhs must be an identifier\n";
+        vslContext.error(lhs.getLoc()) << "lhs must be an identifier\n";
     }
 }
 
