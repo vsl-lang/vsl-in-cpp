@@ -29,6 +29,13 @@ public:
      */
     virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const = 0;
     /**
+     * Verifies whether the Type is valid and can be stored in a variable, i.e.,
+     * not Void or Error.
+     *
+     * @returns True if this type is valid, false otherwise.
+     */
+    bool isValid() const;
+    /**
      * Checks whether this type is a FunctionType.
      *
      * @returns True if this type is a FunctionType, false otherwise.

@@ -2,6 +2,11 @@
 #include "llvm/IR/DerivedTypes.h"
 #include <algorithm>
 
+bool Type::isValid() const
+{
+    return kind != ERROR && kind != VOID;
+}
+
 bool Type::isFunctionType() const
 {
     return kind == FUNCTION;

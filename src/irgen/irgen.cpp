@@ -103,34 +103,38 @@ void IRGen::visitIf(IfNode& node)
 
 void IRGen::visitVariable(VariableNode& node)
 {
-    // make sure the type and value are valid and they match
     ExprNode& init = *node.getInit();
     init.accept(*this);
-    if (node.getType() != vslContext.getIntType())
+    llvm::Value* initializer = result;
+    result = nullptr;
+    // do type checking
+    if (!node.getType()->isValid())
     {
         vslContext.error(node.getLoc()) << "type " <<
             node.getType()->toString() <<
             " is not a valid type for a variable\n";
+        return;
     }
-    else if (node.getType() != init.getType())
+    if (node.getType() != init.getType())
     {
         vslContext.error(init.getLoc()) <<
             "mismatching types when initializing variable " << node.getName() <<
             '\n';
+        return;
     }
-    // create the alloca instruction
-    auto initialValue = result;
-    auto alloca = createEntryAlloca(node.getType()->toLLVMType(context),
-        node.getName());
-    // create the store instruction
-    builder.CreateStore(initialValue, alloca);
+    // allocate the variable
+    llvm::AllocaInst* alloca = createEntryAlloca(
+        node.getType()->toLLVMType(context), node.getName());
     // add to current scope
     if (!scopeTree.set(node.getName(), { node.getType(), alloca }))
     {
-        vslContext.error(node.getLoc()) << "variable " << node.getName() <<
-            " was already defined in this scope\n";
+        vslContext.error(node.getLoc()) << "variable " <<
+            node.getName() << " was already defined in this scope\n";
+        alloca->eraseFromParent();
+        return;
     }
-    result = nullptr;
+    // store the variable
+    builder.CreateStore(initializer, alloca);
 }
 
 void IRGen::visitFunction(FunctionNode& node)
