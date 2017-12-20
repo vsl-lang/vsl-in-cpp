@@ -77,6 +77,12 @@ public:
      */
     llvm::raw_ostream& error(Location location);
     /**
+     * Prints an internal compiler error, which is very bad.
+     *
+     * @returns A stream to insert a diagnostic message.
+     */
+    llvm::raw_ostream& internalError();
+    /**
      * Gets the amount of errors encountered.
      *
      * @returns The amount of erros encountered.

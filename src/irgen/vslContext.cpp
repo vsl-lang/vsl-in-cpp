@@ -54,8 +54,7 @@ llvm::raw_ostream& VSLContext::error()
 {
     ++errorCount;
     errors.changeColor(llvm::raw_ostream::RED, true) << "error:";
-    errors.resetColor() << ' ';
-    return errors;
+    return errors.resetColor() << ' ';
 }
 
 llvm::raw_ostream& VSLContext::error(Location location)
@@ -63,6 +62,14 @@ llvm::raw_ostream& VSLContext::error(Location location)
     errors.changeColor(llvm::raw_ostream::SAVEDCOLOR, true) << location << ':';
     errors.resetColor() << ' ';
     return error();
+}
+
+llvm::raw_ostream& VSLContext::internalError()
+{
+    ++errorCount;
+    errors.changeColor(llvm::raw_ostream::RED, true) <<
+        "INTERNAL COMPILER ERROR:";
+    return errors.resetColor() << ' ';
 }
 
 size_t VSLContext::getErrorCount() const

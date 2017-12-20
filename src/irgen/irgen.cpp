@@ -188,11 +188,13 @@ void IRGen::visitFunction(FunctionNode& node)
         allocaInsertPoint = nullptr;
     }
     result = nullptr;
-    // make sure the function is valid
-    if (llvm::verifyFunction(*f, &llvm::errs()))
+    // make sure that the function is valid, else ICE
+    std::string s;
+    llvm::raw_string_ostream sos{ s };
+    if (llvm::verifyFunction(*f, &sos))
     {
-        vslContext.error(node.getLoc()) <<
-            "LLVM encountered the above errors (SHOULD NEVER HAPPEN)\n";
+        vslContext.internalError() << "LLVM encountered the below errors:\n" <<
+            sos.str() << '\n';
     }
 }
 
