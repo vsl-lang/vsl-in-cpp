@@ -174,6 +174,7 @@ void IRGen::visitFunction(FunctionNode& node)
             vslContext.error(node.getLoc()) <<
                 "missing return statement at the end of function '" <<
                 node.getName() << "'\n";
+            builder.CreateUnreachable();
         }
     }
     // prevent additional instructions from being inserted
@@ -201,30 +202,31 @@ void IRGen::visitParam(ParamNode& node)
 
 void IRGen::visitReturn(ReturnNode& node)
 {
-    if (node.getValue())
+    if (!node.getValue())
     {
-        node.getValue()->accept(*this);
-        const Type* type = node.getValue()->getType();
-        if (type == vslContext.getVoidType())
-        {
-            vslContext.error(node.getLoc()) <<
-                "cannot return a value of type Void\n";
-            result = nullptr;
-        }
-        else if (type != scopeTree.getReturnType())
-        {
-            vslContext.error(node.getLoc()) << "return value of type " <<
-                type->toString() << " does not match return type " <<
-                scopeTree.getReturnType()->toString() << '\n';
-        }
+        builder.CreateRetVoid();
+        return;
     }
-    else
-    {
-        result = nullptr;
-    }
-    // a ret instruction with a nullptr assumes void
-    builder.CreateRet(result);
+    node.getValue()->accept(*this);
+    const Type* type = node.getValue()->getType();
+    llvm::Value* retVal = result;
     result = nullptr;
+    if (type == vslContext.getVoidType())
+    {
+        vslContext.error(node.getLoc()) <<
+            "cannot return a value of type Void\n";
+        builder.CreateUnreachable();
+        return;
+    }
+    if (type != scopeTree.getReturnType())
+    {
+        vslContext.error(node.getLoc()) << "return value of type " <<
+            type->toString() << " does not match return type " <<
+            scopeTree.getReturnType()->toString() << '\n';
+        builder.CreateUnreachable();
+        return;
+    }
+    builder.CreateRet(retVal);
 }
 
 void IRGen::visitIdent(IdentNode& node)
