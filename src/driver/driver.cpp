@@ -80,6 +80,11 @@ int Driver::displayHelp()
 
 int Driver::compile()
 {
+    if (!op.infile)
+    {
+        llvm::errs() << "Error: no input file\n";
+        return 1;
+    }
     llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> in =
         llvm::MemoryBuffer::getFileOrSTDIN(op.infile);
     if (std::error_code ec = in.getError())
@@ -100,6 +105,11 @@ int Driver::compile()
     if (op.optimize)
     {
         codeGen.optimize();
+    }
+    if (!op.outfile)
+    {
+        llvm::errs() << "Error: no output file\n";
+        return 1;
     }
     std::error_code ec;
     llvm::raw_fd_ostream out{ op.outfile, ec, llvm::sys::fs::F_None };
