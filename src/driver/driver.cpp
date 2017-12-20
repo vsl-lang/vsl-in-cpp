@@ -28,7 +28,7 @@ int Driver::main(int argc, const char* const* argv)
                 do
                 {
                     token = lexer.nextToken();
-                    out << token << " at " << token.getLoc() << '\n';
+                    out << token << '\n';
                 }
                 while (token.isNot(TokenKind::END));
             });

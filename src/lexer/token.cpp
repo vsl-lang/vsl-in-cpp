@@ -4,7 +4,7 @@
 llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Token& token)
 {
     return os << tokenKindDebugName(token.kind) << " '" << token.text.str() <<
-        '\'';
+        '\'' << " at " << token.location;
 }
 
 Token::Token()
