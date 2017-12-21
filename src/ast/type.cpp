@@ -91,8 +91,7 @@ llvm::Type* FunctionType::toLLVMType(llvm::LLVMContext& context) const
             return param->toLLVMType(context);
         });
     llvm::Type* llvmReturnType = returnType->toLLVMType(context);
-    return llvm::FunctionType::get(llvmReturnType, std::move(llvmParams),
-        false);
+    return llvm::FunctionType::get(llvmReturnType, llvmParams, false);
 }
 
 bool FunctionType::operator==(const FunctionType& ft) const
