@@ -204,31 +204,40 @@ void IRGen::visitParam(ParamNode& node)
 
 void IRGen::visitReturn(ReturnNode& node)
 {
+    // special case: return without a value
     if (!node.getValue())
     {
         builder.CreateRetVoid();
         return;
     }
+    // validate the return value
     node.getValue()->accept(*this);
     const Type* type = node.getValue()->getType();
     llvm::Value* retVal = result;
     result = nullptr;
-    if (type == vslContext.getVoidType())
+    if (retVal)
     {
-        vslContext.error(node.getLoc()) <<
-            "cannot return a value of type Void\n";
-        builder.CreateUnreachable();
-        return;
+        if (type == vslContext.getVoidType())
+        {
+            vslContext.error(node.getLoc()) <<
+                "cannot return a value of type Void\n";
+        }
+        else if (type != scopeTree.getReturnType())
+        {
+            vslContext.error(node.getLoc()) << "return value of type " <<
+                type->toString() << " does not match return type " <<
+                scopeTree.getReturnType()->toString() << '\n';
+        }
+        else
+        {
+            // nothing bad happened yay
+            builder.CreateRet(retVal);
+            return;
+        }
     }
-    if (type != scopeTree.getReturnType())
-    {
-        vslContext.error(node.getLoc()) << "return value of type " <<
-            type->toString() << " does not match return type " <<
-            scopeTree.getReturnType()->toString() << '\n';
-        builder.CreateUnreachable();
-        return;
-    }
-    builder.CreateRet(retVal);
+    // errors in the return value expression create an unreachable instruction
+    //  instead of the usual ret
+    builder.CreateUnreachable();
 }
 
 void IRGen::visitIdent(IdentNode& node)
