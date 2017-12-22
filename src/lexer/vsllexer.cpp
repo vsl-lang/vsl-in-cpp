@@ -81,7 +81,23 @@ Token VSLLexer::nextToken()
                 next();
                 return createToken(TokenKind::NOT_EQUAL);
             }
-            // fallthrough
+            return createToken(TokenKind::NOT);
+        case '&':
+            if (peek() == '&')
+            {
+                next();
+                return createToken(TokenKind::AND);
+            }
+            diag.print<Diag::UNKNOWN_SYMBOL>(location, current());
+            break;
+        case '|':
+            if (peek() == '|')
+            {
+                next();
+                return createToken(TokenKind::OR);
+            }
+            diag.print<Diag::UNKNOWN_SYMBOL>(location, current());
+            break;
         default:
             if (isalpha(current()))
             {

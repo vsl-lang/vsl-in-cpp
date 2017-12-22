@@ -188,7 +188,7 @@ void IRGen::visitParam(ParamNode& node)
 void IRGen::visitReturn(ReturnNode& node)
 {
     // special case: return without a value
-    if (!node.getValue())
+    if (!node.hasValue())
     {
         builder.CreateRetVoid();
         return;
@@ -276,6 +276,7 @@ void IRGen::visitUnary(UnaryNode& node)
     switch (node.getOp())
     {
     case TokenKind::MINUS:
+    case TokenKind::NOT:
         genNeg(type, value);
         break;
     default:
@@ -290,10 +291,16 @@ void IRGen::visitUnary(UnaryNode& node)
 
 void IRGen::visitBinary(BinaryNode& node)
 {
-    // handle assignment operator as a special case
+    // special case: variable assignment
     if (node.getOp() == TokenKind::ASSIGN)
     {
         genAssign(node);
+        return;
+    }
+    // special case: short-circuiting boolean operations
+    if (node.getOp() == TokenKind::AND || node.getOp() == TokenKind::OR)
+    {
+        genShortCircuit(node);
         return;
     }
     // verify the left and right expressions
@@ -516,9 +523,72 @@ void IRGen::genAssign(BinaryNode& node)
     }
 }
 
+void IRGen::genShortCircuit(BinaryNode& node)
+{
+    // boolean and/or obviously return bool sooo
+    node.setType(vslContext.getBoolType());
+    // generate code to calculate lhs
+    ExprNode& lhs = *node.getLhs();
+    lhs.accept(*this);
+    llvm::Value* cond1 = result;
+    // of course, lhs has to be a bool for this to work
+    if (lhs.getType() != vslContext.getBoolType())
+    {
+        diag.print<Diag::CANNOT_CONVERT>(lhs, *vslContext.getBoolType());
+        result = nullptr;
+        return;
+    }
+    // helper variables so i don't have to type as much
+    auto* currBlock = builder.GetInsertBlock();
+    llvm::Function* currFunc = currBlock->getParent();
+    // setup blocks
+    llvm::Twine name = (node.getOp() == TokenKind::AND) ? "and" : "or";
+    auto* longCheck = llvm::BasicBlock::Create(context, name + ".long");
+    auto* cont = llvm::BasicBlock::Create(context, name + ".cont");
+    // create the branch
+    if (node.getOp() == TokenKind::AND)
+    {
+        builder.CreateCondBr(cond1, longCheck, cont);
+    }
+    else // or
+    {
+        builder.CreateCondBr(cond1, cont, longCheck);
+    }
+    // the long check is when the operation did not short circuit, and depends
+    //  on the value of rhs to fully determine the result
+    longCheck->insertInto(currFunc);
+    builder.SetInsertPoint(longCheck);
+    // generate code to calculate rhs
+    ExprNode& rhs = *node.getRhs();
+    rhs.accept(*this);
+    llvm::Value* cond2 = result;
+    // setup the cont block
+    branchTo(cont);
+    cont->insertInto(currFunc);
+    builder.SetInsertPoint(cont);
+    // of course, rhs has to be a bool for this to work
+    // the check happens later so that the cont block is neither a memory leak
+    //  nor a dangling pointer, and you can safely insert other code afterwards
+    if (rhs.getType() != vslContext.getBoolType())
+    {
+        diag.print<Diag::CANNOT_CONVERT>(rhs, *vslContext.getBoolType());
+        result = nullptr;
+        return;
+    }
+    // create the phi instruction
+    auto* phi = builder.CreatePHI(builder.getInt1Ty(), 2, name);
+    // if the branch came from currBlock, then the operation short-circuited
+    phi->addIncoming(builder.getInt1(node.getOp() == TokenKind::OR),
+        currBlock);
+    // if it came from longCheck, then the result is determined by rhs
+    phi->addIncoming(cond2, longCheck);
+    result = phi;
+}
+
 void IRGen::genNeg(const Type* type, llvm::Value* value)
 {
-    result = (type == vslContext.getIntType()) ?
+    result = (type == vslContext.getIntType() ||
+            type == vslContext.getBoolType()) ?
         builder.CreateNeg(value, "neg") : nullptr;
 }
 

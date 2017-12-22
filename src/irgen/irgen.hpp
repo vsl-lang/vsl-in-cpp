@@ -52,7 +52,15 @@ private:
      */
     void genAssign(BinaryNode& node);
     /**
-     * Generates a unary `neg` instruction.
+     * Generates a short-circuiting boolean operation, i.e., and/or. Don't call
+     * this method if `node.getOp()` is anything but TokenKind::AND or
+     * TokenKind::OR.
+     *
+     * @param node The expression to generate code for.
+     */
+    void genShortCircuit(BinaryNode& node);
+    /**
+     * Generates a unary negation.
      *
      * @param type The VSL type of the operand.
      * @param value The LLVM value to operate on.

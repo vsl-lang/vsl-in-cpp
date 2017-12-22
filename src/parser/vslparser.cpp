@@ -410,6 +410,8 @@ ExprNode* VSLParser::parseBinaryOp(ExprNode* lhs)
     case TokenKind::GREATER_EQUAL:
     case TokenKind::LESS:
     case TokenKind::LESS_EQUAL:
+    case TokenKind::AND:
+    case TokenKind::OR:
         // left associative
         consume();
         return makeNode<BinaryNode>(t.getKind(), lhs,
@@ -434,21 +436,24 @@ int VSLParser::getPrec(TokenKind k)
     switch (k)
     {
     case TokenKind::LPAREN:
-        return 7;
+        return 8;
     case TokenKind::STAR:
     case TokenKind::SLASH:
     case TokenKind::PERCENT:
-        return 6;
+        return 7;
     case TokenKind::PLUS:
     case TokenKind::MINUS:
-        return 5;
+        return 6;
     case TokenKind::GREATER:
     case TokenKind::GREATER_EQUAL:
     case TokenKind::LESS:
     case TokenKind::LESS_EQUAL:
-        return 4;
+        return 5;
     case TokenKind::EQUAL:
     case TokenKind::NOT_EQUAL:
+        return 4;
+    case TokenKind::AND:
+    case TokenKind::OR:
         return 3;
     case TokenKind::QUESTION:
         return 2;
