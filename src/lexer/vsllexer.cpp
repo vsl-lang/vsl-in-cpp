@@ -73,8 +73,6 @@ Token VSLLexer::nextToken()
             return createToken(TokenKind::COLON);
         case ';':
             return createToken(TokenKind::SEMICOLON);
-        case '\n':
-            break;
         case '!':
             if (peek() == '=')
             {
