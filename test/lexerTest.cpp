@@ -1,4 +1,4 @@
-#include "irgen/vslContext.hpp"
+#include "diag/diag.hpp"
 #include "lexer/token.hpp"
 #include "lexer/vsllexer.hpp"
 #include "gtest/gtest.h"
@@ -9,19 +9,19 @@
 // returns true if the tokens are valid, false otherwise
 static bool lex(const char* src)
 {
-    VSLContext vslContext{ llvm::nulls() };
-    VSLLexer lexer{ vslContext, src };
+    Diag diag{ llvm::nulls() };
+    VSLLexer lexer{ diag, src };
     while(!lexer.empty())
     {
         lexer.nextToken();
     }
-    return !vslContext.getErrorCount();
+    return !diag.getNumErrors();
 }
 
 TEST(LexerTest, NotEmptyOnInit)
 {
-    VSLContext vslContext{ llvm::nulls() };
-    VSLLexer lexer{ vslContext, "hi" };
+    Diag diag{ llvm::nulls() };
+    VSLLexer lexer{ diag, "hi" };
     EXPECT_FALSE(lexer.empty());
 }
 

@@ -3,6 +3,7 @@
 
 #include "ast/node.hpp"
 #include "ast/nodevisitor.hpp"
+#include "diag/diag.hpp"
 #include "irgen/scopetree.hpp"
 #include "irgen/vslContext.hpp"
 #include "llvm/IR/IRBuilder.h"
@@ -20,9 +21,10 @@ public:
      * Creates an IRGen object.
      *
      * @param vslContext The VSLContext object to be used.
+     * @param diag Diagnostics manager.
      * @param module The module to emit LLVM IR into.
      */
-    IRGen(VSLContext& vslContext, llvm::Module& module);
+    IRGen(VSLContext& vslContext, Diag& diag, llvm::Module& module);
     /**
      * Destroys an IRGen object.
      */
@@ -167,6 +169,8 @@ private:
     llvm::BranchInst* branchTo(llvm::BasicBlock* target);
     /** The VSLContext object to be used. */
     VSLContext& vslContext;
+    /** Diagnostics manager. */
+    Diag& diag;
     /** The module to emit LLVM IR into. */
     llvm::Module& module;
     /** Context object that owns most dynamic LLVM data structures. */

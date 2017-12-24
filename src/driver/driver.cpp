@@ -1,4 +1,5 @@
 #include "codegen/codegen.hpp"
+#include "diag/diag.hpp"
 #include "driver/driver.hpp"
 #include "irgen/irgen.hpp"
 #include "lexer/vsllexer.hpp"
@@ -20,44 +21,46 @@ int Driver::main(int argc, const char* const* argv)
     case OptionParser::COMPILE:
         return compile();
     case OptionParser::REPL_LEX:
-        return repl([](const std::string& in, llvm::raw_ostream& out)
+        return repl([](const std::string& in, llvm::raw_ostream& os)
             {
-                VSLContext vslContext;
-                VSLLexer lexer{ vslContext, in.c_str() };
+                Diag diag{ os };
+                VSLLexer lexer{ diag, in.c_str() };
                 Token token;
                 do
                 {
                     token = lexer.nextToken();
-                    out << token << '\n';
+                    os << token << '\n';
                 }
                 while (token.isNot(TokenKind::END));
             });
     case OptionParser::REPL_PARSE:
-        return repl([](const std::string& in, llvm::raw_ostream& out)
+        return repl([](const std::string& in, llvm::raw_ostream& os)
             {
                 VSLContext vslContext;
-                VSLLexer lexer{ vslContext, in.c_str() };
+                Diag diag{ os };
+                VSLLexer lexer{ diag, in.c_str() };
                 VSLParser parser{ vslContext, lexer };
-                out << parser.parse()->toString() << '\n';
+                os << parser.parse()->toString() << '\n';
             });
     case OptionParser::REPL_GENERATE:
-        return repl([&](const std::string& in, llvm::raw_ostream& out)
+        return repl([&](const std::string& in, llvm::raw_ostream& os)
             {
                 VSLContext vslContext;
-                VSLLexer lexer{ vslContext, in.c_str() };
+                Diag diag{ os };
+                VSLLexer lexer{ diag, in.c_str() };
                 VSLParser parser{ vslContext, lexer };
                 auto ast = parser.parse();
                 llvm::LLVMContext llvmContext;
                 auto module = std::make_unique<llvm::Module>("repl",
                     llvmContext);
-                IRGen irGen{ vslContext, *module };
+                IRGen irGen{ vslContext, diag, *module };
                 ast->accept(irGen);
-                CodeGen codeGen{ vslContext, *module };
+                CodeGen codeGen{ diag, *module };
                 if (op.optimize)
                 {
                     codeGen.optimize();
                 }
-                out << *module << '\n';
+                os << *module << '\n';
             });
     }
     return 0;
@@ -80,51 +83,60 @@ int Driver::displayHelp()
 
 int Driver::compile()
 {
+    // open the input file
+    Diag diag{ llvm::errs() };
     if (!op.infile)
     {
-        llvm::errs() << "Error: no input file\n";
+        diag.print<Diag::NO_INPUT>();
         return 1;
     }
     llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> in =
         llvm::MemoryBuffer::getFileOrSTDIN(op.infile);
     if (std::error_code ec = in.getError())
     {
-        llvm::errs() << "Error: could not open file '" << op.infile << "': " <<
-            ec.message() << '\n';
+        diag.print<Diag::CANT_OPEN_FILE>(op.infile, ec.message());
         return 1;
     }
+    // lex/parse
     VSLContext vslContext;
-    VSLLexer lexer{ vslContext, in.get()->getBuffer().data() };
+    VSLLexer lexer{ diag, in.get()->getBuffer().data() };
     VSLParser parser{ vslContext, lexer };
     auto ast = parser.parse();
+    // emit llvm ir
     llvm::LLVMContext llvmContext;
     auto module = std::make_unique<llvm::Module>(op.infile, llvmContext);
-    IRGen irGen{ vslContext, *module };
+    IRGen irGen{ vslContext, diag, *module };
     ast->accept(irGen);
-    CodeGen codeGen{ vslContext, *module };
+    // recap the amount of errors/warnings that occurred
+    if (diag.getNumErrors() > 1)
+    {
+        llvm::errs() << diag.getNumErrors() << " errors generated\n";
+    }
+    if (diag.getNumWarnings() > 1)
+    {
+        llvm::errs() << diag.getNumWarnings() << " warnings generated\n";
+    }
+    if (diag.getNumErrors())
+    {
+        return 1;
+    }
+    // optimize ir
+    CodeGen codeGen{ diag, *module };
     if (op.optimize)
     {
         codeGen.optimize();
     }
-    if (!op.outfile)
-    {
-        llvm::errs() << "Error: no output file\n";
-        return 1;
-    }
+    // open output file
     std::error_code ec;
     llvm::raw_fd_ostream out{ op.outfile, ec, llvm::sys::fs::F_None };
     if (ec)
     {
-        llvm::errs() << "Error: could not open file '" << op.outfile << "': " <<
-            ec.message() << '\n';
+        diag.print<Diag::CANT_OPEN_FILE>(op.outfile, ec.message());
         return 1;
     }
+    // emit object code
     codeGen.compile(out);
-    if (vslContext.getErrorCount())
-    {
-        return 1;
-    }
-    return 0;
+    return diag.getNumErrors() ? 1 : 0;
 }
 
 int Driver::repl(

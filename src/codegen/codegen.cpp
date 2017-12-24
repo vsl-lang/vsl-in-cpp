@@ -9,8 +9,8 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 
-CodeGen::CodeGen(VSLContext& vslContext, llvm::Module& module)
-    : vslContext{ vslContext }, module{ module }, fpm{ &module }
+CodeGen::CodeGen(Diag& diag, llvm::Module& module)
+    : diag{ diag }, module{ module }, fpm{ &module }
 {
 }
 
@@ -28,8 +28,7 @@ void CodeGen::compile(llvm::raw_pwrite_stream& output)
         targetTriple, error);
     if (target == nullptr)
     {
-        vslContext.error() << "couldn't find requested target: " <<
-            error << '\n';
+        diag.print<Diag::CANT_FIND_TARGET>(std::move(error));
         return;
     }
     const char* cpu = "generic";
@@ -45,8 +44,7 @@ void CodeGen::compile(llvm::raw_pwrite_stream& output)
     if (targetMachine->addPassesToEmitFile(pm, output,
             llvm::TargetMachine::CGFT_ObjectFile))
     {
-        vslContext.error() <<
-            "target machine cannot emit a file of type object\n";
+        diag.print<Diag::TARGET_CANT_EMIT_OBJ>();
         return;
     }
     pm.run(module);

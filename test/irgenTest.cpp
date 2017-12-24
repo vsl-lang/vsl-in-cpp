@@ -1,3 +1,4 @@
+#include "diag/diag.hpp"
 #include "irgen/irgen.hpp"
 #include "irgen/vslContext.hpp"
 #include "lexer/vsllexer.hpp"
@@ -10,15 +11,16 @@
 // returns true if semantically valid, false otherwise
 static bool validate(const char* src)
 {
-    VSLContext vslContext{ llvm::nulls() };
-    VSLLexer lexer{ vslContext, src };
+    VSLContext vslContext;
+    Diag diag{ llvm::nulls() };
+    VSLLexer lexer{ diag, src };
     VSLParser parser{ vslContext, lexer };
     auto* program = parser.parse();
     llvm::LLVMContext llvmContext;
     auto module = std::make_unique<llvm::Module>("test", llvmContext);
-    IRGen irgen{ vslContext, *module };
+    IRGen irgen{ vslContext, diag, *module };
     program->accept(irgen);
-    return !vslContext.getErrorCount();
+    return !diag.getNumErrors();
 }
 
 TEST(IRGenTest, Functions)

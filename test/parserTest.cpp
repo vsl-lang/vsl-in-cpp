@@ -1,3 +1,4 @@
+#include "diag/diag.hpp"
 #include "irgen/vslContext.hpp"
 #include "lexer/vsllexer.hpp"
 #include "parser/vslparser.hpp"
@@ -9,11 +10,12 @@
 // returns true if the syntax is valid, false otherwise
 static bool parse(const char* src)
 {
-    VSLContext vslContext{ llvm::nulls() };
-    VSLLexer lexer{ vslContext, src };
+    VSLContext vslContext;
+    Diag diag{ llvm::nulls() };
+    VSLLexer lexer{ diag, src };
     VSLParser parser{ vslContext, lexer };
     parser.parse();
-    return !vslContext.getErrorCount();
+    return !diag.getNumErrors();
 }
 
 TEST(ParserTest, HandlesEmptyStatement)
@@ -63,7 +65,8 @@ TEST(ParserTest, HandlesExpr)
 TEST(ParserTest, HandlesNumbers)
 {
     valid("1337;");
-    invalid("999999999999999999999999999;");
+    // emits a warning so this shsould be fine
+    valid("999999999999999999999999999;");
 }
 
 TEST(ParserTest, HandlesParenthesizedExprs)

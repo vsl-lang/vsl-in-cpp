@@ -1,6 +1,7 @@
 #ifndef LEXER_HPP
 #define LEXER_HPP
 
+#include "diag/diag.hpp"
 #include "lexer/token.hpp"
 #include <memory>
 
@@ -11,8 +12,11 @@ class Lexer
 {
 public:
     /**
-     * Destroys a Lexer.
+     * Creates a Lexer.
+     *
+     * @param diag Diagnostics manager.
      */
+    Lexer(Diag& diag);
     virtual ~Lexer() = 0;
     /**
      * Gets the next token.
@@ -26,6 +30,16 @@ public:
      * @returns True if empty, otherwise false.
      */
     virtual bool empty() const = 0;
+    /**
+     * Gets the diagnostics manager.
+     *
+     * @returns The diagnostics manager.
+     */
+    Diag& getDiag() const;
+
+protected:
+    /** Diagnostics manager. */
+    Diag& diag;
 };
 
 #endif // LEXER_HPP

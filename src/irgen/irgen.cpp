@@ -5,8 +5,8 @@
 #include "llvm/Support/raw_ostream.h"
 #include <limits>
 
-IRGen::IRGen(VSLContext& vslContext, llvm::Module& module)
-    : vslContext{ vslContext }, module{ module },
+IRGen::IRGen(VSLContext& vslContext, Diag& diag, llvm::Module& module)
+    : vslContext{ vslContext }, diag{ diag }, module{ module },
     context{ module.getContext() }, builder{ context },
     allocaInsertPoint{ nullptr }, result{ nullptr }
 {
@@ -34,8 +34,7 @@ void IRGen::visitIf(IfNode& node)
     // make sure that it's not in the global scope.
     if (scopeTree.isGlobal())
     {
-        vslContext.error(node.getLoc()) <<
-            "top-level control flow statements are not allowed\n";
+        diag.print<Diag::TOPLEVEL_CTRL_FLOW>(node.getLoc());
     }
     // setup the condition
     scopeTree.enter();
@@ -56,9 +55,8 @@ void IRGen::visitIf(IfNode& node)
     else
     {
         // error, assume false
-        vslContext.error(node.getCondition()->getLoc()) <<
-            "cannot convert expression of type " << type->toString() <<
-            " to type Bool\n";
+        diag.print<Diag::CANNOT_CONVERT>(*node.getCondition(),
+            *vslContext.getBoolType());
         cond = llvm::ConstantInt::getFalse(context);
     }
     // create the necessary basic blocks
@@ -110,16 +108,12 @@ void IRGen::visitVariable(VariableNode& node)
     // do type checking
     if (!node.getType()->isValid())
     {
-        vslContext.error(node.getLoc()) << "type " <<
-            node.getType()->toString() <<
-            " is not a valid type for a variable\n";
+        diag.print<Diag::INVALID_VAR_TYPE>(node);
         return;
     }
     if (node.getType() != init.getType())
     {
-        vslContext.error(init.getLoc()) <<
-            "mismatching types when initializing variable " << node.getName() <<
-            '\n';
+        diag.print<Diag::MISMATCHING_VAR_TYPES>(node);
         return;
     }
     // allocate the variable
@@ -128,8 +122,7 @@ void IRGen::visitVariable(VariableNode& node)
     // add to current scope
     if (!scopeTree.set(node.getName(), { node.getType(), alloca }))
     {
-        vslContext.error(node.getLoc()) << "variable " <<
-            node.getName() << " was already defined in this scope\n";
+        diag.print<Diag::VAR_ALREADY_DEFINED>(node);
         alloca->eraseFromParent();
         return;
     }
@@ -171,9 +164,7 @@ void IRGen::visitFunction(FunctionNode& node)
         }
         else
         {
-            vslContext.error(node.getLoc()) <<
-                "missing return statement at the end of function '" <<
-                node.getName() << "'\n";
+            diag.print<Diag::MISSING_RETURN>(node);
             builder.CreateUnreachable();
         }
     }
@@ -188,13 +179,12 @@ void IRGen::visitFunction(FunctionNode& node)
         allocaInsertPoint = nullptr;
     }
     result = nullptr;
-    // make sure that the function is valid, else ICE
+    // make sure that the function is valid, else internal error
     std::string s;
     llvm::raw_string_ostream sos{ s };
     if (llvm::verifyFunction(*f, &sos))
     {
-        vslContext.internalError() << "LLVM encountered the below errors:\n" <<
-            sos.str() << '\n';
+        diag.print<Diag::LLVM_FUNC_ERROR>();
     }
 }
 
@@ -219,14 +209,12 @@ void IRGen::visitReturn(ReturnNode& node)
     {
         if (type == vslContext.getVoidType())
         {
-            vslContext.error(node.getLoc()) <<
-                "cannot return a value of type Void\n";
+            diag.print<Diag::CANT_RETURN_VOID_VALUE>(node);
         }
         else if (type != scopeTree.getReturnType())
         {
-            vslContext.error(node.getLoc()) << "return value of type " <<
-                type->toString() << " does not match return type " <<
-                scopeTree.getReturnType()->toString() << '\n';
+            diag.print<Diag::RETVAL_MISMATCHES_RETTYPE>(*node.getValue(),
+                *scopeTree.getReturnType());
         }
         else
         {
@@ -246,8 +234,7 @@ void IRGen::visitIdent(IdentNode& node)
     Scope::Item i = scopeTree.get(node.getName());
     if (i.type == nullptr || i.value == nullptr)
     {
-        vslContext.error(node.getLoc()) << "unknown variable " <<
-            node.getName() << '\n';
+        diag.print<Diag::UNKNOWN_IDENT>(node);
         node.setType(vslContext.getErrorType());
         result = nullptr;
         return;
@@ -278,8 +265,7 @@ void IRGen::visitLiteral(LiteralNode& node)
         break;
     default:
         // should never happen
-        vslContext.error(node.getLoc()) << "VSL does not support " << width <<
-            "-bit integers\n";
+        diag.print<Diag::INVALID_INT_WIDTH>(node);
         node.setType(vslContext.getErrorType());
     }
     result = llvm::ConstantInt::get(context, node.getValue());
@@ -305,9 +291,7 @@ void IRGen::visitUnary(UnaryNode& node)
     }
     if (result == nullptr)
     {
-        vslContext.error(node.getLoc()) << "cannot apply unary operator " <<
-            tokenKindName(node.getOp()) << " to type " << type->toString() <<
-            '\n';
+        diag.print<Diag::INVALID_UNARY>(node);
     }
 }
 
@@ -388,10 +372,7 @@ void IRGen::visitBinary(BinaryNode& node)
     }
     if (result == nullptr)
     {
-        vslContext.error(node.getLoc()) << "cannot apply binary operator " <<
-            tokenKindName(node.getOp()) << " to types " <<
-            node.getLhs()->getType()->toString() << " and " <<
-            node.getRhs()->getType()->toString() << '\n';
+        diag.print<Diag::INVALID_BINARY>(node);
     }
 }
 
@@ -403,15 +384,13 @@ void IRGen::visitCall(CallNode& node)
         static_cast<const FunctionType*>(node.getCallee()->getType());
     if (!calleeType->isFunctionType())
     {
-        vslContext.error(node.getLoc()) << "called object of type " <<
-            calleeType->toString() << " is not a function\n";
+        diag.print<Diag::NOT_A_FUNCTION>(*node.getCallee());
     }
     // make sure the right amount of arguments is used
     else if (calleeType->getNumParams() != node.getNumArgs())
     {
-        vslContext.error(node.getLoc()) << "mismatched number of arguments " <<
-            node.getNumArgs() << " versus parameters " <<
-            calleeType->getNumParams() << '\n';
+        diag.print<Diag::MISMATCHING_ARG_COUNT>(node.getLoc(),
+            node.getNumArgs(), calleeType->getNumParams());
     }
     else
     {
@@ -426,10 +405,7 @@ void IRGen::visitCall(CallNode& node)
             // check that the types match
             if (arg.getValue()->getType() != paramType)
             {
-                vslContext.error(arg.getValue()->getLoc()) <<
-                    "cannot convert type " <<
-                    arg.getValue()->getType()->toString() << " to type " <<
-                    paramType->toString() << '\n';
+                diag.print<Diag::CANNOT_CONVERT>(*arg.getValue(), *paramType);
             }
             else
             {
@@ -479,21 +455,17 @@ void IRGen::genAssign(BinaryNode& node)
             }
             else
             {
-                vslContext.error(rhs.getLoc()) <<
-                    "cannot convert expression of type " <<
-                    rhs.getType()->toString() << " to type " <<
-                    i.type->toString() << '\n';
+                diag.print<Diag::CANNOT_CONVERT>(rhs, *i.type);
             }
         }
         else
         {
-            vslContext.error(id.getLoc()) << "unknown variable " <<
-                id.getName() << '\n';
+            diag.print<Diag::UNKNOWN_IDENT>(id);
         }
     }
     else
     {
-        vslContext.error(lhs.getLoc()) << "lhs must be an identifier\n";
+        diag.print<Diag::LHS_NOT_ASSIGNABLE>(lhs);
     }
 }
 

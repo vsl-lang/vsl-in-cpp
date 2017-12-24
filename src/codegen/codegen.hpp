@@ -1,10 +1,9 @@
 #ifndef CODEGEN_HPP
 #define CODEGEN_HPP
 
-#include "irgen/vslContext.hpp"
+#include "diag/diag.hpp"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Support/raw_ostream.h"
 
 /**
  * Generates native object code from an llvm::Module.
@@ -15,10 +14,10 @@ public:
     /**
      * Creates a CodeGen object.
      *
-     * @param vslContext The VSLContext object to be used.
+     * @param diag Diagnostics manager.
      * @param module The module to compile.
      */
-    CodeGen(VSLContext& vslContext, llvm::Module& module);
+    CodeGen(Diag& diag, llvm::Module& module);
     /**
      * Compiles the module.
      *
@@ -31,8 +30,8 @@ public:
     void optimize();
 
 private:
-    /** Reference to the VSLContext object. */
-    VSLContext& vslContext;
+    /** Diagnostics manager. */
+    Diag& diag;
     /** The module to compile. */
     llvm::Module& module;
     /** Handles all the module-level transformations, such as compilation. */

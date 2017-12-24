@@ -1,7 +1,7 @@
 #include "parser/vslparser.hpp"
 
 VSLParser::VSLParser(VSLContext& vslContext, Lexer& lexer)
-    : vslContext{ vslContext }, lexer{ lexer }
+    : vslContext{ vslContext }, lexer{ lexer }, diag{ lexer.getDiag() }
 {
 }
 
@@ -51,16 +51,14 @@ const Token& VSLParser::peek(size_t depth)
 
 EmptyNode* VSLParser::errorExpected(const char* s)
 {
-    const Token& t = current();
-    vslContext.error(t.getLoc()) << "expected " << s << " but found " <<
-        t.getKindName() << '\n';
-    return makeNode<EmptyNode>(t.getLoc());
+    const Token& token = current();
+    diag.print<Diag::EXPECTED_BUT_FOUND>(s, token);
+    return makeNode<EmptyNode>(token.getLoc());
 }
 
 EmptyNode* VSLParser::errorUnexpected(const Token& token)
 {
-    vslContext.error(token.getLoc()) << "unexpected token " <<
-        token.getKindName() << '\n';
+    diag.print<Diag::UNEXPECTED_TOKEN>(token);
     return makeNode<EmptyNode>(token.getLoc());
 }
 
@@ -260,9 +258,7 @@ Node* VSLParser::parseFunction()
             }
             else
             {
-                vslContext.error(param->getLoc()) << "type " <<
-                    param->getType()->toString() <<
-                    " is invalid for parameter " << param->getName() << '\n';
+                diag.print<Diag::INVALID_PARAM_TYPE>(*param);
                 // FIXME: delete the invalid ParamNode
             }
             if (current().isNot(TokenKind::COMMA))
@@ -514,14 +510,12 @@ LiteralNode* VSLParser::parseNumber(const Token& token)
     llvm::APInt value;
     if (token.getText().getAsInteger(10, value))
     {
-        vslContext.error(location) << "invalid integer '" << token.getText() <<
-            "'\n";
+        diag.print<Diag::INVALID_INT>(token);
         value = 0;
     }
     else if (value.getActiveBits() > 32)
     {
-        vslContext.error(location) << "overflow detected in number '" <<
-            token.getText()<< "'\n";
+        diag.print<Diag::OVERFLOW_DETECTED>(token);
     }
     value = value.zextOrTrunc(32);
     return makeNode<LiteralNode>(std::move(value), location);

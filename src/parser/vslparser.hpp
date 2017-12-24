@@ -2,6 +2,7 @@
 #define VSLPARSER_HPP
 
 #include "ast/node.hpp"
+#include "diag/diag.hpp"
 #include "irgen/vslContext.hpp"
 #include "lexer/lexer.hpp"
 #include "lexer/token.hpp"
@@ -194,6 +195,8 @@ private:
     VSLContext& vslContext;
     /** The Lexer to get the tokens from. */
     Lexer& lexer;
+    /** Diagnostics manager. */
+    Diag& diag;
     /** Cache of tokens used in lookahead. */
     std::deque<Token> cache;
 };

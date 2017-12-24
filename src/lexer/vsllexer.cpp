@@ -1,8 +1,8 @@
 #include "lexer/vsllexer.hpp"
 #include <cctype>
 
-VSLLexer::VSLLexer(VSLContext& vslContext, const char* src)
-    : vslContext{ vslContext }, text{ src, 1 }, location{ 1, 1 }
+VSLLexer::VSLLexer(Diag& diag, const char* src)
+    : Lexer{ diag }, text{ src, 1 }, location{ 1, 1 }
 {
 }
 
@@ -93,8 +93,7 @@ Token VSLLexer::nextToken()
             }
             if (!isspace(current()))
             {
-                vslContext.error(location) << "unknown symbol '" << current() <<
-                    "'\n";
+                diag.print<Diag::UNKNOWN_SYMBOL>(location, current());
             }
         }
         resetBuffer();

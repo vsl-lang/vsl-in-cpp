@@ -1,6 +1,7 @@
 #ifndef VSLLEXER_HPP
 #define VSLLEXER_HPP
 
+#include "diag/diag.hpp"
 #include "irgen/vslContext.hpp"
 #include "lexer/lexer.hpp"
 #include "lexer/location.hpp"
@@ -16,10 +17,10 @@ public:
     /**
      * Creates a VSLLexer.
      *
-     * @param vslContext The VSLContext object to be used.
+     * @param diag Diagnostics manager.
      * @param src The source code to lex.
      */
-    VSLLexer(VSLContext& vslContext, const char* src);
+    VSLLexer(Diag& diag, const char* src);
     /**
      * Destroys a VSLLexer.
      */
@@ -83,8 +84,6 @@ private:
      * Consumes a block comment.
      */
     void lexBlockComment();
-    /** Reference to the VSLContext. */
-    VSLContext& vslContext;
     /** The current buffer of text to insert into the next Token. */
     llvm::StringRef text;
     /** The location of the current character. */
