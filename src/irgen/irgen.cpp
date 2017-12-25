@@ -376,6 +376,60 @@ void IRGen::visitBinary(BinaryNode& node)
     }
 }
 
+void IRGen::visitTernary(TernaryNode& node)
+{
+    // generate condition and make sure its a bool
+    node.getCondition()->accept(*this);
+    llvm::Value* condition = result;
+    result = nullptr;
+    if (node.getCondition()->getType() != vslContext.getBoolType())
+    {
+        diag.print<Diag::CANNOT_CONVERT>(*node.getCondition(),
+            *vslContext.getBoolType());
+        return;
+    }
+    // setup blocks
+    llvm::BasicBlock* currBlock = builder.GetInsertBlock();
+    llvm::Function* currFunc = currBlock->getParent();
+    auto* thenBlock = llvm::BasicBlock::Create(context, "ternary.then");
+    auto* elseBlock = llvm::BasicBlock::Create(context, "ternary.else");
+    auto* contBlock = llvm::BasicBlock::Create(context, "ternary.cont");
+    // branch
+    builder.CreateCondBr(condition, thenBlock, elseBlock);
+    // generate then
+    // we get a reference to the current block after generating code because an
+    //  expression can span multiple basic blocks, e.g. a ternary such as this
+    thenBlock->insertInto(currFunc);
+    builder.SetInsertPoint(thenBlock);
+    node.getThen()->accept(*this);
+    llvm::Value* thenCase = result;
+    auto* thenEnd = builder.GetInsertBlock();
+    branchTo(contBlock);
+    // generate else
+    elseBlock->insertInto(currFunc);
+    builder.SetInsertPoint(elseBlock);
+    node.getElse()->accept(*this);
+    llvm::Value* elseCase = result;
+    auto* elseEnd = builder.GetInsertBlock();
+    branchTo(contBlock);
+    // setup cont block for code that comes after
+    contBlock->insertInto(currFunc);
+    builder.SetInsertPoint(contBlock);
+    // do type checking to make sure everything's fine
+    node.setType(node.getThen()->getType());
+    if (node.getThen()->getType() != node.getElse()->getType())
+    {
+        diag.print<Diag::TERNARY_TYPE_MISMATCH>(node);
+        result = nullptr;
+        return;
+    }
+    // bring it all together with a phi node
+    auto* phi = builder.CreatePHI(thenCase->getType(), 2, "ternary.phi");
+    phi->addIncoming(thenCase, thenEnd);
+    phi->addIncoming(elseCase, elseEnd);
+    result = phi;
+}
+
 void IRGen::visitCall(CallNode& node)
 {
     // make sure the callee is an actual function

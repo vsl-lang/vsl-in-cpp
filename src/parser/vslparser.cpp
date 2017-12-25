@@ -412,6 +412,8 @@ ExprNode* VSLParser::parseLed(ExprNode* left)
         consume();
         return makeNode<BinaryNode>(t.getKind(), left, parseExpr(getLbp(t) - 1),
             t.getLoc());
+    case TokenKind::QUESTION:
+        return parseTernary(left);
     case TokenKind::LPAREN:
         return parseCall(left);
     default:
@@ -427,27 +429,49 @@ int VSLParser::getLbp(const Token& token) const
     switch (token.getKind())
     {
     case TokenKind::LPAREN:
-        return 6;
+        return 7;
     case TokenKind::STAR:
     case TokenKind::SLASH:
     case TokenKind::PERCENT:
-        return 5;
+        return 6;
     case TokenKind::PLUS:
     case TokenKind::MINUS:
-        return 4;
+        return 5;
     case TokenKind::GREATER:
     case TokenKind::GREATER_EQUAL:
     case TokenKind::LESS:
     case TokenKind::LESS_EQUAL:
-        return 3;
+        return 4;
     case TokenKind::EQUAL:
     case TokenKind::NOT_EQUAL:
+        return 3;
+    case TokenKind::QUESTION:
         return 2;
     case TokenKind::ASSIGN:
         return 1;
     default:
         return 0;
     }
+}
+
+// tenary -> condition question thenCase colon elseCase
+// condition is passed as an argument from parseLed()
+TernaryNode* VSLParser::parseTernary(ExprNode* condition)
+{
+    if (current().isNot(TokenKind::QUESTION))
+    {
+        errorExpected("'?'");
+    }
+    Token question = consume();
+    Location location = question.getLoc();
+    ExprNode* thenCase = parseExpr(getLbp(question) - 1);
+    if (current().isNot(TokenKind::COLON))
+    {
+        errorExpected("':'");
+    }
+    consume();
+    ExprNode* elseCase = parseExpr(getLbp(question) - 1);
+    return makeNode<TernaryNode>(condition, thenCase, elseCase, location);
 }
 
 // call -> callee lparen arg (comma arg)* rparen

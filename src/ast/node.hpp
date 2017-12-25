@@ -14,6 +14,7 @@ class IdentNode;
 class LiteralNode;
 class UnaryNode;
 class BinaryNode;
+class TernaryNode;
 class CallNode;
 class ArgNode;
 
@@ -70,6 +71,8 @@ public:
         UNARY,
         /** Binary expression. */
         BINARY,
+        /** Ternary expression. */
+        TERNARY,
         /** Function call. */
         CALL,
         /** Function parameter. */
@@ -449,6 +452,38 @@ private:
     ExprNode* left;
     /** The right hand side of the expression. */
     ExprNode* right;
+};
+
+/**
+ * Represents a ternary expression.
+ */
+class TernaryNode : public ExprNode
+{
+public:
+    /**
+     * Creates a TernaryNode.
+     *
+     * @param condition The condition to test for.
+     * @param thenCase The expression when the condition is true.
+     * @param elseCase The expression when the condition is false.
+     * @param location Where this BinaryNode was found in the source.
+     */
+    TernaryNode(ExprNode* condition, ExprNode* thenCase, ExprNode* elseCase,
+        Location location);
+    virtual ~TernaryNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+    virtual std::string toString() const override;
+    ExprNode* getCondition() const;
+    ExprNode* getThen() const;
+    ExprNode* getElse() const;
+
+private:
+    /** The condition to test for. */
+    ExprNode* condition;
+    /** The expression when the condition is true. */
+    ExprNode* thenCase;
+    /** The expression when the condition is false. */
+    ExprNode* elseCase;
 };
 
 /**

@@ -31,6 +31,7 @@ public:
     virtual void visitLiteral(LiteralNode& node) = 0;
     virtual void visitUnary(UnaryNode& node) = 0;
     virtual void visitBinary(BinaryNode& node) = 0;
+    virtual void visitTernary(TernaryNode& node) = 0;
     virtual void visitCall(CallNode& node) = 0;
     virtual void visitArg(ArgNode& node) = 0;
 };

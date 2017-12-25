@@ -164,6 +164,14 @@ private:
      */
     int getLbp(const Token& token) const;
     /**
+     * Parses a ternary expression, e.g.\ `c ? x : y`.
+     *
+     * @param condition Condition that was already parsed.
+     *
+     * @returns A ternary expression.
+     */
+    TernaryNode* parseTernary(ExprNode* condition);
+    /**
      * Parses a function call, e.g.\ `f(x: 1)`.
      *
      * @param callee The function to call.

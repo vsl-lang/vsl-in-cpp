@@ -59,6 +59,8 @@ Token VSLLexer::nextToken()
                 return createToken(TokenKind::LESS_EQUAL);
             }
             return createToken(TokenKind::LESS);
+        case '?':
+            return createToken(TokenKind::QUESTION);
         case '(':
             return createToken(TokenKind::LPAREN);
         case ')':

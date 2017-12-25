@@ -34,7 +34,7 @@ TEST(IRGenTest, Functions)
     invalid("func f() -> Void { return f(); }");
 }
 
-TEST(IRGenTest, IfStatements)
+TEST(IRGenTest, Conditionals)
 {
     // else case is optional
     valid("func f(x: Int) -> Int { if (x % 2 == 0) return 1337; return x; }");
@@ -59,6 +59,12 @@ TEST(IRGenTest, IfStatements)
             "else if (x == 1) return 1; "
             "else return fibonacci(x: x - 1) + fibonacci(x: x - 2); "
         "}");
+    // make sure ternary works
+    valid("func f(x: Int) -> Int { return x == 4 ? x : x + 1; }");
+    // ternaries can also be chained on both sides of the colon without parens
+    valid("func f(x: Int) -> Int { return x == 4 ? "
+        "x == 3 ? x : x + 1 :"
+            "x == 2 ? x + 2 : x + 3; }");
 }
 
 TEST(IRGenTest, Variables)

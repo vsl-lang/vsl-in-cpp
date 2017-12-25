@@ -40,6 +40,7 @@ public:
     virtual void visitLiteral(LiteralNode& node) override;
     virtual void visitUnary(UnaryNode& node) override;
     virtual void visitBinary(BinaryNode& node) override;
+    virtual void visitTernary(TernaryNode& node) override;
     virtual void visitCall(CallNode& node) override;
     virtual void visitArg(ArgNode& node) override;
 

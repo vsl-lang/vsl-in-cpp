@@ -62,6 +62,9 @@ DIAG(INVALID_BINARY, (BinaryNode& binary), (ERROR, binary.getLoc(),
         "cannot apply binary operator '", tokenKindName(binary.getOp()),
         "' to types '", binary.getLhs()->toString(), "' and '",
         binary.getRhs()->toString(), '\''))
+DIAG(TERNARY_TYPE_MISMATCH, (TernaryNode& ternary), (ERROR, ternary.getLoc(),
+        "ternary operands of type '", ternary.getThen()->getType()->toString(),
+        "' and '", ternary.getElse()->getType()->toString(), "' don't match"))
 DIAG(NOT_A_FUNCTION, (const ExprNode& callee), (ERROR, callee.getLoc(),
         "called object of type '", callee.getType()->toString(),
         "' is not a function"))

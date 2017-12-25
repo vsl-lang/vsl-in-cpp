@@ -428,6 +428,45 @@ ExprNode* BinaryNode::getRhs() const
     return right;
 }
 
+TernaryNode::TernaryNode(ExprNode* condition, ExprNode* thenCase,
+    ExprNode* elseCase, Location location)
+    : ExprNode{ Node::TERNARY, location }, condition{ condition },
+    thenCase{ thenCase }, elseCase{ elseCase }
+{
+}
+
+void TernaryNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitTernary(*this);
+}
+
+std::string TernaryNode::toString() const
+{
+    std::string s = "Ternary { condition: ";
+    s += condition->toString();
+    s += ", then: ";
+    s += thenCase->toString();
+    s += ", else: ";
+    s += elseCase->toString();
+    s += " }";
+    return s;
+}
+
+ExprNode* TernaryNode::getCondition() const
+{
+    return condition;
+}
+
+ExprNode* TernaryNode::getThen() const
+{
+    return thenCase;
+}
+
+ExprNode* TernaryNode::getElse() const
+{
+    return elseCase;
+}
+
 CallNode::CallNode(ExprNode* callee, std::vector<ArgNode*> args,
     Location location)
     : ExprNode{ Node::CALL, location }, callee{ callee },
