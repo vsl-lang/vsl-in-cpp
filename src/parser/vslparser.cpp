@@ -345,18 +345,20 @@ Node* VSLParser::parseReturn()
     return makeNode<ReturnNode>(value, location);
 }
 
-// Pratt parsing/TDOP (Top Down Operator Precedence) is used for expressions
-ExprNode* VSLParser::parseExpr(int rbp)
+// top down operator precedence (tdop) is used for expressions
+ExprNode* VSLParser::parseExpr(int minPrec)
 {
-    ExprNode* left = parseNud();
-    while (rbp < getLbp(current()))
+    ExprNode* lhs = parseUnaryOp();
+    while (minPrec < getPrec(current().getKind()))
     {
-        left = parseLed(left);
+        lhs = parseBinaryOp(lhs);
     }
-    return left;
+    return lhs;
 }
 
-ExprNode* VSLParser::parseNud()
+// unaryop -> ident | number | true | false | minus expr(call and up)
+//          | lparen expr rparen
+ExprNode* VSLParser::parseUnaryOp()
 {
     Token t = consume();
     switch (t.getKind())
@@ -370,7 +372,9 @@ ExprNode* VSLParser::parseNud()
     case TokenKind::KW_FALSE:
         return makeNode<LiteralNode>(llvm::APInt{ 1, 0 }, t.getLoc());
     case TokenKind::MINUS:
-        return makeNode<UnaryNode>(t.getKind(), parseExpr(100), t.getLoc());
+        // only expression that can be parsed before unary minus is a func call
+        return makeNode<UnaryNode>(t.getKind(),
+            parseExpr(getPrec(TokenKind::LPAREN) - 1), t.getLoc());
     case TokenKind::LPAREN:
         {
             ExprNode* expr = parseExpr();
@@ -387,7 +391,10 @@ ExprNode* VSLParser::parseNud()
     }
 }
 
-ExprNode* VSLParser::parseLed(ExprNode* left)
+// binaryop -> lhs (plus | minus | star | slash | percent | equal | not_equal
+//                 | greater | greater_equal | less | less_equal) expr
+//           | ternary | call | lparen expr rparen
+ExprNode* VSLParser::parseBinaryOp(ExprNode* lhs)
 {
     const Token& t = current();
     switch (t.getKind())
@@ -405,28 +412,26 @@ ExprNode* VSLParser::parseLed(ExprNode* left)
     case TokenKind::LESS_EQUAL:
         // left associative
         consume();
-        return makeNode<BinaryNode>(t.getKind(), left, parseExpr(getLbp(t)),
-            t.getLoc());
+        return makeNode<BinaryNode>(t.getKind(), lhs,
+            parseExpr(getPrec(t.getKind())), t.getLoc());
     case TokenKind::ASSIGN:
         // right associative
         consume();
-        return makeNode<BinaryNode>(t.getKind(), left, parseExpr(getLbp(t) - 1),
-            t.getLoc());
+        return makeNode<BinaryNode>(t.getKind(), lhs,
+            parseExpr(getPrec(t.getKind()) - 1), t.getLoc());
     case TokenKind::QUESTION:
-        return parseTernary(left);
+        return parseTernary(lhs);
     case TokenKind::LPAREN:
-        return parseCall(left);
+        return parseCall(lhs);
     default:
         errorExpected("binary operator");
-        return left;
+        return lhs;
     }
 }
 
-// lbp basically means operator precedence
-// higher numbers mean higher precedence
-int VSLParser::getLbp(const Token& token) const
+int VSLParser::getPrec(TokenKind k)
 {
-    switch (token.getKind())
+    switch (k)
     {
     case TokenKind::LPAREN:
         return 7;
@@ -464,13 +469,13 @@ TernaryNode* VSLParser::parseTernary(ExprNode* condition)
     }
     Token question = consume();
     Location location = question.getLoc();
-    ExprNode* thenCase = parseExpr(getLbp(question) - 1);
+    ExprNode* thenCase = parseExpr(getPrec(TokenKind::QUESTION) - 1);
     if (current().isNot(TokenKind::COLON))
     {
         errorExpected("':'");
     }
     consume();
-    ExprNode* elseCase = parseExpr(getLbp(question) - 1);
+    ExprNode* elseCase = parseExpr(getPrec(TokenKind::QUESTION) - 1);
     return makeNode<TernaryNode>(condition, thenCase, elseCase, location);
 }
 

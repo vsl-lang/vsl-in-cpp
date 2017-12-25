@@ -130,39 +130,35 @@ private:
     /**
      * Parses an expression, e.g.\ `1+5*(3+4)-6/2`.
      *
-     * @param rbp The right binding power to use when parsing. Only use this if
-     * you understand Pratt parsing.
+     * @param minPrec Minimum precedence allowed when parsing binary operators.
      *
      * @returns An expression.
      */
-    ExprNode* parseExpr(int rbp = 0);
+    ExprNode* parseExpr(int minPrec = 0);
     /**
-     * Parses the null denotation of the current token, or when there is no
-     * expression to the left of the current token that has a higher right
-     * binding power than it. Only use this if you understand Pratt parsing.
+     * Parses the current token when there is no expression of higher precedence
+     * to the left of it.
      *
-     * @returns The null denotation of the current token.
+     * @returns A unary expression, literal, identifier, or paren group.
      */
-    ExprNode* parseNud();
+    ExprNode* parseUnaryOp();
     /**
-     * Parses the left denotation of the current token, or when there is an
-     * expression to the left of the current token that has a higher right
-     * binding power than it. Only use this if you understand Pratt parsing.
+     * Parses the current token when there is an expression of higher precedence
+     * to the left of it. This expression is passed as a parameter.
      *
-     * @param left The left hand side of the expression.
+     * @param lhs Left hand side of the expression.
      *
-     * @returns The left denotation of the current token.
+     * @returns A binary, ternary, or call expression.
      */
-    ExprNode* parseLed(ExprNode* left);
+    ExprNode* parseBinaryOp(ExprNode* lhs);
     /**
-     * Gets the left binding power of a given token. Only use this if you
-     * understand Pratt parsing.
+     * Gets the precedence of a binary (or ternary) operator.
      *
-     * @param token The token to get the right binding power for.
+     * @param k The kind of operator to use.
      *
-     * @returns The left binding power of a given token.
+     * @returns The precedence of the given operator.
      */
-    int getLbp(const Token& token) const;
+    static int getPrec(TokenKind k);
     /**
      * Parses a ternary expression, e.g.\ `c ? x : y`.
      *
