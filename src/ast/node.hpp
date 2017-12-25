@@ -466,7 +466,7 @@ public:
      * @param condition The condition to test for.
      * @param thenCase The expression when the condition is true.
      * @param elseCase The expression when the condition is false.
-     * @param location Where this BinaryNode was found in the source.
+     * @param location Where this TernaryNode was found in the source.
      */
     TernaryNode(ExprNode* condition, ExprNode* thenCase, ExprNode* elseCase,
         Location location);
