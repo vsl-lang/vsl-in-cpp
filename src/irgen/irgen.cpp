@@ -41,23 +41,16 @@ void IRGen::visitIf(IfNode& node)
     node.getCondition()->accept(*this);
     const Type* type = node.getCondition()->getType();
     llvm::Value* cond;
+    // make sure it's a bool
     if (type == vslContext.getBoolType())
     {
-        // take the value as is
         cond = result;
-    }
-    else if (type == vslContext.getIntType())
-    {
-        // convert the Int to a Bool
-        cond = builder.CreateICmpNE(result,
-            llvm::ConstantInt::get(context, llvm::APInt{ 32, 0 }));
     }
     else
     {
-        // error, assume false
         diag.print<Diag::CANNOT_CONVERT>(*node.getCondition(),
             *vslContext.getBoolType());
-        cond = llvm::ConstantInt::getFalse(context);
+        cond = builder.getFalse();
     }
     // create the necessary basic blocks
     llvm::Function* currentFunc = builder.GetInsertBlock()->getParent();
