@@ -28,7 +28,7 @@ DIAG(OVERFLOW_DETECTED, (const Token& t), (WARNING, t.getLoc(),
 DIAG(FUNC_ALREADY_DEFINED, (FunctionNode& func), (ERROR, func.getLoc(),
         "function '", func.getName(), "' was already defined"))
 
-// irgen
+// irEmitter
 DIAG(TOPLEVEL_CTRL_FLOW, (Location l), (ERROR, l,
         "top level control flow statements are not allowed"))
 DIAG(CANNOT_CONVERT, (const ExprNode& from, const Type& to), (ERROR,
@@ -50,7 +50,6 @@ DIAG(FUNC_IN_FUNC, (const FunctionNode& func), (ERROR, func.getLoc(),
 DIAG(MISSING_RETURN, (const FunctionNode& func), (WARNING, func.getLoc(),
         "missing return statement at the end of function '",
         func.getName(), '\''))
-DIAG(LLVM_FUNC_ERROR, (int=0), (INTERNAL, "LLVM encountered the below errors"))
 DIAG(CANT_RETURN_VOID_VALUE, (ReturnNode& ret), (ERROR,
         ret.getValue()->getLoc(), "cannot return a value of type Void"))
 DIAG(RETVAL_MISMATCHES_RETTYPE, (const ExprNode& retVal, const Type& retType),
@@ -79,6 +78,10 @@ DIAG(MISMATCHING_ARG_COUNT, (Location l, size_t args, size_t params), (ERROR, l,
         "mismatched number of arguments ", args, " versus parameters ", params))
 DIAG(LHS_NOT_ASSIGNABLE, (ExprNode& lhs), (ERROR, lhs.getLoc(),
         "lhs must be an identifier"))
+
+// irgen
+DIAG(LLVM_MODULE_ERROR, (std::string s), (INTERNAL,
+        "LLVM encountered the below errors:\n", std::move(s)))
 
 // codegen
 DIAG(CANT_FIND_TARGET, (std::string error), (FATAL,

@@ -1,7 +1,6 @@
 #include "irgen/passes/irEmitter/irEmitter.hpp"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/Verifier.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
 #include <iterator>
@@ -185,13 +184,6 @@ void IREmitter::visitFunction(FunctionNode& node)
         allocaInsertPoint = nullptr;
     }
     result = nullptr;
-    // make sure that the function is valid, else internal error
-    std::string s;
-    llvm::raw_string_ostream sos{ s };
-    if (llvm::verifyFunction(*f, &sos))
-    {
-        diag.print<Diag::LLVM_FUNC_ERROR>();
-    }
 }
 
 void IREmitter::visitParam(ParamNode& node)
