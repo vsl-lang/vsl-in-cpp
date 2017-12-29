@@ -1,4 +1,4 @@
-#include "irgen/vslContext.hpp"
+#include "ast/vslContext.hpp"
 #include <iostream>
 
 VSLContext::VSLContext()

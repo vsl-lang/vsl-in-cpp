@@ -24,6 +24,10 @@ DIAG(INVALID_INT, (const Token& t), (ERROR, t.getLoc(), "invalid integer '",
 DIAG(OVERFLOW_DETECTED, (const Token& t), (WARNING, t.getLoc(),
         "overflow detected in integer '", t.getText(), '\''))
 
+// funcResolver
+DIAG(FUNC_ALREADY_DEFINED, (FunctionNode& func), (ERROR, func.getLoc(),
+        "function '", func.getName(), "' was already defined"))
+
 // irgen
 DIAG(TOPLEVEL_CTRL_FLOW, (Location l), (ERROR, l,
         "top level control flow statements are not allowed"))
@@ -40,6 +44,9 @@ DIAG(MISMATCHING_VAR_TYPES, (const VariableNode& var), (ERROR,
         var.getInit()->getType()->toString(), '\''))
 DIAG(VAR_ALREADY_DEFINED, (const VariableNode& var), (ERROR, var.getLoc(),
         "variable '", var.getName(), "' was already defined in this scope"))
+DIAG(FUNC_IN_FUNC, (const FunctionNode& func), (ERROR, func.getLoc(),
+        "function '", func.getName(),
+        "' is being defined within another function scope"))
 DIAG(MISSING_RETURN, (const FunctionNode& func), (WARNING, func.getLoc(),
         "missing return statement at the end of function '",
         func.getName(), '\''))

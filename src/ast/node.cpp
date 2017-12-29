@@ -167,7 +167,7 @@ FunctionNode::FunctionNode(llvm::StringRef name, std::vector<ParamNode*> params,
     Location location)
     : Node{ Node::FUNCTION, location }, name{ name },
     params{ std::move(params) }, returnType{ returnType }, body{ body },
-    ft{ ft }
+    ft{ ft }, alreadyDefined{ false }
 {
 }
 
@@ -233,6 +233,16 @@ Node* FunctionNode::getBody() const
 const FunctionType* FunctionNode::getFunctionType() const
 {
     return ft;
+}
+
+bool FunctionNode::isAlreadyDefined() const
+{
+    return alreadyDefined;
+}
+
+void FunctionNode::setAlreadyDefined(bool alreadyDefined)
+{
+    this->alreadyDefined = alreadyDefined;
 }
 
 ParamNode::ParamNode(llvm::StringRef name, const Type* type, Location location)

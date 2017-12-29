@@ -48,15 +48,18 @@ endif()
 include_directories(${VSL_SOURCE_DIR} ${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 set(VSL_MAIN_CPP ${VSL_SOURCE_DIR}/main.cpp)
-file(GLOB SOURCES ${VSL_SOURCE_DIR}/**/*.cpp)
+file(GLOB_RECURSE SOURCES ${VSL_SOURCE_DIR}/*.cpp)
 list(REMOVE_ITEM SOURCES ${VSL_MAIN_CPP})
 
 # used for other parts of vsl that don't use src/main.cpp, e.g. the test code
 add_library(libvsl STATIC ${SOURCES})
-set_target_properties(libvsl PROPERTIES PREFIX "") # so i don't get liblibvsl.a
+set_target_properties(libvsl PROPERTIES PREFIX "") # so we don't get liblibvsl.a
+
+# link all the llvm libraries
 llvm_map_components_to_libnames(llvm_libs all)
 target_link_libraries(libvsl ${llvm_libs})
 
+# include `make check` target if requested
 if(VSL_INCLUDE_TESTS)
     add_subdirectory(${VSL_EXT_PROJECTS_DIR}/gtest)
     add_subdirectory(${VSL_TEST_DIR})

@@ -5,6 +5,7 @@
 #include <deque>
 #include <memory>
 #include <type_traits>
+#include <vector>
 
 /**
  * Base class for parsers.
@@ -12,17 +13,14 @@
 class Parser
 {
 public:
-    /**
-     * Destroys a Parser.
-     */
     virtual ~Parser() = 0;
     /**
-     * Parses the program. The BlockNode returned is owned by the Parser and
-     * will be invalidated once this Parser is destructed.
+     * Parses the program. The `Node*`'s returned are owned by the parser and
+     * are invalidated once this Parser is destroyed.
      *
-     * @returns The AST of the program, wrapped in a BlockNode.
+     * @returns The AST of the program, wrapped in a vector of statements.
      */
-    virtual BlockNode* parse() = 0;
+    virtual std::vector<Node*> parse() = 0;
 
 protected:
     /**
@@ -36,7 +34,7 @@ protected:
      * @returns A pointer to a newly created NodeT.
      */
     template<typename NodeT, typename... Args>
-    typename std::enable_if<std::is_base_of<Node, NodeT>::value, NodeT>::type*
+    typename std::enable_if<std::is_base_of<Node, NodeT>::value, NodeT*>::type
     makeNode(Args&&... args)
     {
         nodes.emplace_back(

@@ -2,15 +2,15 @@
 #define VSLPARSER_HPP
 
 #include "ast/node.hpp"
+#include "ast/vslContext.hpp"
 #include "diag/diag.hpp"
-#include "irgen/vslContext.hpp"
 #include "lexer/lexer.hpp"
 #include "lexer/token.hpp"
 #include "parser/parser.hpp"
 #include <cstddef>
 #include <deque>
-#include <iostream>
 #include <memory>
+#include <vector>
 
 /**
  * Parser for VSL.
@@ -29,7 +29,7 @@ public:
      * Destroys a VSLParser.
      */
     virtual ~VSLParser() override = default;
-    virtual BlockNode* parse() override;
+    virtual std::vector<Node*> parse() override;
 
 private:
     /**

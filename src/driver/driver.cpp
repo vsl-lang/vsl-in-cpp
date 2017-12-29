@@ -1,3 +1,4 @@
+#include "ast/vslContext.hpp"
 #include "codegen/codegen.hpp"
 #include "diag/diag.hpp"
 #include "driver/driver.hpp"
@@ -8,6 +9,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Support/FileSystem.h"
 #include <cstring>
+#include <iostream>
 #include <memory>
 #include <string>
 
@@ -40,7 +42,10 @@ int Driver::main(int argc, const char* const* argv)
                 Diag diag{ os };
                 VSLLexer lexer{ diag, in.c_str() };
                 VSLParser parser{ vslContext, lexer };
-                os << parser.parse()->toString() << '\n';
+                for (Node* statement : parser.parse())
+                {
+                    os << statement->toString() << ",\n";
+                }
             });
     case OptionParser::REPL_GENERATE:
         return repl([&](const std::string& in, llvm::raw_ostream& os)
@@ -49,12 +54,12 @@ int Driver::main(int argc, const char* const* argv)
                 Diag diag{ os };
                 VSLLexer lexer{ diag, in.c_str() };
                 VSLParser parser{ vslContext, lexer };
-                auto ast = parser.parse();
+                auto statements = parser.parse();
                 llvm::LLVMContext llvmContext;
                 auto module = std::make_unique<llvm::Module>("repl",
                     llvmContext);
-                IRGen irGen{ vslContext, diag, *module };
-                ast->accept(irGen);
+                IRGen irgen{ vslContext, diag, *module };
+                irgen.run(statements);
                 CodeGen codeGen{ diag, *module };
                 if (op.optimize)
                 {
@@ -101,12 +106,12 @@ int Driver::compile()
     VSLContext vslContext;
     VSLLexer lexer{ diag, in.get()->getBuffer().data() };
     VSLParser parser{ vslContext, lexer };
-    auto ast = parser.parse();
+    auto statements = parser.parse();
     // emit llvm ir
     llvm::LLVMContext llvmContext;
     auto module = std::make_unique<llvm::Module>(op.infile, llvmContext);
-    IRGen irGen{ vslContext, diag, *module };
-    ast->accept(irGen);
+    IRGen irgen{ vslContext, diag, *module };
+    irgen.run(statements);
     // recap the amount of errors/warnings that occurred
     if (diag.getNumErrors() > 1)
     {

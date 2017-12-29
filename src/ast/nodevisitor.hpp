@@ -4,6 +4,7 @@
 class NodeVisitor;
 
 #include "ast/node.hpp"
+#include "llvm/ADT/ArrayRef.h"
 
 /**
  * Base class for visiting a Node, implementing the Visitor Pattern.
@@ -15,25 +16,25 @@ class NodeVisitor
 public:
     virtual ~NodeVisitor() = 0;
     /**
-     * Visits a Node. This is the equivalent of `node.accept(*this)`.
+     * Visits a bunch of statements.
      *
-     * @param node The node to visit.
+     * @param statements The statements to visit.
      */
-    void visit(Node& node);
-    virtual void visitEmpty(EmptyNode& node) = 0;
-    virtual void visitBlock(BlockNode& node) = 0;
-    virtual void visitIf(IfNode& node) = 0;
-    virtual void visitVariable(VariableNode& node) = 0;
-    virtual void visitFunction(FunctionNode& node) = 0;
-    virtual void visitParam(ParamNode& node) = 0;
-    virtual void visitReturn(ReturnNode& node) = 0;
-    virtual void visitIdent(IdentNode& node) = 0;
-    virtual void visitLiteral(LiteralNode& node) = 0;
-    virtual void visitUnary(UnaryNode& node) = 0;
-    virtual void visitBinary(BinaryNode& node) = 0;
-    virtual void visitTernary(TernaryNode& node) = 0;
-    virtual void visitCall(CallNode& node) = 0;
-    virtual void visitArg(ArgNode& node) = 0;
+    void visitStatements(llvm::MutableArrayRef<Node*> statements);
+    virtual void visitEmpty(EmptyNode& node);
+    virtual void visitBlock(BlockNode& node);
+    virtual void visitIf(IfNode& node);
+    virtual void visitVariable(VariableNode& node);
+    virtual void visitFunction(FunctionNode& node);
+    virtual void visitParam(ParamNode& node);
+    virtual void visitReturn(ReturnNode& node);
+    virtual void visitIdent(IdentNode& node);
+    virtual void visitLiteral(LiteralNode& node);
+    virtual void visitUnary(UnaryNode& node);
+    virtual void visitBinary(BinaryNode& node);
+    virtual void visitTernary(TernaryNode& node);
+    virtual void visitCall(CallNode& node);
+    virtual void visitArg(ArgNode& node);
 };
 
 #endif // NODEVISITOR_HPP

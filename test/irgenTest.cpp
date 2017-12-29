@@ -1,6 +1,6 @@
+#include "ast/vslContext.hpp"
 #include "diag/diag.hpp"
 #include "irgen/irgen.hpp"
-#include "irgen/vslContext.hpp"
 #include "lexer/vsllexer.hpp"
 #include "parser/vslparser.hpp"
 #include "gtest/gtest.h"
@@ -15,11 +15,11 @@ static bool validate(const char* src)
     Diag diag{ llvm::nulls() };
     VSLLexer lexer{ diag, src };
     VSLParser parser{ vslContext, lexer };
-    auto* program = parser.parse();
+    auto statements = parser.parse();
     llvm::LLVMContext llvmContext;
     auto module = std::make_unique<llvm::Module>("test", llvmContext);
     IRGen irgen{ vslContext, diag, *module };
-    program->accept(irgen);
+    irgen.run(statements);
     return !diag.getNumErrors();
 }
 
@@ -32,6 +32,8 @@ TEST(IRGenTest, Functions)
     invalid("func f(x: Void) -> Void { return x; }");
     // can't return a void expression
     invalid("func f() -> Void { return f(); }");
+    // able to call a function ahead of its definition
+    valid("func f() -> Void { g(); } func g() -> Void {}");
 }
 
 TEST(IRGenTest, Conditionals)

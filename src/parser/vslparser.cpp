@@ -6,15 +6,14 @@ VSLParser::VSLParser(VSLContext& vslContext, Lexer& lexer)
 }
 
 // program -> statements eof
-BlockNode* VSLParser::parse()
+std::vector<Node*> VSLParser::parse()
 {
-    Location location = current().getLoc();
     std::vector<Node*> statements = parseStatements();
     if (current().isNot(TokenKind::END))
     {
         errorExpected("eof");
     }
-    return makeNode<BlockNode>(std::move(statements), location);
+    return statements;
 }
 
 Token VSLParser::consume()

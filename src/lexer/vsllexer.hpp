@@ -2,7 +2,6 @@
 #define VSLLEXER_HPP
 
 #include "diag/diag.hpp"
-#include "irgen/vslContext.hpp"
 #include "lexer/lexer.hpp"
 #include "lexer/location.hpp"
 #include "lexer/token.hpp"

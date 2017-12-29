@@ -1,5 +1,5 @@
+#include "ast/vslContext.hpp"
 #include "diag/diag.hpp"
-#include "irgen/vslContext.hpp"
 #include "lexer/vsllexer.hpp"
 #include "parser/vslparser.hpp"
 #include "gtest/gtest.h"

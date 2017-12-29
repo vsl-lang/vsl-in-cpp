@@ -260,6 +260,8 @@ public:
     const Type* getReturnType() const;
     Node* getBody() const;
     const FunctionType* getFunctionType() const;
+    bool isAlreadyDefined() const;
+    void setAlreadyDefined(bool alreadyDefined = true);
 
 private:
     /** The name of the function. */
@@ -272,6 +274,8 @@ private:
     Node* body;
     /** Used for symbol table lookup. */
     const FunctionType* ft;
+    /** If this function was already defined. */
+    bool alreadyDefined;
 };
 
 /**
