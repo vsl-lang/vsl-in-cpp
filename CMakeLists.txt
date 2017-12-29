@@ -56,8 +56,8 @@ add_library(libvsl STATIC ${SOURCES})
 set_target_properties(libvsl PROPERTIES PREFIX "") # so we don't get liblibvsl.a
 
 # link all the llvm libraries
-llvm_map_components_to_libnames(llvm_libs all)
-target_link_libraries(libvsl ${llvm_libs})
+llvm_map_components_to_libnames(LLVM_LIBS ${LLVM_TARGETS_TO_BUILD})
+target_link_libraries(libvsl ${LLVM_LIBS})
 
 # include `make check` target if requested
 if(VSL_INCLUDE_TESTS)
