@@ -202,5 +202,4 @@ private:
     llvm::Value* result;
 };
 
-
 #endif // IREMITTER_HPP
