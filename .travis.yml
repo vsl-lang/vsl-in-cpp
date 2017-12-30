@@ -15,12 +15,15 @@ addons:
       - cmake
       - doxygen
       - graphviz
-env:
-  - CC=gcc-6 CXX=g++-6
-  - CC=clang-5.0 CXX=clang++-5.0
+matrix:
+  include:
+    - env: CC=gcc-6 CXX=g++-6 BUILD_TYPE=Debug
+    - env: CC=gcc-6 CXX=g++-6 BUILD_TYPE=Release
+    - env: CC=clang-5.0 CXX=clang++-5.0 BUILD_TYPE=Debug
+    - env: CC=clang-5.0 CXX=clang++-5.0 BUILD_TYPE=Release
 before_script:
   - mkdir build && cd build
-  - cmake -DCMAKE_BUILD_TYPE=Debug -DVSL_INCLUDE_TESTS=On ..
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVSL_INCLUDE_TESTS=On ..
 script:
   - make
   - make check
