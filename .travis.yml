@@ -9,6 +9,7 @@ addons:
       - llvm-toolchain-trusty-5.0
     packages:
       - g++-6
+      - clang-5.0
       - llvm-5.0-dev
       - libedit-dev
       - cmake
@@ -16,6 +17,7 @@ addons:
       - graphviz
 env:
   - CC=gcc-6 CXX=g++-6
+  - CC=clang-5.0 CXX=clang++-5.0
 before_script:
   - mkdir build && cd build
   - cmake -DCMAKE_BUILD_TYPE=Debug -DVSL_INCLUDE_TESTS=On ..
