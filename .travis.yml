@@ -2,29 +2,53 @@ language: generic
 os: linux
 dist: trusty
 sudo: false
+
 addons:
   apt:
     sources:
-      - ubuntu-toolchain-r-test
-      - llvm-toolchain-trusty-5.0
+    - ubuntu-toolchain-r-test
+    - llvm-toolchain-trusty-5.0
     packages:
-      - g++-6
-      - clang-5.0
-      - llvm-5.0-dev
-      - libedit-dev
-      - cmake
-      - doxygen
-      - graphviz
+    - g++-6
+    - clang-5.0
+    - llvm-5.0-dev
+    - libedit-dev
+    - cmake
+    - doxygen
+    - graphviz
+
 matrix:
   include:
-    - env: CC=gcc-6 CXX=g++-6 BUILD_TYPE=Debug
-    - env: CC=gcc-6 CXX=g++-6 BUILD_TYPE=Release
-    - env: CC=clang-5.0 CXX=clang++-5.0 BUILD_TYPE=Debug
-    - env: CC=clang-5.0 CXX=clang++-5.0 BUILD_TYPE=Release
+  - env: CC=gcc-6 CXX=g++-6 BUILD_TYPE=Debug
+  - env: CC=gcc-6 CXX=g++-6 BUILD_TYPE=Release
+  - env: CC=clang-5.0 CXX=clang++-5.0 BUILD_TYPE=Debug
+  - env: CC=clang-5.0 CXX=clang++-5.0 BUILD_TYPE=Release
+
+# create the build directory and run cmake
 before_script:
-  - mkdir build && cd build
-  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVSL_INCLUDE_TESTS=On ..
+- mkdir build && cd build
+- cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVSL_INCLUDE_TESTS=On ..
+
+# compile, run tests, and build docs
 script:
-  - make
-  - make check
-  - make docs
+- make
+- make check
+- make docs
+
+# name the created executable accordingly
+after_success:
+- if [[ $BUILD_TYPE = Debug ]]; then mv build/vsl build/vsl-linux-dbg; fi
+- if [[ $BUILD_TYPE = Release ]]; then mv build/vsl build/vsl-linux; fi
+
+# upload to a github release if this is a release build
+deploy:
+  provider: releases
+  api_key:
+    secure: JIBewCPpb1Gqf4QmbM4P8+bDLwALGvuMMSZm1E1JL15xwpF9W6KiqJ5Hy2ldAlV3OcxjXiYZxFNz2Mo15NuuIm8leNV8jJZq5gCArqVP20j1gxA+aozOS9inyBDp4HTVjXcN6uOVPlzHnDiaPC1Yo/jjsV485KUzLXXzBr9lUOFEbIkt3a6dOeSc+YD31KAsDQdbr/ARrIpRxcvc9nQzbEBt+ACoyUpvaIoYDKVX6pa41fdUDD2Zh3tzrWqTAnCKvXVyxtjTvzSVdsyHhjCJutzxRs10QJVwTDizaCfWhwPnO9auYIDqKYXNjdFIMEys5JPzbfQiKnX/nQXMjbwF+TKchGwl18RvVFk/WZYWsDf/gRggeEkDbz95k0ssGHRnYOomv1tueNvfJR2iVUUyEqOJ8Eq/TzGjvYfj2nzUF57rEjTahgwYiSsQG485nHpZP3bf1yOYg36/H0XFGuQU6r07x4SzgfUjrPIaNM+7uPdOIp9k+QX9emjrU3KLNXOv8GyczlSXPl7/WOhOAchm7Y59yetBxd2wSiTjE2874stKTUp/h6IBigz6/nZRA16urYC011QZYjE0/HFaf1q7v/xG3Q8YgZOJVZVEnMM2x3Lx64SyQ5yeiGUlVoTklssvJdonCe4u6CMmSFnUSl5MTOlnsnuAlJV2mb4PzTIfV0w=
+  file_glob: true
+  file: build/vsl-linux*
+  skip_cleanup: true
+  on:
+    branch: master
+    tags: true
+    condition: $CXX = clang++-5.0
