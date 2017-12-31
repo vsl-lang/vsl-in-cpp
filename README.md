@@ -4,9 +4,14 @@
 This is a rewrite of the [VSL Compiler](https://github.com/vsl-lang/VSL) in C++.
 
 ## Compiling
-TODO Windows/Mac.
 
-Linux:
+### Windows
+TODO.
+
+### Mac/Linux
+Requires CMake 3.2 or higher and LLVM 5.0 (`llvm-5.0-dev`) to be installed.
+Optionally, to build the documentation, install doxygen and graphviz (for the `dot` tool).
+Sample build script:
 ```sh
 # clone the repository
 git clone https://github.com/vsl-lang/vsl-in-cpp
