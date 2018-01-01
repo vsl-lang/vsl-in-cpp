@@ -227,9 +227,12 @@ Node* VSLParser::parseVariable()
     return makeNode<VariableNode>(name, type, value, constness, location);
 }
 
-// function -> func identifier lparen param (comma param)* arrow type block
+// function -> funcInterface block | extfunc
+// extfunc -> funcInterface external lparen ident rparen semicolon
+// funcInterface -> func ident lparen param (comma param)* rparen arrow type
 Node* VSLParser::parseFunction()
 {
+    // parse the function name
     if (current().isNot(TokenKind::KW_FUNC))
     {
         return errorExpected("'func'");
@@ -240,6 +243,7 @@ Node* VSLParser::parseFunction()
         return errorExpected("identifier");
     }
     llvm::StringRef name = consume().getText();
+    // parse the parameter list
     if (current().isNot(TokenKind::LPAREN))
     {
         return errorExpected("'('");
@@ -272,13 +276,14 @@ Node* VSLParser::parseFunction()
         return errorExpected("')'");
     }
     consume();
+    // parse the return type
     if (current().isNot(TokenKind::ARROW))
     {
         return errorExpected("'->'");
     }
     consume();
     const Type* returnType = parseType();
-    Node* body = parseBlock();
+    // build the FunctionType
     std::vector<const Type*> paramTypes;
     paramTypes.resize(params.size());
     std::transform(params.begin(), params.end(), paramTypes.begin(),
@@ -288,7 +293,36 @@ Node* VSLParser::parseFunction()
         });
     const FunctionType* ft = vslContext.getFunctionType(std::move(paramTypes),
         returnType);
-    return makeNode<FunctionNode>(name, std::move(params), returnType, body, ft,
+    // parse an external function
+    if (current().is(TokenKind::KW_EXTERNAL))
+    {
+        consume();
+        if (current().isNot(TokenKind::LPAREN))
+        {
+            return errorExpected("'('");
+        }
+        consume();
+        if (current().isNot(TokenKind::IDENTIFIER))
+        {
+            return errorExpected("identifier");
+        }
+        llvm::StringRef alias = consume().getText();
+        if (current().isNot(TokenKind::RPAREN))
+        {
+            return errorExpected("')'");
+        }
+        consume();
+        if (current().isNot(TokenKind::SEMICOLON))
+        {
+            return errorExpected("';'");
+        }
+        consume();
+        return makeNode<ExtFuncNode>(name, std::move(params), returnType, ft,
+            alias, location);
+    }
+    // parse a normal function
+    Node* body = parseBlock();
+    return makeNode<FunctionNode>(name, std::move(params), returnType, ft, body,
         location);
 }
 

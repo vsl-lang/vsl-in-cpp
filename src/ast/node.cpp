@@ -162,12 +162,70 @@ bool VariableNode::isConst() const
     return constness;
 }
 
+FuncInterfaceNode::FuncInterfaceNode(Node::Kind kind, Location location,
+    llvm::StringRef name, std::vector<ParamNode*> params,
+    const Type* returnType, const FunctionType* ft)
+    : Node{ kind, location }, name{ name }, params{ std::move(params) },
+    returnType{ returnType }, ft{ ft }
+{
+}
+
+llvm::StringRef FuncInterfaceNode::getName() const
+{
+    return name;
+}
+
+llvm::ArrayRef<ParamNode*> FuncInterfaceNode::getParams() const
+{
+    return params;
+}
+
+size_t FuncInterfaceNode::getNumParams() const
+{
+    return params.size();
+}
+
+ParamNode* FuncInterfaceNode::getParam(size_t i) const
+{
+    return params[i];
+}
+
+const Type* FuncInterfaceNode::getReturnType() const
+{
+    return returnType;
+}
+
+const FunctionType* FuncInterfaceNode::getFunctionType() const
+{
+    return ft;
+}
+
+std::string FuncInterfaceNode::toStr() const
+{
+    std::string s = "name: ";
+    s += name.str();
+    s += ", params: [";
+    if (!params.empty())
+    {
+        s += ' ';
+        s += params.front()->toString();
+        for (size_t i = 1; i < params.size(); ++i)
+        {
+            s += ", ";
+            s += params[i]->toString();
+        }
+        s += ' ';
+    }
+    s += "], returnType: ";
+    s += returnType->toString();
+    return s;
+}
+
 FunctionNode::FunctionNode(llvm::StringRef name, std::vector<ParamNode*> params,
-    const Type* returnType, Node* body, const FunctionType* ft,
+    const Type* returnType, const FunctionType* ft, Node* body,
     Location location)
-    : Node{ Node::FUNCTION, location }, name{ name },
-    params{ std::move(params) }, returnType{ returnType }, body{ body },
-    ft{ ft }, alreadyDefined{ false }
+    : FuncInterfaceNode{ Node::FUNCTION, location, name, std::move(params),
+        returnType, ft }, body{ body }, alreadyDefined{ false }
 {
 }
 
@@ -178,61 +236,16 @@ void FunctionNode::accept(NodeVisitor& nodeVisitor)
 
 std::string FunctionNode::toString() const
 {
-    std::string s = "Function { name: ";
-    s += name.str();
-    s += ", params: [";
-    if (!params.empty())
-    {
-        s += ' ';
-        s += params[0]->toString();
-        for (size_t i = 1; i < params.size(); ++i)
-        {
-            s += ", ";
-            s += params[i]->toString();
-        }
-        s += ' ';
-    }
-    s += "], returnType: ";
-    s += returnType->toString();
+    std::string s = "Function { ";
+    s += toStr();
     s += ", body: ";
     s += body->toString();
-    s += " ]";
+    s += " }";
     return s;
 }
-
-llvm::StringRef FunctionNode::getName() const
-{
-    return name;
-}
-
-llvm::ArrayRef<ParamNode*> FunctionNode::getParams() const
-{
-    return params;
-}
-
-size_t FunctionNode::getNumParams() const
-{
-    return params.size();
-}
-
-ParamNode* FunctionNode::getParam(size_t i) const
-{
-    return params[i];
-}
-
-const Type* FunctionNode::getReturnType() const
-{
-    return returnType;
-}
-
 Node* FunctionNode::getBody() const
 {
     return body;
-}
-
-const FunctionType* FunctionNode::getFunctionType() const
-{
-    return ft;
 }
 
 bool FunctionNode::isAlreadyDefined() const
@@ -243,6 +256,34 @@ bool FunctionNode::isAlreadyDefined() const
 void FunctionNode::setAlreadyDefined(bool alreadyDefined)
 {
     this->alreadyDefined = alreadyDefined;
+}
+
+ExtFuncNode::ExtFuncNode(llvm::StringRef name, std::vector<ParamNode*> params,
+    const Type* returnType, const FunctionType* ft, llvm::StringRef alias,
+    Location location)
+    : FuncInterfaceNode{ Node::EXTFUNC, location, name, std::move(params),
+        returnType, ft }, alias{ alias }
+{
+}
+
+void ExtFuncNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitExtFunc(*this);
+}
+
+std::string ExtFuncNode::toString() const
+{
+    std::string s = "ExtFunc { ";
+    s += toStr();
+    s += ", alias: ";
+    s += alias;
+    s += " }";
+    return s;
+}
+
+llvm::StringRef ExtFuncNode::getAlias() const
+{
+    return alias;
 }
 
 ParamNode::ParamNode(llvm::StringRef name, const Type* type, Location location)

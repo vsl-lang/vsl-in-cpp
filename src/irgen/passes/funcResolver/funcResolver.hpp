@@ -26,6 +26,7 @@ public:
     FuncResolver(Diag& diag, GlobalScope& global, llvm::Module& module);
     virtual ~FuncResolver() override = default;
     virtual void visitFunction(FunctionNode& node) override;
+    virtual void visitExtFunc(ExtFuncNode& node) override;
 
 private:
     /** Diagnostics manager. */

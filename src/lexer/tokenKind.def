@@ -24,6 +24,7 @@ KEYWORD(FALSE, "false")
 KEYWORD(BOOL, "Bool")
 KEYWORD(INT, "Int")
 KEYWORD(VOID, "Void")
+KEYWORD(EXTERNAL, "external")
 
 SYMBOL(PLUS, "'+'")
 SYMBOL(MINUS, "'-'")

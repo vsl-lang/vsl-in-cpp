@@ -32,6 +32,10 @@ void NodeVisitor::visitFunction(FunctionNode& node)
 {
 }
 
+void NodeVisitor::visitExtFunc(ExtFuncNode& node)
+{
+}
+
 void NodeVisitor::visitParam(ParamNode& node)
 {
 }

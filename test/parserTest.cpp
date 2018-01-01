@@ -45,6 +45,7 @@ TEST(ParserTest, HandlesAssignment)
 TEST(ParserTest, HandlesFunction)
 {
     valid("func f(x: Int) -> Void {;}");
+    valid("func f(x: Bool) -> Bool external(g);");
 }
 
 TEST(ParserTest, HandlesReturn)

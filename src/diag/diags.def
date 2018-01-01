@@ -25,7 +25,7 @@ DIAG(OVERFLOW_DETECTED, (const Token& t), (WARNING, t.getLoc(),
         "overflow detected in integer '", t.getText(), '\''))
 
 // funcResolver
-DIAG(FUNC_ALREADY_DEFINED, (FunctionNode& func), (ERROR, func.getLoc(),
+DIAG(FUNC_ALREADY_DEFINED, (FuncInterfaceNode& func), (ERROR, func.getLoc(),
         "function '", func.getName(), "' was already defined"))
 
 // irEmitter

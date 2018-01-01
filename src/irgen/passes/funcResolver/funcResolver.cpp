@@ -9,16 +9,31 @@ FuncResolver::FuncResolver(Diag& diag, GlobalScope& global,
 
 void FuncResolver::visitFunction(FunctionNode& node)
 {
+    if (global.getFunc(node.getName()))
+    {
+        diag.print<Diag::FUNC_ALREADY_DEFINED>(node);
+        node.setAlreadyDefined(true);
+    }
     // create the llvm function
     auto* ft = static_cast<llvm::FunctionType*>(
         node.getFunctionType()->toLLVMType(llvmCtx));
     auto* f = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
         node.getName(), &module);
-    // add to global scope, emitting an error if already defined
-    if (global.setFunc(node.getName(), node.getFunctionType(), f))
+    // add to global scope
+    global.setFunc(node.getName(), node.getFunctionType(), f);
+}
+
+void FuncResolver::visitExtFunc(ExtFuncNode& node)
+{
+    if (global.getFunc(node.getName()))
     {
         diag.print<Diag::FUNC_ALREADY_DEFINED>(node);
-        // iremitter will skip this node later
-        node.setAlreadyDefined();
     }
+    // create the llvm function
+    auto* ft = static_cast<llvm::FunctionType*>(
+        node.getFunctionType()->toLLVMType(llvmCtx));
+    auto* f = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
+        node.getAlias(), &module);
+    // add to global scope
+    global.setFunc(node.getName(), node.getFunctionType(), f);
 }

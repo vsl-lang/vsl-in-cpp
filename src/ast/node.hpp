@@ -6,7 +6,9 @@ class EmptyNode;
 class BlockNode;
 class IfNode;
 class VariableNode;
+class FuncInterfaceNode;
 class FunctionNode;
+class ExtFuncNode;
 class ParamNode;
 class ReturnNode;
 class ExprNode;
@@ -61,6 +63,8 @@ public:
         VARIABLE,
         /** Function. */
         FUNCTION,
+        /** External function. */
+        EXTFUNC,
         /** Return statement. */
         RETURN,
         /** Identifier. */
@@ -232,36 +236,36 @@ private:
 };
 
 /**
- * Represents a function.
+ * Represents a function interface, or a function without a body.
  */
-class FunctionNode : public Node
+class FuncInterfaceNode : public Node
 {
 public:
     /**
-     * Creates a FunctionNode.
+     * Creates a FuncInterfaceNode.
      *
+     * @param kind Node kind.
+     * @param location Where this FuncInterfaceNode was found in the source.
      * @param name The name of the function.
      * @param params The function's parameters.
      * @param returnType The type that the function returns.
-     * @param body The body of the function.
      * @param ft Used for symbol table lookup.
-     * @param location Where this FunctionNode was found in the source.
      */
-    FunctionNode(llvm::StringRef name, std::vector<ParamNode*> params,
-        const Type* returnType, Node* body, const FunctionType* ft,
-        Location location);
-    virtual ~FunctionNode() override = default;
-    virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
+    FuncInterfaceNode(Node::Kind kind, Location location, llvm::StringRef name,
+        std::vector<ParamNode*> params, const Type* returnType,
+        const FunctionType* ft);
     llvm::StringRef getName() const;
     llvm::ArrayRef<ParamNode*> getParams() const;
     size_t getNumParams() const;
     ParamNode* getParam(size_t i) const;
     const Type* getReturnType() const;
-    Node* getBody() const;
     const FunctionType* getFunctionType() const;
-    bool isAlreadyDefined() const;
-    void setAlreadyDefined(bool alreadyDefined = true);
+
+protected:
+    /**
+     * Gets the string representation of the name, parameters, and return type.
+     */
+    std::string toStr() const;
 
 private:
     /** The name of the function. */
@@ -270,12 +274,71 @@ private:
     std::vector<ParamNode*> params;
     /** The function's return type. */
     const Type* returnType;
-    /** The body of the function. */
-    Node* body;
     /** Used for symbol table lookup. */
     const FunctionType* ft;
+};
+
+/**
+ * Represents a function definition.
+ */
+class FunctionNode : public FuncInterfaceNode
+{
+public:
+    /**
+     * Creates a FunctionNode.
+     *
+     * @param name The name of the function.
+     * @param params The function's parameters.
+     * @param returnType The type that the function returns.
+     * @param ft Used for symbol table lookup.
+     * @param body The body of the function.
+     * @param location Where this FunctionNode was found in the source.
+     */
+    FunctionNode(llvm::StringRef name, std::vector<ParamNode*> params,
+        const Type* returnType, const FunctionType* ft, Node* body,
+        Location location);
+    virtual ~FunctionNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+    virtual std::string toString() const override;
+    Node* getBody() const;
+    bool isAlreadyDefined() const;
+    void setAlreadyDefined(bool alreadyDefined = true);
+
+private:
+    Node* body;
     /** If this function was already defined. */
     bool alreadyDefined;
+};
+
+/**
+ * Represents an externally-defined function under an alias. VSL programs will
+ * use the function name, but outside of that it's referred to by its alias
+ * name.
+ */
+class ExtFuncNode : public FuncInterfaceNode
+{
+public:
+    /**
+     * Creates an ExtFuncNode.
+     *
+     * @param name The name of the function.
+     * @param params The function's parameters.
+     * @param returnType The type that the function returns.
+     * @param ft Used for symbol table lookup.
+     * @param alias What this function's actual name is outside of VSL.
+     * @param location Where this FunctionNode was found in the source.
+     */
+    ExtFuncNode(llvm::StringRef name, std::vector<ParamNode*> params,
+        const Type* returnType, const FunctionType* ft, llvm::StringRef alias,
+        Location location);
+    virtual ~ExtFuncNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+    virtual std::string toString() const override;
+    llvm::StringRef getAlias() const;
+
+private:
+    /** The name this function is aliased to. */
+    llvm::StringRef alias;
 };
 
 /**

@@ -26,6 +26,7 @@ public:
     virtual void visitIf(IfNode& node);
     virtual void visitVariable(VariableNode& node);
     virtual void visitFunction(FunctionNode& node);
+    virtual void visitExtFunc(ExtFuncNode& node);
     virtual void visitParam(ParamNode& node);
     virtual void visitReturn(ReturnNode& node);
     virtual void visitIdent(IdentNode& node);

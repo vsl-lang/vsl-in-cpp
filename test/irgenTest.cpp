@@ -28,6 +28,8 @@ TEST(IRGenTest, Functions)
     valid("func f() -> Void {}");
     valid("func f(x: Int) -> Void { return; }");
     valid("func f(x: Int) -> Int { return x + 1; }");
+    valid("func f() -> Void { g(); } func g() -> Void external(h);");
+    invalid("func f() -> Void { h(); } func g() -> Void external(h);");
     // can't have void parameters
     invalid("func f(x: Void) -> Void { return x; }");
     // can't return a void expression
