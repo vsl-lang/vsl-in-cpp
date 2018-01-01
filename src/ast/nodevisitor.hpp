@@ -20,7 +20,7 @@ public:
      *
      * @param statements The statements to visit.
      */
-    void visitStatements(llvm::MutableArrayRef<Node*> statements);
+    void visitStatements(llvm::ArrayRef<Node*> statements);
     virtual void visitEmpty(EmptyNode& node);
     virtual void visitBlock(BlockNode& node);
     virtual void visitIf(IfNode& node);

@@ -4,7 +4,7 @@ NodeVisitor::~NodeVisitor()
 {
 }
 
-void NodeVisitor::visitStatements(llvm::MutableArrayRef<Node*> statements)
+void NodeVisitor::visitStatements(llvm::ArrayRef<Node*> statements)
 {
     for (Node* statement : statements)
     {

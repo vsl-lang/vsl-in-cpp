@@ -24,7 +24,7 @@ public:
      *
      * @param statements The statements to visit.
      */
-    void run(llvm::MutableArrayRef<Node*> statements);
+    void run(llvm::ArrayRef<Node*> statements);
 
 private:
     /** Context object for VSL stuff. */

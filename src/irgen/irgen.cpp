@@ -8,7 +8,7 @@ IRGen::IRGen(VSLContext& vslContext, Diag& diag, llvm::Module& module)
 {
 }
 
-void IRGen::run(llvm::MutableArrayRef<Node*> statements)
+void IRGen::run(llvm::ArrayRef<Node*> statements)
 {
     FuncResolver funcResolver{ diag, global, module };
     funcResolver.visitStatements(statements);
