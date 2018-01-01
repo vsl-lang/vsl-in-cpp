@@ -44,7 +44,7 @@ std::string EmptyNode::toString() const
     return "Empty {}";
 }
 
-BlockNode::BlockNode(std::vector<Node*> statements, Location location)
+BlockNode::BlockNode(Location location, std::vector<Node*> statements)
     : Node{ Node::BLOCK, location }, statements{ std::move(statements) }
 {
 }
@@ -77,8 +77,8 @@ llvm::ArrayRef<Node*> BlockNode::getStatements() const
     return statements;
 }
 
-IfNode::IfNode(ExprNode* condition, Node* thenCase, Node* elseCase,
-    Location location)
+IfNode::IfNode(Location location, ExprNode* condition, Node* thenCase,
+    Node* elseCase)
     : Node{ Node::IF, location }, condition{ condition }, thenCase{ thenCase },
     elseCase{ elseCase }
 {
@@ -116,8 +116,8 @@ Node* IfNode::getElse() const
     return elseCase;
 }
 
-VariableNode::VariableNode(llvm::StringRef name, const Type* type,
-    ExprNode* init, bool constness, Location location)
+VariableNode::VariableNode(Location location, llvm::StringRef name,
+    const Type* type, ExprNode* init, bool constness)
     : Node{ Node::VARIABLE, location }, name{ name }, type{ type },
     init{ init }, constness{ constness }
 {
@@ -221,9 +221,9 @@ std::string FuncInterfaceNode::toStr() const
     return s;
 }
 
-FunctionNode::FunctionNode(llvm::StringRef name, std::vector<ParamNode*> params,
-    const Type* returnType, const FunctionType* ft, Node* body,
-    Location location)
+FunctionNode::FunctionNode(Location location, llvm::StringRef name,
+    std::vector<ParamNode*> params, const Type* returnType,
+    const FunctionType* ft, Node* body)
     : FuncInterfaceNode{ Node::FUNCTION, location, name, std::move(params),
         returnType, ft }, body{ body }, alreadyDefined{ false }
 {
@@ -258,9 +258,9 @@ void FunctionNode::setAlreadyDefined(bool alreadyDefined)
     this->alreadyDefined = alreadyDefined;
 }
 
-ExtFuncNode::ExtFuncNode(llvm::StringRef name, std::vector<ParamNode*> params,
-    const Type* returnType, const FunctionType* ft, llvm::StringRef alias,
-    Location location)
+ExtFuncNode::ExtFuncNode(Location location, llvm::StringRef name,
+    std::vector<ParamNode*> params, const Type* returnType,
+    const FunctionType* ft, llvm::StringRef alias)
     : FuncInterfaceNode{ Node::EXTFUNC, location, name, std::move(params),
         returnType, ft }, alias{ alias }
 {
@@ -286,7 +286,7 @@ llvm::StringRef ExtFuncNode::getAlias() const
     return alias;
 }
 
-ParamNode::ParamNode(llvm::StringRef name, const Type* type, Location location)
+ParamNode::ParamNode(Location location, llvm::StringRef name, const Type* type)
     : Node{ Node::PARAM, location }, name{ name }, type{ type }
 {
 }
@@ -314,7 +314,7 @@ const Type* ParamNode::getType() const
     return type;
 }
 
-ReturnNode::ReturnNode(ExprNode* value, Location location)
+ReturnNode::ReturnNode(Location location, ExprNode* value)
     : Node{ Node::RETURN, location }, value{ std::move(value) }
 {
 }
@@ -365,7 +365,7 @@ void ExprNode::setType(const Type* t)
     type = t;
 }
 
-IdentNode::IdentNode(llvm::StringRef name, Location location)
+IdentNode::IdentNode(Location location, llvm::StringRef name)
     : ExprNode{ Node::IDENT, location }, name{ name }
 {
 }
@@ -388,7 +388,7 @@ llvm::StringRef IdentNode::getName() const
     return name;
 }
 
-LiteralNode::LiteralNode(llvm::APInt value, Location location)
+LiteralNode::LiteralNode(Location location, llvm::APInt value)
     : ExprNode{ Node::LITERAL, location }, value{ std::move(value) }
 {
 }
@@ -411,7 +411,7 @@ llvm::APInt LiteralNode::getValue() const
     return value;
 }
 
-UnaryNode::UnaryNode(TokenKind op, ExprNode* expr, Location location)
+UnaryNode::UnaryNode(Location location, TokenKind op, ExprNode* expr)
     : ExprNode{ Node::UNARY, location }, op{ op }, expr{ expr }
 {
 }
@@ -441,8 +441,8 @@ ExprNode* UnaryNode::getExpr() const
     return expr;
 }
 
-BinaryNode::BinaryNode(TokenKind op, ExprNode* left, ExprNode* right,
-    Location location)
+BinaryNode::BinaryNode(Location location, TokenKind op, ExprNode* left,
+    ExprNode* right)
     : ExprNode{ Node::BINARY, location }, op{ op }, left{ left }, right{ right }
 {
 }
@@ -479,8 +479,8 @@ ExprNode* BinaryNode::getRhs() const
     return right;
 }
 
-TernaryNode::TernaryNode(ExprNode* condition, ExprNode* thenCase,
-    ExprNode* elseCase, Location location)
+TernaryNode::TernaryNode(Location location, ExprNode* condition,
+    ExprNode* thenCase, ExprNode* elseCase)
     : ExprNode{ Node::TERNARY, location }, condition{ condition },
     thenCase{ thenCase }, elseCase{ elseCase }
 {
@@ -518,8 +518,8 @@ ExprNode* TernaryNode::getElse() const
     return elseCase;
 }
 
-CallNode::CallNode(ExprNode* callee, std::vector<ArgNode*> args,
-    Location location)
+CallNode::CallNode(Location location, ExprNode* callee,
+    std::vector<ArgNode*> args)
     : ExprNode{ Node::CALL, location }, callee{ callee },
     args{ std::move(args) }
 {
@@ -570,7 +570,7 @@ ArgNode* CallNode::getArg(size_t i) const
     return args[i];
 }
 
-ArgNode::ArgNode(llvm::StringRef name, ExprNode* value, Location location)
+ArgNode::ArgNode(Location location, llvm::StringRef name, ExprNode* value)
     : Node{ Node::ARG, location }, name{ name }, value{ value }
 {
 }

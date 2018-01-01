@@ -128,7 +128,7 @@ private:
 };
 
 /**
- * Represents an empty statement.
+ * Represents an empty statement, e.g.\ `;`.
  */
 class EmptyNode : public Node
 {
@@ -145,7 +145,7 @@ public:
 };
 
 /**
- * Represents a block of code.
+ * Represents a block of code, e.g.\ `{ ... }`.
  */
 class BlockNode : public Node
 {
@@ -153,10 +153,10 @@ public:
     /**
      * Creates a BlockNode.
      *
-     * @param statements The statements inside the block.
      * @param location Where this BlockNode was found in the source.
+     * @param statements The statements inside the block.
      */
-    BlockNode(std::vector<Node*> statements, Location location);
+    BlockNode(Location location, std::vector<Node*> statements);
     virtual ~BlockNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -168,7 +168,7 @@ private:
 };
 
 /**
- * Represents an if/else statement.
+ * Represents an if/else statement, e.g.\ `if (x) { ... } else { ... }`.
  */
 class IfNode : public Node
 {
@@ -176,13 +176,13 @@ public:
     /**
      * Creates a IfNode.
      *
+     * @param location Where this IfNode was found in the source.
      * @param condition The condition to test.
      * @param thenCase The code to run if the condition is true.
      * @param elseCase The code to run if the condition is false.
-     * @param location Where this IfNode was found in the source.
      */
-    IfNode(ExprNode* condition, Node* thenCase, Node* elseCase,
-        Location location);
+    IfNode(Location location, ExprNode* condition, Node* thenCase,
+        Node* elseCase);
     virtual ~IfNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -200,7 +200,7 @@ private:
 };
 
 /**
- * Represents a variable declaration.
+ * Represents a variable declaration, e.g.\ `var x: Int = 5;`.
  */
 class VariableNode : public Node
 {
@@ -208,14 +208,14 @@ public:
     /**
      * Creates a VariableNode.
      *
+     * @param location Where this VariableNode was found in the source.
      * @param name The name of the variable.
      * @param type The type of the variable.
      * @param init The variable's initial value.
-     * @param constness If this variable is const or not.
-     * @param location Where this VariableNode was found in the source.
+     * @param constness If this variable is const or not (TODO).
      */
-    VariableNode(llvm::StringRef name, const Type* type, ExprNode* init,
-        bool constness, Location location);
+    VariableNode(Location location, llvm::StringRef name, const Type* type,
+        ExprNode* init, bool constness);
     virtual ~VariableNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -236,7 +236,9 @@ private:
 };
 
 /**
- * Represents a function interface, or a function without a body.
+ * Represents a function interface, e.g.\ `func f(x: Int) -> Int`. Basically a
+ * function without a body, which can be either defined by a FunctionNode or
+ * declared external by an ExtFuncNode.
  */
 class FuncInterfaceNode : public Node
 {
@@ -279,7 +281,7 @@ private:
 };
 
 /**
- * Represents a function definition.
+ * Represents a function definition, e.g.\ `func f(x: Int) -> Int { ... }`.
  */
 class FunctionNode : public FuncInterfaceNode
 {
@@ -287,16 +289,16 @@ public:
     /**
      * Creates a FunctionNode.
      *
+     * @param location Where this FunctionNode was found in the source.
      * @param name The name of the function.
      * @param params The function's parameters.
      * @param returnType The type that the function returns.
      * @param ft Used for symbol table lookup.
      * @param body The body of the function.
-     * @param location Where this FunctionNode was found in the source.
      */
-    FunctionNode(llvm::StringRef name, std::vector<ParamNode*> params,
-        const Type* returnType, const FunctionType* ft, Node* body,
-        Location location);
+    FunctionNode(Location location, llvm::StringRef name,
+        std::vector<ParamNode*> params, const Type* returnType,
+        const FunctionType* ft, Node* body);
     virtual ~FunctionNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -306,14 +308,14 @@ public:
 
 private:
     Node* body;
-    /** If this function was already defined. */
+    /** Whether this function was already defined. */
     bool alreadyDefined;
 };
 
 /**
- * Represents an externally-defined function under an alias. VSL programs will
- * use the function name, but outside of that it's referred to by its alias
- * name.
+ * Represents an external function, e.g.\ `func f(x: Int) -> Int external(g);`.
+ * VSL programs will use the function name `f`, but outside of that it's
+ * referred to by its alias `g`.
  */
 class ExtFuncNode : public FuncInterfaceNode
 {
@@ -321,16 +323,16 @@ public:
     /**
      * Creates an ExtFuncNode.
      *
+     * @param location Where this FunctionNode was found in the source.
      * @param name The name of the function.
      * @param params The function's parameters.
      * @param returnType The type that the function returns.
      * @param ft Used for symbol table lookup.
      * @param alias What this function's actual name is outside of VSL.
-     * @param location Where this FunctionNode was found in the source.
      */
-    ExtFuncNode(llvm::StringRef name, std::vector<ParamNode*> params,
-        const Type* returnType, const FunctionType* ft, llvm::StringRef alias,
-        Location location);
+    ExtFuncNode(Location location, llvm::StringRef name,
+        std::vector<ParamNode*> params, const Type* returnType,
+        const FunctionType* ft, llvm::StringRef alias);
     virtual ~ExtFuncNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -342,7 +344,7 @@ private:
 };
 
 /**
- * Represents a function parameter.
+ * Represents a function parameter, e.g.\ `x: Int`.
  */
 class ParamNode : public Node
 {
@@ -350,11 +352,11 @@ public:
     /**
      * Creates a ParamNode.
      *
+     * @param location Where this ParamNode was found in the source.
      * @param name The name of the parameter.
      * @param type The type of the parameter.
-     * @param location Where this ParamNode was found in the source.
      */
-    ParamNode(llvm::StringRef name, const Type* type, Location location);
+    ParamNode(Location location, llvm::StringRef name, const Type* type);
     virtual ~ParamNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -377,10 +379,10 @@ public:
     /**
      * Creates a ReturnNode.
      *
-     * @param value The value to return.
      * @param location Where this ReturnNode was found in the source.
+     * @param value The value to return.
      */
-    ReturnNode(ExprNode* value, Location location);
+    ReturnNode(Location location, ExprNode* value);
     virtual ~ReturnNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -417,7 +419,7 @@ private:
 };
 
 /**
- * Represents an identifier.
+ * Represents an identifier, e.g.\ `x`.
  */
 class IdentNode : public ExprNode
 {
@@ -425,10 +427,10 @@ public:
     /**
      * Creates an IdentNode.
      *
-     * @param name The name of the identifier.
      * @param location where this IdentNode was found in the source.
+     * @param name The name of the identifier.
      */
-    IdentNode(llvm::StringRef name, Location location);
+    IdentNode(Location location, llvm::StringRef name);
     virtual ~IdentNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -440,7 +442,7 @@ private:
 };
 
 /**
- * Represents an (integer) literal.
+ * Represents an (integer) literal, e.g.\ `1337`.
  */
 class LiteralNode : public ExprNode
 {
@@ -448,10 +450,10 @@ public:
     /**
      * Creates an LiteralNode.
      *
-     * @param value The value of the number.
      * @param location Where this LiteralNode was found in the source.
+     * @param value The value of the number.
      */
-    LiteralNode(llvm::APInt value, Location location);
+    LiteralNode(Location location, llvm::APInt value);
     virtual ~LiteralNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -463,7 +465,7 @@ private:
 };
 
 /**
- * Represents a unary expression.
+ * Represents a unary expression, e.g.\ `-1`.
  */
 class UnaryNode : public ExprNode
 {
@@ -471,11 +473,11 @@ public:
     /**
      * Creates a UnaryNode.
      *
+     * @param location Where this UnaryNode was found in the source.
      * @param op The operator of the expression.
      * @param expr The expression to apply the operator to.
-     * @param location Where this UnaryNode was found in the source.
      */
-    UnaryNode(TokenKind op, ExprNode* expr, Location location);
+    UnaryNode(Location location, TokenKind op, ExprNode* expr);
     virtual ~UnaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -490,7 +492,7 @@ private:
 };
 
 /**
- * Represents a binary expression.
+ * Represents a binary expression, e.g.\ `1+1`.
  */
 class BinaryNode : public ExprNode
 {
@@ -498,13 +500,13 @@ public:
     /**
      * Creates a BinaryNode.
      *
+     * @param location Where this BinaryNode was found in the source.
      * @param op The operator of the expression.
      * @param left The left hand side of the expression.
      * @param right The right hand side of the expression.
-     * @param location Where this BinaryNode was found in the source.
      */
-    BinaryNode(TokenKind op, ExprNode* left, ExprNode* right,
-        Location location);
+    BinaryNode(Location location, TokenKind op, ExprNode* left,
+        ExprNode* right);
     virtual ~BinaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -522,7 +524,7 @@ private:
 };
 
 /**
- * Represents a ternary expression.
+ * Represents a ternary expression, e.g.\ `c ? x : y`.
  */
 class TernaryNode : public ExprNode
 {
@@ -530,13 +532,13 @@ public:
     /**
      * Creates a TernaryNode.
      *
+     * @param location Where this TernaryNode was found in the source.
      * @param condition The condition to test for.
      * @param thenCase The expression when the condition is true.
      * @param elseCase The expression when the condition is false.
-     * @param location Where this TernaryNode was found in the source.
      */
-    TernaryNode(ExprNode* condition, ExprNode* thenCase, ExprNode* elseCase,
-        Location location);
+    TernaryNode(Location location, ExprNode* condition, ExprNode* thenCase,
+        ExprNode* elseCase);
     virtual ~TernaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -554,7 +556,7 @@ private:
 };
 
 /**
- * Represents a function call.
+ * Represents a function call, e.g.\ `f(x: 1)`.
  */
 class CallNode : public ExprNode
 {
@@ -562,11 +564,11 @@ public:
     /**
      * Creates a CallNode.
      *
+     * @param location Where this CallNode was found in the source.
      * @param callee The function to call.
      * @param args The arguments to pass to the callee.
-     * @param location Where this CallNode was found in the source.
      */
-    CallNode(ExprNode* callee, std::vector<ArgNode*> args, Location location);
+    CallNode(Location location, ExprNode* callee, std::vector<ArgNode*> args);
     virtual ~CallNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;
@@ -583,7 +585,7 @@ private:
 };
 
 /**
- * Represents a function call argument.
+ * Represents a function call argument, e.g.\ `x: 1`.
  */
 class ArgNode : public Node
 {
@@ -591,11 +593,11 @@ public:
     /**
      * Creates an ArgNode.
      *
+     * @param location Where this ArgNode was found in the source.
      * @param name The name of the argument. Used for name parameters (WIP).
      * @param value The value of the argument.
-     * @param location Where this ArgNode was found in the source.
      */
-    ArgNode(llvm::StringRef name, ExprNode* value, Location location);
+    ArgNode(Location location, llvm::StringRef name, ExprNode* value);
     ~ArgNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     virtual std::string toString() const override;

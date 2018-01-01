@@ -148,7 +148,7 @@ Node* VSLParser::parseBlock()
         return errorExpected("'}'");
     }
     consume();
-    return makeNode<BlockNode>(std::move(statements), location);
+    return makeNode<BlockNode>(location, std::move(statements));
 }
 
 // conditional -> if lparen expr rparen statement (else statement)?
@@ -181,7 +181,7 @@ Node* VSLParser::parseIf()
     {
         elseCase = makeNode<EmptyNode>(current().getLoc());
     }
-    return makeNode<IfNode>(condition, thenCase, elseCase, location);
+    return makeNode<IfNode>(location, condition, thenCase, elseCase);
 }
 
 // assignment -> (var | let) identifier colon type assign expr semicolon
@@ -224,7 +224,7 @@ Node* VSLParser::parseVariable()
         return errorExpected("';'");
     }
     consume();
-    return makeNode<VariableNode>(name, type, value, constness, location);
+    return makeNode<VariableNode>(location, name, type, value, constness);
 }
 
 // function -> funcInterface block | extfunc
@@ -317,13 +317,13 @@ Node* VSLParser::parseFunction()
             return errorExpected("';'");
         }
         consume();
-        return makeNode<ExtFuncNode>(name, std::move(params), returnType, ft,
-            alias, location);
+        return makeNode<ExtFuncNode>(location, name, std::move(params),
+            returnType, ft, alias);
     }
     // parse a normal function
     Node* body = parseBlock();
-    return makeNode<FunctionNode>(name, std::move(params), returnType, ft, body,
-        location);
+    return makeNode<FunctionNode>(location, name, std::move(params), returnType,
+        ft, body);
 }
 
 // param -> identifier ':' type
@@ -347,7 +347,7 @@ ParamNode* VSLParser::parseParam()
         errorExpected("':'");
     }
     const Type* type = parseType();
-    return makeNode<ParamNode>(name, type, location);
+    return makeNode<ParamNode>(location, name, type);
 }
 
 // return -> 'return' expr ';'
@@ -375,7 +375,7 @@ Node* VSLParser::parseReturn()
         }
         consume();
     }
-    return makeNode<ReturnNode>(value, location);
+    return makeNode<ReturnNode>(location, value);
 }
 
 // top down operator precedence (tdop) is used for expressions
@@ -397,17 +397,17 @@ ExprNode* VSLParser::parseUnaryOp()
     switch (t.getKind())
     {
     case TokenKind::IDENTIFIER:
-        return makeNode<IdentNode>(t.getText(), t.getLoc());
+        return makeNode<IdentNode>(t.getLoc(), t.getText());
     case TokenKind::NUMBER:
         return parseNumber(t);
     case TokenKind::KW_TRUE:
-        return makeNode<LiteralNode>(llvm::APInt{ 1, 1 }, t.getLoc());
+        return makeNode<LiteralNode>(t.getLoc(), llvm::APInt{ 1, 1 });
     case TokenKind::KW_FALSE:
-        return makeNode<LiteralNode>(llvm::APInt{ 1, 0 }, t.getLoc());
+        return makeNode<LiteralNode>(t.getLoc(), llvm::APInt{ 1, 0 });
     case TokenKind::MINUS:
         // only expression that can be parsed before unary minus is a func call
-        return makeNode<UnaryNode>(t.getKind(),
-            parseExpr(getPrec(TokenKind::LPAREN) - 1), t.getLoc());
+        return makeNode<UnaryNode>(t.getLoc(), t.getKind(),
+            parseExpr(getPrec(TokenKind::LPAREN) - 1));
     case TokenKind::LPAREN:
         {
             ExprNode* expr = parseExpr();
@@ -420,7 +420,7 @@ ExprNode* VSLParser::parseUnaryOp()
         }
     default:
         errorExpected("unary operator, identifier, or number");
-        return makeNode<LiteralNode>(llvm::APInt{ 32, 0 }, t.getLoc());
+        return makeNode<LiteralNode>(t.getLoc(), llvm::APInt{ 32, 0 });
     }
 }
 
@@ -447,13 +447,13 @@ ExprNode* VSLParser::parseBinaryOp(ExprNode* lhs)
     case TokenKind::OR:
         // left associative
         consume();
-        return makeNode<BinaryNode>(t.getKind(), lhs,
-            parseExpr(getPrec(t.getKind())), t.getLoc());
+        return makeNode<BinaryNode>(t.getLoc(), t.getKind(), lhs,
+            parseExpr(getPrec(t.getKind())));
     case TokenKind::ASSIGN:
         // right associative
         consume();
-        return makeNode<BinaryNode>(t.getKind(), lhs,
-            parseExpr(getPrec(t.getKind()) - 1), t.getLoc());
+        return makeNode<BinaryNode>(t.getLoc(), t.getKind(), lhs,
+            parseExpr(getPrec(t.getKind()) - 1));
     case TokenKind::QUESTION:
         return parseTernary(lhs);
     case TokenKind::LPAREN:
@@ -514,7 +514,7 @@ TernaryNode* VSLParser::parseTernary(ExprNode* condition)
     }
     consume();
     ExprNode* elseCase = parseExpr(getPrec(TokenKind::QUESTION) - 1);
-    return makeNode<TernaryNode>(condition, thenCase, elseCase, location);
+    return makeNode<TernaryNode>(location, condition, thenCase, elseCase);
 }
 
 // call -> callee lparen arg (comma arg)* rparen
@@ -544,7 +544,7 @@ CallNode* VSLParser::parseCall(ExprNode* callee)
         errorExpected("')'");
     }
     consume();
-    return makeNode<CallNode>(callee, args, location);
+    return makeNode<CallNode>(location, callee, args);
 }
 
 // arg -> identifier ':' expr
@@ -567,7 +567,7 @@ ArgNode* VSLParser::parseCallArg()
         errorExpected("':'");
     }
     ExprNode* value = parseExpr();
-    return makeNode<ArgNode>(name, value, location);
+    return makeNode<ArgNode>(location, name, value);
 }
 
 LiteralNode* VSLParser::parseNumber(const Token& token)
@@ -585,7 +585,7 @@ LiteralNode* VSLParser::parseNumber(const Token& token)
         diag.print<Diag::OVERFLOW_DETECTED>(token);
     }
     value = value.zextOrTrunc(32);
-    return makeNode<LiteralNode>(std::move(value), location);
+    return makeNode<LiteralNode>(location, std::move(value));
 }
 
 // type -> 'Bool' | 'Int' | 'Void'
