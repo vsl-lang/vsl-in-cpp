@@ -27,25 +27,17 @@ class ArgNode;
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
-#include <ostream>
+#include "llvm/ADT/Twine.h"
 #include <string>
 #include <vector>
-
-/**
- * Allows a Node to be pretty-printed to an output stream.
- *
- * @param os The stream to print to.
- * @param ast The Node to print.
- *
- * @returns The same output stream that was given.
- */
-std::ostream& operator<<(std::ostream& os, const Node& ast);
 
 /**
  * Base class for the VSL AST.
  */
 class Node
 {
+    friend llvm::raw_ostream& operator<<(llvm::raw_ostream& os,
+        const Node& node);
 public:
     /**
      * Identifies the kind of Node a given object is. Keep in mind that one
@@ -99,12 +91,6 @@ public:
      */
     virtual void accept(NodeVisitor& nodeVisitor) = 0;
     /**
-     * Returns the string representation of this Node.
-     *
-     * @returns The string representation of this Node.
-     */
-    virtual std::string toString() const = 0;
-    /**
      * Verifies whether this Node represents a certain Kind.
      *
      * @param k The Kind to check for.
@@ -119,6 +105,12 @@ public:
      * @returns Where this Node was found in the source.
      */
     Location getLoc() const;
+    /**
+     * Checks whether this Node is an expression.
+     *
+     * @returns True if this Node is a subclass of ExprNode, false otherwise.
+     */
+    virtual bool isExpr() const;
 
 private:
     /** The kind of Node this is. */
@@ -141,7 +133,6 @@ public:
     EmptyNode(Location location);
     virtual ~EmptyNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
 };
 
 /**
@@ -159,7 +150,6 @@ public:
     BlockNode(Location location, std::vector<Node*> statements);
     virtual ~BlockNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     llvm::ArrayRef<Node*> getStatements() const;
 
 private:
@@ -185,7 +175,6 @@ public:
         Node* elseCase);
     virtual ~IfNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     ExprNode* getCondition() const;
     Node* getThen() const;
     Node* getElse() const;
@@ -218,7 +207,6 @@ public:
         ExprNode* init, bool constness);
     virtual ~VariableNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     llvm::StringRef getName() const;
     const Type* getType() const;
     ExprNode* getInit() const;
@@ -266,8 +254,12 @@ public:
 protected:
     /**
      * Gets the string representation of the name, parameters, and return type.
+     *
+     * @param indent Indentation level.
+     *
+     * @returns String representation.
      */
-    std::string toStr() const;
+    std::string toStr(int indent) const;
 
 private:
     /** The name of the function. */
@@ -301,7 +293,6 @@ public:
         const FunctionType* ft, Node* body);
     virtual ~FunctionNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     Node* getBody() const;
     bool isAlreadyDefined() const;
     void setAlreadyDefined(bool alreadyDefined = true);
@@ -335,7 +326,6 @@ public:
         const FunctionType* ft, llvm::StringRef alias);
     virtual ~ExtFuncNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     llvm::StringRef getAlias() const;
 
 private:
@@ -359,7 +349,6 @@ public:
     ParamNode(Location location, llvm::StringRef name, const Type* type);
     virtual ~ParamNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     llvm::StringRef getName() const;
     const Type* getType() const;
 
@@ -385,7 +374,6 @@ public:
     ReturnNode(Location location, ExprNode* value);
     virtual ~ReturnNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     bool hasValue() const;
     ExprNode* getValue() const;
 
@@ -407,6 +395,7 @@ public:
      * @param location where this ExprNode was found in the source.
      */
     ExprNode(Node::Kind kind, Location location);
+    virtual bool isExpr() const override;
     const Type* getType() const;
     void setType(const Type* t);
 
@@ -433,7 +422,6 @@ public:
     IdentNode(Location location, llvm::StringRef name);
     virtual ~IdentNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     llvm::StringRef getName() const;
 
 private:
@@ -456,7 +444,6 @@ public:
     LiteralNode(Location location, llvm::APInt value);
     virtual ~LiteralNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     llvm::APInt getValue() const;
 
 private:
@@ -480,7 +467,6 @@ public:
     UnaryNode(Location location, TokenKind op, ExprNode* expr);
     virtual ~UnaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     TokenKind getOp() const;
     ExprNode* getExpr() const;
 
@@ -509,7 +495,6 @@ public:
         ExprNode* right);
     virtual ~BinaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     TokenKind getOp() const;
     ExprNode* getLhs() const;
     ExprNode* getRhs() const;
@@ -541,7 +526,6 @@ public:
         ExprNode* elseCase);
     virtual ~TernaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     ExprNode* getCondition() const;
     ExprNode* getThen() const;
     ExprNode* getElse() const;
@@ -571,7 +555,6 @@ public:
     CallNode(Location location, ExprNode* callee, std::vector<ArgNode*> args);
     virtual ~CallNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     ExprNode* getCallee() const;
     llvm::ArrayRef<ArgNode*> getArgs() const;
     size_t getNumArgs() const;
@@ -600,7 +583,6 @@ public:
     ArgNode(Location location, llvm::StringRef name, ExprNode* value);
     ~ArgNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    virtual std::string toString() const override;
     llvm::StringRef getName() const;
     ExprNode* getValue() const;
 

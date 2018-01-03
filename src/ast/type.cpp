@@ -1,6 +1,13 @@
 #include "ast/type.hpp"
 #include "llvm/IR/DerivedTypes.h"
 #include <algorithm>
+#include <iterator>
+
+llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Type& type)
+{
+    type.print(os);
+    return os;
+}
 
 bool Type::isValid() const
 {
@@ -10,6 +17,11 @@ bool Type::isValid() const
 bool Type::isFunctionType() const
 {
     return kind == FUNCTION;
+}
+
+void Type::print(llvm::raw_ostream& os) const
+{
+    printImpl(os);
 }
 
 Type::Type(Kind kind)
@@ -39,16 +51,6 @@ Type::Kind Type::getKind() const
     return kind;
 }
 
-SimpleType::SimpleType(Type::Kind kind)
-    : Type{ kind }
-{
-}
-
-std::string SimpleType::toString() const
-{
-    return getKindName(getKind());
-}
-
 llvm::Type* SimpleType::toLLVMType(llvm::LLVMContext& context) const
 {
     switch (getKind())
@@ -64,21 +66,14 @@ llvm::Type* SimpleType::toLLVMType(llvm::LLVMContext& context) const
     }
 }
 
-std::string FunctionType::toString() const
+SimpleType::SimpleType(Type::Kind kind)
+    : Type{ kind }
 {
-    std::string s = "(";
-    if (!params.empty())
-    {
-        s += params[0]->toString();
-        for (auto it = params.begin() + 1; it != params.end(); ++it)
-        {
-            s += ", ";
-            s += (*it)->toString();
-        }
-    }
-    s += ") -> ";
-    s += returnType->toString();
-    return s;
+}
+
+void SimpleType::printImpl(llvm::raw_ostream& os) const
+{
+    os << getKindName(getKind());
 }
 
 llvm::Type* FunctionType::toLLVMType(llvm::LLVMContext& context) const
@@ -125,4 +120,20 @@ FunctionType::FunctionType(std::vector<const Type*> params,
     : Type{ Type::FUNCTION }, params{ std::move(params) },
     returnType{ returnType }
 {
+}
+
+void FunctionType::printImpl(llvm::raw_ostream& os) const
+{
+    os << '(';
+    if (!params.empty())
+    {
+        params[0]->print(os);
+        for (auto it = std::next(params.begin()); it != params.end(); ++it)
+        {
+            os << ", ";
+            (*it)->print(os);
+        }
+    }
+    os << ") -> ";
+    returnType->print(os);
 }

@@ -1,10 +1,5 @@
 #include "ast/node.hpp"
 
-std::ostream& operator<<(std::ostream& os, const Node& ast)
-{
-    return os << ast.toString();
-}
-
 Node::Node(Kind kind, Location location)
     : kind{ kind }, location{ location }
 {
@@ -29,6 +24,11 @@ Location Node::getLoc() const
     return location;
 }
 
+bool Node::isExpr() const
+{
+    return false;
+}
+
 EmptyNode::EmptyNode(Location location)
     : Node{ Node::EMPTY, location }
 {
@@ -39,11 +39,6 @@ void EmptyNode::accept(NodeVisitor& nodeVisitor)
     nodeVisitor.visitEmpty(*this);
 }
 
-std::string EmptyNode::toString() const
-{
-    return "Empty {}";
-}
-
 BlockNode::BlockNode(Location location, std::vector<Node*> statements)
     : Node{ Node::BLOCK, location }, statements{ std::move(statements) }
 {
@@ -52,24 +47,6 @@ BlockNode::BlockNode(Location location, std::vector<Node*> statements)
 void BlockNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visitBlock(*this);
-}
-
-std::string BlockNode::toString() const
-{
-    std::string s = "Block { statements: [";
-    if (!statements.empty())
-    {
-        s += ' ';
-        s += statements[0]->toString();
-        for (size_t i = 1; i < statements.size(); ++i)
-        {
-            s += ", ";
-            s += statements[i]->toString();
-        }
-        s += ' ';
-    }
-    s += "] }";
-    return s;
 }
 
 llvm::ArrayRef<Node*> BlockNode::getStatements() const
@@ -87,18 +64,6 @@ IfNode::IfNode(Location location, ExprNode* condition, Node* thenCase,
 void IfNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visitIf(*this);
-}
-
-std::string IfNode::toString() const
-{
-    std::string s = "If { condition: ";
-    s += condition->toString();
-    s += ", then: ";
-    s += thenCase->toString();
-    s += ", else: ";
-    s += elseCase->toString();
-    s += " }";
-    return s;
 }
 
 ExprNode* IfNode::getCondition() const
@@ -126,20 +91,6 @@ VariableNode::VariableNode(Location location, llvm::StringRef name,
 void VariableNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visitVariable(*this);
-}
-
-std::string VariableNode::toString() const
-{
-    std::string s = "Variable { name: ";
-    s += name;
-    s += ", type: ";
-    s += type->toString();
-    s += ", value: ";
-    s += init->toString();
-    s += ", const: ";
-    s += constness ? "true" : "false";
-    s += " }";
-    return s;
 }
 
 llvm::StringRef VariableNode::getName() const
@@ -200,27 +151,6 @@ const FunctionType* FuncInterfaceNode::getFunctionType() const
     return ft;
 }
 
-std::string FuncInterfaceNode::toStr() const
-{
-    std::string s = "name: ";
-    s += name.str();
-    s += ", params: [";
-    if (!params.empty())
-    {
-        s += ' ';
-        s += params.front()->toString();
-        for (size_t i = 1; i < params.size(); ++i)
-        {
-            s += ", ";
-            s += params[i]->toString();
-        }
-        s += ' ';
-    }
-    s += "], returnType: ";
-    s += returnType->toString();
-    return s;
-}
-
 FunctionNode::FunctionNode(Location location, llvm::StringRef name,
     std::vector<ParamNode*> params, const Type* returnType,
     const FunctionType* ft, Node* body)
@@ -234,20 +164,6 @@ void FunctionNode::accept(NodeVisitor& nodeVisitor)
     nodeVisitor.visitFunction(*this);
 }
 
-std::string FunctionNode::toString() const
-{
-    std::string s = "Function { ";
-    s += toStr();
-    s += ", body: ";
-    s += body->toString();
-    s += " }";
-    return s;
-}
-Node* FunctionNode::getBody() const
-{
-    return body;
-}
-
 bool FunctionNode::isAlreadyDefined() const
 {
     return alreadyDefined;
@@ -256,6 +172,11 @@ bool FunctionNode::isAlreadyDefined() const
 void FunctionNode::setAlreadyDefined(bool alreadyDefined)
 {
     this->alreadyDefined = alreadyDefined;
+}
+
+Node* FunctionNode::getBody() const
+{
+    return body;
 }
 
 ExtFuncNode::ExtFuncNode(Location location, llvm::StringRef name,
@@ -271,16 +192,6 @@ void ExtFuncNode::accept(NodeVisitor& nodeVisitor)
     nodeVisitor.visitExtFunc(*this);
 }
 
-std::string ExtFuncNode::toString() const
-{
-    std::string s = "ExtFunc { ";
-    s += toStr();
-    s += ", alias: ";
-    s += alias;
-    s += " }";
-    return s;
-}
-
 llvm::StringRef ExtFuncNode::getAlias() const
 {
     return alias;
@@ -294,14 +205,6 @@ ParamNode::ParamNode(Location location, llvm::StringRef name, const Type* type)
 void ParamNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visitParam(*this);
-}
-
-std::string ParamNode::toString() const
-{
-    std::string s = name.str();
-    s += ": ";
-    s += type->toString();
-    return s;
 }
 
 llvm::StringRef ParamNode::getName() const
@@ -324,22 +227,6 @@ void ReturnNode::accept(NodeVisitor& nodeVisitor)
     nodeVisitor.visitReturn(*this);
 }
 
-std::string ReturnNode::toString() const
-{
-    std::string s;
-    if (hasValue())
-    {
-        s = "Return { value: ";
-        s += value->toString();
-        s += " }";
-    }
-    else
-    {
-        s = "Return { value: <void> }";
-    }
-    return s;
-}
-
 bool ReturnNode::hasValue() const
 {
     return value;
@@ -353,6 +240,11 @@ ExprNode* ReturnNode::getValue() const
 ExprNode::ExprNode(Node::Kind kind, Location location)
     : Node{ kind, location }, type{ nullptr }
 {
+}
+
+bool ExprNode::isExpr() const
+{
+    return true;
 }
 
 const Type* ExprNode::getType() const
@@ -375,14 +267,6 @@ void IdentNode::accept(NodeVisitor& nodeVisitor)
     nodeVisitor.visitIdent(*this);
 }
 
-std::string IdentNode::toString() const
-{
-    std::string s = "Ident { name: ";
-    s += name;
-    s += " }";
-    return s;
-}
-
 llvm::StringRef IdentNode::getName() const
 {
     return name;
@@ -398,14 +282,6 @@ void LiteralNode::accept(NodeVisitor& nodeVisitor)
     nodeVisitor.visitLiteral(*this);
 }
 
-std::string LiteralNode::toString() const
-{
-    std::string s = "Literal { value: ";
-    s += value.toString(10, false);
-    s += " }";
-    return s;
-}
-
 llvm::APInt LiteralNode::getValue() const
 {
     return value;
@@ -419,16 +295,6 @@ UnaryNode::UnaryNode(Location location, TokenKind op, ExprNode* expr)
 void UnaryNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visitUnary(*this);
-}
-
-std::string UnaryNode::toString() const
-{
-    std::string s = "Unary { op: ";
-    s += tokenKindDebugName(op);
-    s += ", expr: ";
-    s += expr->toString();
-    s += " }";
-    return s;
 }
 
 TokenKind UnaryNode::getOp() const
@@ -450,18 +316,6 @@ BinaryNode::BinaryNode(Location location, TokenKind op, ExprNode* left,
 void BinaryNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visitBinary(*this);
-}
-
-std::string BinaryNode::toString() const
-{
-    std::string s = "Binary { op: ";
-    s += tokenKindDebugName(op);
-    s += ", left: ";
-    s += left->toString();
-    s += ", right: ";
-    s += right->toString();
-    s += " }";
-    return s;
 }
 
 TokenKind BinaryNode::getOp() const
@@ -491,18 +345,6 @@ void TernaryNode::accept(NodeVisitor& nodeVisitor)
     nodeVisitor.visitTernary(*this);
 }
 
-std::string TernaryNode::toString() const
-{
-    std::string s = "Ternary { condition: ";
-    s += condition->toString();
-    s += ", then: ";
-    s += thenCase->toString();
-    s += ", else: ";
-    s += elseCase->toString();
-    s += " }";
-    return s;
-}
-
 ExprNode* TernaryNode::getCondition() const
 {
     return condition;
@@ -528,26 +370,6 @@ CallNode::CallNode(Location location, ExprNode* callee,
 void CallNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visitCall(*this);
-}
-
-std::string CallNode::toString() const
-{
-    std::string s = "Call { callee: ";
-    s += callee->toString();
-    s += ", args: [";
-    if (!args.empty())
-    {
-        s += ' ';
-        s += args[0]->toString();
-        for (size_t i = 1; i < args.size(); ++i)
-        {
-            s += ", ";
-            s += args[i]->toString();
-        }
-        s += ' ';
-    }
-    s += "] }";
-    return s;
 }
 
 ExprNode* CallNode::getCallee() const
@@ -578,14 +400,6 @@ ArgNode::ArgNode(Location location, llvm::StringRef name, ExprNode* value)
 void ArgNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visitArg(*this);
-}
-
-std::string ArgNode::toString() const
-{
-    std::string s = name;
-    s += ": ";
-    s += value->toString();
-    return s;
 }
 
 llvm::StringRef ArgNode::getName() const

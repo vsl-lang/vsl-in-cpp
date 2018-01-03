@@ -1,3 +1,4 @@
+#include "ast/nodePrinter.hpp"
 #include "ast/vslContext.hpp"
 #include "codegen/codegen.hpp"
 #include "diag/diag.hpp"
@@ -42,10 +43,9 @@ int Driver::main(int argc, const char* const* argv)
                 Diag diag{ os };
                 VSLLexer lexer{ diag, in.c_str() };
                 VSLParser parser{ vslContext, lexer };
-                for (Node* statement : parser.parse())
-                {
-                    os << statement->toString() << ",\n";
-                }
+                os << '\n';
+                NodePrinter printer{ os };
+                printer.visitStatements(parser.parse());
             });
     case OptionParser::REPL_GENERATE:
         return repl([&](const std::string& in, llvm::raw_ostream& os)

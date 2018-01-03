@@ -3,6 +3,7 @@
 
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Type.h"
+#include "llvm/Support/raw_ostream.h"
 #include <functional>
 #include <string>
 #include <vector>
@@ -13,13 +14,9 @@
 class Type
 {
     friend class VSLContext;
+    friend llvm::raw_ostream& operator<<(llvm::raw_ostream& os,
+        const Type& type);
 public:
-    /**
-     * Converts the Type into a string.
-     *
-     * @returns A string representation of the Type.
-     */
-    virtual std::string toString() const = 0;
     /**
      * Resolves the Type into an LLVM type.
      *
@@ -41,6 +38,12 @@ public:
      * @returns True if this type is a FunctionType, false otherwise.
      */
     bool isFunctionType() const;
+    /**
+     * Prints a Type.
+     *
+     * @param os Stream to print to.
+     */
+    void print(llvm::raw_ostream& os) const;
 
 protected:
     /**
@@ -74,9 +77,20 @@ protected:
      * @returns The string representation of the Type kind.
      */
     static const char* getKindName(Kind k);
+    /**
+     * Gets the kind of Type this is.
+     *
+     * @returns The kind of Type this is.
+     */
     Kind getKind() const;
 
 private:
+    /**
+     * Virtual print implementation.
+     *
+     * @param os Stream to print to.
+     */
+    virtual void printImpl(llvm::raw_ostream& os) const = 0;
     /** Represents what kind of Type object this is. */
     Kind kind;
 };
@@ -88,7 +102,6 @@ class SimpleType : public Type
 {
     friend class VSLContext;
 public:
-    virtual std::string toString() const override;
     virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const override;
 
 protected:
@@ -98,6 +111,9 @@ protected:
      * @param kind The kind of SimpleType this is.
      */
     SimpleType(Type::Kind kind);
+
+private:
+    virtual void printImpl(llvm::raw_ostream& os) const override;
 };
 
 /**
@@ -108,7 +124,6 @@ class FunctionType : public Type
     friend class VSLContext;
     friend struct std::hash<FunctionType>;
 public:
-    virtual std::string toString() const override;
     virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const override;
     /**
      * Tests for equality.
@@ -133,6 +148,7 @@ protected:
     FunctionType(std::vector<const Type*> params, const Type* returnType);
 
 private:
+    virtual void printImpl(llvm::raw_ostream& os) const override;
     /** The parameters that the function takes. */
     std::vector<const Type*> params;
     /** What type the function returns. */

@@ -17,7 +17,7 @@ DIAG(EXPECTED_BUT_FOUND, (const char* s, const Token& found), (ERROR,
 DIAG(UNEXPECTED_TOKEN, (const Token& t), (ERROR, t.getLoc(),
         "unexpected token '", t.getText(), '\''))
 DIAG(INVALID_PARAM_TYPE, (const ParamNode& param), (ERROR, param.getLoc(),
-        " type '", param.getType()->toString(), "' is invalid for parameter '",
+        " type '", *param.getType(), "' is invalid for parameter '",
         param.getName(), '\''))
 DIAG(INVALID_INT, (const Token& t), (ERROR, t.getLoc(), "invalid integer '",
         t.getText(), '\''))
@@ -32,16 +32,16 @@ DIAG(FUNC_ALREADY_DEFINED, (FuncInterfaceNode& func), (ERROR, func.getLoc(),
 DIAG(TOPLEVEL_CTRL_FLOW, (Location l), (ERROR, l,
         "top level control flow statements are not allowed"))
 DIAG(CANNOT_CONVERT, (const ExprNode& from, const Type& to), (ERROR,
-        from.getLoc(), "cannot convert expression of type '",
-        from.getType()->toString(), "' to type '", to.toString(), '\''))
+        from.getLoc(), "cannot convert expression of type '", *from.getType(),
+        "' to type '", to, '\''))
 DIAG(INVALID_VAR_TYPE, (const VariableNode& var), (ERROR, var.getLoc(),
-        "type '", var.getType()->toString(), "' is invalid for variable '",
-        var.getName(), '\''))
+        "type '", *var.getType(), "' is invalid for variable '", var.getName(),
+        '\''))
 DIAG(MISMATCHING_VAR_TYPES, (const VariableNode& var), (ERROR,
         var.getInit()->getLoc(), "variable '", var.getName(), "' is of type '",
-        var.getType()->toString(),
+        *var.getType(),
         "' but is being initialized with an expression of type '",
-        var.getInit()->getType()->toString(), '\''))
+        *var.getInit()->getType(), '\''))
 DIAG(VAR_ALREADY_DEFINED, (const VariableNode& var), (ERROR, var.getLoc(),
         "variable '", var.getName(), "' was already defined in this scope"))
 DIAG(FUNC_IN_FUNC, (const FunctionNode& func), (ERROR, func.getLoc(),
@@ -54,8 +54,7 @@ DIAG(CANT_RETURN_VOID_VALUE, (ReturnNode& ret), (ERROR,
         ret.getValue()->getLoc(), "cannot return a value of type Void"))
 DIAG(RETVAL_MISMATCHES_RETTYPE, (const ExprNode& retVal, const Type& retType),
     (ERROR, retVal.getLoc(), "return value of type '",
-        retVal.getType()->toString(), "' does not match return type '",
-        retType.toString(), '\''))
+        *retVal.getType(), "' does not match return type '", retType, '\''))
 DIAG(UNKNOWN_IDENT, (IdentNode& id), (ERROR, id.getLoc(),
         "unknown identifier '", id.getName(), '\''))
 DIAG(INVALID_INT_WIDTH, (LiteralNode& literal), (INTERNAL, literal.getLoc(),
@@ -63,17 +62,16 @@ DIAG(INVALID_INT_WIDTH, (LiteralNode& literal), (INTERNAL, literal.getLoc(),
         "-bit integers"))
 DIAG(INVALID_UNARY, (UnaryNode& unary), (ERROR, unary.getLoc(),
         "cannot apply unary operator '", tokenKindName(unary.getOp()),
-        "' to type '", unary.getExpr()->getType()->toString(), '\''))
+        "' to type '", *unary.getExpr()->getType(), '\''))
 DIAG(INVALID_BINARY, (BinaryNode& binary), (ERROR, binary.getLoc(),
         "cannot apply binary operator '", tokenKindName(binary.getOp()),
-        "' to types '", binary.getLhs()->toString(), "' and '",
-        binary.getRhs()->toString(), '\''))
+        "' to types '", *binary.getLhs()->getType(), "' and '",
+        *binary.getRhs()->getType(), '\''))
 DIAG(TERNARY_TYPE_MISMATCH, (TernaryNode& ternary), (ERROR, ternary.getLoc(),
-        "ternary operands of type '", ternary.getThen()->getType()->toString(),
-        "' and '", ternary.getElse()->getType()->toString(), "' don't match"))
+        "ternary operands of type '", *ternary.getThen()->getType(), "' and '",
+        *ternary.getElse()->getType(), "' don't match"))
 DIAG(NOT_A_FUNCTION, (const ExprNode& callee), (ERROR, callee.getLoc(),
-        "called object of type '", callee.getType()->toString(),
-        "' is not a function"))
+        "called object of type '", *callee.getType(), "' is not a function"))
 DIAG(MISMATCHING_ARG_COUNT, (Location l, size_t args, size_t params), (ERROR, l,
         "mismatched number of arguments ", args, " versus parameters ", params))
 DIAG(LHS_NOT_ASSIGNABLE, (ExprNode& lhs), (ERROR, lhs.getLoc(),
