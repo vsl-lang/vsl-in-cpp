@@ -9,7 +9,7 @@
 #endif
 
 TOKEN(UNKNOWN, "unknown")
-TOKEN(END, "end")
+TOKEN(END, "eof")
 TOKEN(IDENTIFIER, "identifier")
 TOKEN(NUMBER, "number")
 
