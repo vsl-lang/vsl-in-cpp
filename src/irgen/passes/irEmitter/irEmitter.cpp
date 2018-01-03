@@ -134,8 +134,8 @@ void IREmitter::visitFunction(FunctionNode& node)
     }
     if (!func.empty())
     {
-        // funcception!
-        diag.print<Diag::FUNC_IN_FUNC>(node);
+        // function within a function
+        diag.print<Diag::FUNCEPTION>(node);
         return;
     }
     // create the llvm function and the entry block
@@ -184,6 +184,16 @@ void IREmitter::visitFunction(FunctionNode& node)
         allocaInsertPoint = nullptr;
     }
     result = nullptr;
+}
+
+void IREmitter::visitExtFunc(ExtFuncNode& node)
+{
+    if (!func.empty())
+    {
+        // function within a function
+        diag.print<Diag::FUNCEPTION>(node);
+        return;
+    }
 }
 
 void IREmitter::visitParam(ParamNode& node)

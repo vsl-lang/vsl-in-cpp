@@ -38,6 +38,7 @@ public:
     virtual void visitIf(IfNode& node) override;
     virtual void visitVariable(VariableNode& node) override;
     virtual void visitFunction(FunctionNode& node) override;
+    virtual void visitExtFunc(ExtFuncNode& node) override;
     virtual void visitParam(ParamNode& node) override;
     virtual void visitReturn(ReturnNode& node) override;
     virtual void visitIdent(IdentNode& node) override;

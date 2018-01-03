@@ -44,7 +44,7 @@ DIAG(MISMATCHING_VAR_TYPES, (const VariableNode& var), (ERROR,
         *var.getInit()->getType(), '\''))
 DIAG(VAR_ALREADY_DEFINED, (const VariableNode& var), (ERROR, var.getLoc(),
         "variable '", var.getName(), "' was already defined in this scope"))
-DIAG(FUNC_IN_FUNC, (const FunctionNode& func), (ERROR, func.getLoc(),
+DIAG(FUNCEPTION, (const FuncInterfaceNode& func), (ERROR, func.getLoc(),
         "function '", func.getName(),
         "' is being defined within another function scope"))
 DIAG(MISSING_RETURN, (const FunctionNode& func), (WARNING, func.getLoc(),
