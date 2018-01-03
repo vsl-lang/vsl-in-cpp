@@ -16,11 +16,11 @@ void FuncResolver::visitFunction(FunctionNode& node)
     }
     // create the llvm function
     auto* ft = static_cast<llvm::FunctionType*>(
-        node.getFunctionType()->toLLVMType(llvmCtx));
+        node.getFuncType()->toLLVMType(llvmCtx));
     auto* f = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
         node.getName(), &module);
     // add to global scope
-    global.setFunc(node.getName(), node.getFunctionType(), f);
+    global.setFunc(node.getName(), node.getFuncType(), f);
 }
 
 void FuncResolver::visitExtFunc(ExtFuncNode& node)
@@ -31,9 +31,9 @@ void FuncResolver::visitExtFunc(ExtFuncNode& node)
     }
     // create the llvm function
     auto* ft = static_cast<llvm::FunctionType*>(
-        node.getFunctionType()->toLLVMType(llvmCtx));
+        node.getFuncType()->toLLVMType(llvmCtx));
     auto* f = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
         node.getAlias(), &module);
     // add to global scope
-    global.setFunc(node.getName(), node.getFunctionType(), f);
+    global.setFunc(node.getName(), node.getFuncType(), f);
 }

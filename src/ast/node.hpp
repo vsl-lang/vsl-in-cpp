@@ -249,7 +249,7 @@ public:
     size_t getNumParams() const;
     ParamNode* getParam(size_t i) const;
     const Type* getReturnType() const;
-    const FunctionType* getFunctionType() const;
+    const FunctionType* getFuncType() const;
 
 protected:
     /**

@@ -146,7 +146,7 @@ const Type* FuncInterfaceNode::getReturnType() const
     return returnType;
 }
 
-const FunctionType* FuncInterfaceNode::getFunctionType() const
+const FunctionType* FuncInterfaceNode::getFuncType() const
 {
     return ft;
 }
