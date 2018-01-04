@@ -132,12 +132,7 @@ void IREmitter::visitFunction(FunctionNode& node)
         // probably flagged by FuncResolver
         return;
     }
-    if (!func.empty())
-    {
-        // function within a function
-        diag.print<Diag::FUNCEPTION>(node);
-        return;
-    }
+    assert(func.empty() && "parser didn't reject func within func");
     // create the llvm function and the entry block
     llvm::Function* f = global.getFunc(node.getName()).getLLVMFunc();
     assert(f && "FuncResolver didn't run or didn't register function");
@@ -188,12 +183,7 @@ void IREmitter::visitFunction(FunctionNode& node)
 
 void IREmitter::visitExtFunc(ExtFuncNode& node)
 {
-    if (!func.empty())
-    {
-        // function within a function
-        diag.print<Diag::FUNCEPTION>(node);
-        return;
-    }
+    assert(func.empty() && "parser didn't reject extfunc within func");
 }
 
 void IREmitter::visitParam(ParamNode& node)

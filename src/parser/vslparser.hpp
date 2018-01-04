@@ -55,6 +55,13 @@ private:
      */
     const Token& peek(size_t depth = 1);
     /**
+     * Checks if both the lexer and the token cache are empty. When this is
+     * true, all new tokens created by the lexer will typically be eof tokens.
+     *
+     * @returns True if empty, false otherwise.
+     */
+    bool empty() const;
+    /**
      * Prints an error saying that the parser expected `s` but was given
      * something else.
      *
@@ -72,6 +79,12 @@ private:
      */
     EmptyNode* errorUnexpected(const Token& token);
     /**
+     * Parses a sequence of global declarations, e.g.\ functions and what not.
+     *
+     * @returns A sequence of global declarations.
+     */
+    std::vector<Node*> parseGlobals();
+    /**
      * Parses a sequence of statements. Each statement production must consume
      * all tokens involved in that production, and each production must start
      * with `current()` being the first token consumed.
@@ -80,17 +93,12 @@ private:
      */
     std::vector<Node*> parseStatements();
     /**
-     * Parses a single statement.
+     * Parses a statement within a function scope. Functions are not allowed
+     * here.
      *
      * @returns A single statement.
      */
     Node* parseStatement();
-    /**
-     * Parses an empty statement, e.g.\ `;`.
-     *
-     * @returns An empty statement.
-     */
-    EmptyNode* parseEmptyStatement();
     /**
      * Parses a block of code, e.g.\ `{ statements... }`.
      *
@@ -127,6 +135,12 @@ private:
      * @returns A return statement.
      */
     Node* parseReturn();
+    /**
+     * Parses an expression statement ending in a semicolon, e.g.\ `x = 1;`.
+     *
+     * @returns An expression statement.
+     */
+    ExprNode* parseExprStmt();
     /**
      * Parses an expression, e.g.\ `1+5*(3+4)-6/2`.
      *

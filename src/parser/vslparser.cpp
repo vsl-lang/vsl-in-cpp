@@ -8,7 +8,7 @@ VSLParser::VSLParser(VSLContext& vslContext, Lexer& lexer)
 // program -> statements eof
 std::vector<Node*> VSLParser::parse()
 {
-    std::vector<Node*> statements = parseStatements();
+    std::vector<Node*> statements = parseGlobals();
     if (current().isNot(TokenKind::END))
     {
         errorExpected("eof");
@@ -48,6 +48,11 @@ const Token& VSLParser::peek(size_t depth)
     return cache[depth];
 }
 
+bool VSLParser::empty() const
+{
+    return cache.empty() && lexer.empty();
+}
+
 EmptyNode* VSLParser::errorExpected(const char* s)
 {
     const Token& token = current();
@@ -61,11 +66,36 @@ EmptyNode* VSLParser::errorUnexpected(const Token& token)
     return makeNode<EmptyNode>(token.getLoc());
 }
 
+// globals -> function*
+std::vector<Node*> VSLParser::parseGlobals()
+{
+    std::vector<Node*> globals;
+    while (!empty())
+    {
+        // only functions can be in the global scope
+        switch (current().getKind())
+        {
+        case TokenKind::KW_FUNC:
+            globals.emplace_back(parseFunction());
+        case TokenKind::END:
+            break;
+        default:
+            errorExpected("'func'");
+            consume();
+        }
+        if (current().is(TokenKind::END))
+        {
+            break;
+        }
+    }
+    return globals;
+}
+
 // statements -> statement*
 std::vector<Node*> VSLParser::parseStatements()
 {
     std::vector<Node*> statements;
-    while (true)
+    while (!empty())
     {
         // the cases here are in the follow set, telling when to stop expanding
         //  the statements production
@@ -73,26 +103,28 @@ std::vector<Node*> VSLParser::parseStatements()
         {
         case TokenKind::RBRACE:
         case TokenKind::END:
-            return statements;
+            break;
         default:
             statements.push_back(parseStatement());
         }
+        if (current().is(TokenKind::RBRACE) || current().is(TokenKind::END))
+        {
+            break;
+        }
     }
+    return statements;
 }
 
-// statement -> assignment | function | return | conditional | expr semicolon
-//            | block | empty
+// statement -> variable | return | conditional | exprstmt | block | empty
 Node* VSLParser::parseStatement()
 {
-    // the cases here are first sets, distinguishing which production to go for
-    //  based on a token of lookahead
+    // the cases here are first sets of an LL parser, distinguishing which
+    //  production to go for based on a token of lookahead
     switch (current().getKind())
     {
     case TokenKind::KW_VAR:
     case TokenKind::KW_LET:
         return parseVariable();
-    case TokenKind::KW_FUNC:
-        return parseFunction();
     case TokenKind::KW_RETURN:
         return parseReturn();
     case TokenKind::KW_IF:
@@ -101,37 +133,21 @@ Node* VSLParser::parseStatement()
     case TokenKind::NUMBER:
     case TokenKind::KW_TRUE:
     case TokenKind::KW_FALSE:
-    case TokenKind::PLUS:
     case TokenKind::MINUS:
     case TokenKind::LPAREN:
-        {
-            ExprNode* expr = parseExpr();
-            if (current().isNot(TokenKind::SEMICOLON))
-            {
-                return errorExpected("';'");
-            }
-            consume();
-            return expr;
-        }
+        return parseExprStmt();
     case TokenKind::LBRACE:
         return parseBlock();
+    case TokenKind::KW_FUNC:
+        // function within a function
+        diag.print<Diag::FUNCEPTION>(current().getLoc());
+        // fallthrough
     case TokenKind::SEMICOLON:
-        return parseEmptyStatement();
+        return makeNode<EmptyNode>(consume().getLoc());
     default:
         EmptyNode* e = errorUnexpected(consume());
         return e;
     }
-}
-
-// empty -> semicolon
-EmptyNode* VSLParser::parseEmptyStatement()
-{
-    if (current().isNot(TokenKind::SEMICOLON))
-    {
-        return errorExpected("';'");
-    }
-    Location location = consume().getLoc();
-    return makeNode<EmptyNode>(location);
 }
 
 // block -> lbrace statements rbrace
@@ -376,6 +392,20 @@ Node* VSLParser::parseReturn()
         consume();
     }
     return makeNode<ReturnNode>(location, value);
+}
+
+ExprNode* VSLParser::parseExprStmt()
+{
+    ExprNode* expr = parseExpr();
+    if (current().isNot(TokenKind::SEMICOLON))
+    {
+        errorExpected("';'");
+    }
+    else
+    {
+        consume();
+    }
+    return expr;
 }
 
 // top down operator precedence (tdop) is used for expressions

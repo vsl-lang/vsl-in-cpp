@@ -16,6 +16,8 @@ DIAG(EXPECTED_BUT_FOUND, (const char* s, const Token& found), (ERROR,
         found.getLoc(), "expected ", s, " but found ", found.getKindName()))
 DIAG(UNEXPECTED_TOKEN, (const Token& t), (ERROR, t.getLoc(),
         "unexpected token '", t.getText(), '\''))
+DIAG(FUNCEPTION, (Location location), (ERROR, location,
+        "function being defined within another function scope (funception!)"))
 DIAG(INVALID_PARAM_TYPE, (const ParamNode& param), (ERROR, param.getLoc(),
         " type '", *param.getType(), "' is invalid for parameter '",
         param.getName(), '\''))
@@ -44,9 +46,6 @@ DIAG(MISMATCHING_VAR_TYPES, (const VariableNode& var), (ERROR,
         *var.getInit()->getType(), '\''))
 DIAG(VAR_ALREADY_DEFINED, (const VariableNode& var), (ERROR, var.getLoc(),
         "variable '", var.getName(), "' was already defined in this scope"))
-DIAG(FUNCEPTION, (const FuncInterfaceNode& func), (ERROR, func.getLoc(),
-        "function '", func.getName(),
-        "' is being defined within another function scope"))
 DIAG(MISSING_RETURN, (const FunctionNode& func), (WARNING, func.getLoc(),
         "missing return statement at the end of function '",
         func.getName(), '\''))

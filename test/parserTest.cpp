@@ -18,61 +18,77 @@ static bool parse(const char* src)
     return !diag.getNumErrors();
 }
 
-TEST(ParserTest, HandlesEmptyStatement)
+TEST(ParserTest, OnlyGlobalsAllowed)
 {
-    valid(";");
-    valid(";;;;;");
+    invalid("let x: Int = 1;");
+    invalid("if (true) d; else c;");
+    invalid("return;");
 }
 
-TEST(ParserTest, HandlesBlock)
-{
-    valid("{hi;}");
-    invalid("{hi;");
-}
-
-TEST(ParserTest, HandlesConditional)
-{
-    valid("if (x == 1) {;}");
-    invalid("if x == 1 {;}");
-}
-
-TEST(ParserTest, HandlesAssignment)
-{
-    valid("let x: Int = 1337;");
-    valid("var y: Void = x;");
-}
-
-TEST(ParserTest, HandlesFunction)
+TEST(ParserTest, Functions)
 {
     valid("func f(x: Int) -> Void {;}");
-    valid("func f(x: Bool) -> Bool external(g);");
+    valid("func f(x: Bool, y: Int) -> Bool external(g);");
+    // void parameters are rejected
+    invalid("func f(x: Void, y: Int) -> Int { return 0; }");
+    // can't define a function within a function
+    invalid("func f() -> Void { func g() -> Void {} }");
 }
 
-TEST(ParserTest, HandlesReturn)
+TEST(ParserTest, EmptyStmts)
 {
-    valid("return;");
-    valid("return x;");
+    valid("func f() -> Void { ; }");
+    valid("func f() -> Void { ;;;;; }");
 }
 
-TEST(ParserTest, HandlesExpr)
+TEST(ParserTest, Blocks)
 {
-    valid("-x-1;");
-    invalid("x*;");
+    valid("func f() -> Void { { hi; } }");
+    // unbalanced braces
+    invalid("func f() -> Void { { hi; }");
+    invalid("func f() -> Void { hi; } }");
+}
+
+TEST(ParserTest, Ifs)
+{
+    valid("func f() -> Void { if (x == 1) {;} }");
+    invalid("func f() -> Void { if x == 1 {;} }");
+    // parser only does syntax checking so this should still be fine
+    valid("func f() -> Void { if (x == 1) { return 3; } else return x; }");
+}
+
+TEST(ParserTest, Variables)
+{
+    valid("func f() -> Void { let x: Int = 1337; }");
+    valid("func f() -> Void { var y: Void = x; }");
+}
+
+TEST(ParserTest, Returns)
+{
+    valid("func f() -> Void { return; }");
+    valid("func f() -> Void { return x; }");
+}
+
+TEST(ParserTest, Expressions)
+{
+    valid("func f() -> Void { -x-1; }");
+    invalid("func f() -> Void { x*; }");
     // needs a semicolon at the end
-    invalid("x");
-    valid("x(y: z % 2) - -z * 2 + 9 / 2;");
+    invalid("func f() -> Void { x }");
+    // some weird expression
+    valid("func f() -> Void { x(y: z % 2) - -z * 2 + 9 / 2; }");
 }
 
-TEST(ParserTest, HandlesNumbers)
+TEST(ParserTest, Numbers)
 {
-    valid("1337;");
-    // emits a warning so this shsould be fine
-    valid("999999999999999999999999999;");
+    valid("func f() -> Int { return 1337; }");
+    // emits a warning so this should be fine
+    valid("func f() -> Int { return 999999999999999999999999999; }");
 }
 
-TEST(ParserTest, HandlesParenthesizedExprs)
+TEST(ParserTest, Parentheses)
 {
-    valid("(x + y) / 2;");
-    invalid("(x + 1;");
-    invalid("x + 1);");
+    valid("func f() -> Void { (x + y) / 2; }");
+    invalid("func f() -> Void { (x + 1; }");
+    invalid("func f() -> Void { x + 1); }");
 }
