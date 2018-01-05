@@ -11,7 +11,7 @@ enum class TokenKind
 {
     // tokenKind.def automatically #undef's the macros it uses
     /** @cond */
-#define TOKEN(X, Y) X,
+#define TOKEN(kind, name) kind,
     /** @endcond */
 #include "lexer/tokenKind.def"
     /** The number of TokenKinds that exist. */

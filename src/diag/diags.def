@@ -21,6 +21,8 @@ DIAG(FUNCEPTION, (Location location), (ERROR, location,
 DIAG(INVALID_PARAM_TYPE, (const ParamNode& param), (ERROR, param.getLoc(),
         " type '", *param.getType(), "' is invalid for parameter '",
         param.getName(), '\''))
+DIAG(NOT_A_BINARY_OP, (const Token& t), (ERROR, t.getLoc(), "token '",
+        t.getText(), "' is not a binary operator"))
 DIAG(INVALID_INT, (const Token& t), (ERROR, t.getLoc(), "invalid integer '",
         t.getText(), '\''))
 DIAG(OVERFLOW_DETECTED, (const Token& t), (WARNING, t.getLoc(),
@@ -60,10 +62,10 @@ DIAG(INVALID_INT_WIDTH, (LiteralNode& literal), (INTERNAL, literal.getLoc(),
         "VSL does not support ", literal.getValue().getBitWidth(),
         "-bit integers"))
 DIAG(INVALID_UNARY, (UnaryNode& unary), (ERROR, unary.getLoc(),
-        "cannot apply unary operator '", tokenKindName(unary.getOp()),
+        "cannot apply unary operator '", unary.getOpSymbol(),
         "' to type '", *unary.getExpr()->getType(), '\''))
 DIAG(INVALID_BINARY, (BinaryNode& binary), (ERROR, binary.getLoc(),
-        "cannot apply binary operator '", tokenKindName(binary.getOp()),
+        "cannot apply binary operator '", binary.getOpSymbol(),
         "' to types '", *binary.getLhs()->getType(), "' and '",
         *binary.getRhs()->getType(), '\''))
 DIAG(TERNARY_TYPE_MISMATCH, (TernaryNode& ternary), (ERROR, ternary.getLoc(),

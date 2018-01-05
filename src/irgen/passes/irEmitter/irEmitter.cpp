@@ -1,3 +1,4 @@
+#include "ast/opKind.hpp"
 #include "irgen/passes/irEmitter/irEmitter.hpp"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
@@ -280,8 +281,8 @@ void IREmitter::visitUnary(UnaryNode& node)
     // choose the appropriate operator to generate code for
     switch (node.getOp())
     {
-    case TokenKind::MINUS:
-    case TokenKind::NOT:
+    case UnaryKind::MINUS:
+    case UnaryKind::NOT:
         genNeg(type, value);
         break;
     default:
@@ -297,13 +298,13 @@ void IREmitter::visitUnary(UnaryNode& node)
 void IREmitter::visitBinary(BinaryNode& node)
 {
     // special case: variable assignment
-    if (node.getOp() == TokenKind::ASSIGN)
+    if (node.getOp() == BinaryKind::ASSIGN)
     {
         genAssign(node);
         return;
     }
     // special case: short-circuiting boolean operations
-    if (node.getOp() == TokenKind::AND || node.getOp() == TokenKind::OR)
+    if (node.getOp() == BinaryKind::AND || node.getOp() == BinaryKind::OR)
     {
         genShortCircuit(node);
         return;
@@ -321,47 +322,47 @@ void IREmitter::visitBinary(BinaryNode& node)
         const Type* type = node.getLhs()->getType();
         switch (node.getOp())
         {
-        case TokenKind::PLUS:
+        case BinaryKind::PLUS:
             node.setType(node.getLhs()->getType());
             genAdd(type, lhs, rhs);
             break;
-        case TokenKind::MINUS:
+        case BinaryKind::MINUS:
             node.setType(node.getLhs()->getType());
             genSub(type, lhs, rhs);
             break;
-        case TokenKind::STAR:
+        case BinaryKind::STAR:
             node.setType(node.getLhs()->getType());
             genMul(type, lhs, rhs);
             break;
-        case TokenKind::SLASH:
+        case BinaryKind::SLASH:
             node.setType(node.getLhs()->getType());
             genDiv(type, lhs, rhs);
             break;
-        case TokenKind::PERCENT:
+        case BinaryKind::PERCENT:
             node.setType(node.getLhs()->getType());
             genMod(type, lhs, rhs);
             break;
-        case TokenKind::EQUAL:
+        case BinaryKind::EQUAL:
             node.setType(vslCtx.getBoolType());
             genEQ(type, lhs, rhs);
             break;
-        case TokenKind::NOT_EQUAL:
+        case BinaryKind::NOT_EQUAL:
             node.setType(vslCtx.getBoolType());
             genNE(type, lhs, rhs);
             break;
-        case TokenKind::GREATER:
+        case BinaryKind::GREATER:
             node.setType(vslCtx.getBoolType());
             genGT(type, lhs, rhs);
             break;
-        case TokenKind::GREATER_EQUAL:
+        case BinaryKind::GREATER_EQUAL:
             node.setType(vslCtx.getBoolType());
             genGE(type, lhs, rhs);
             break;
-        case TokenKind::LESS:
+        case BinaryKind::LESS:
             node.setType(vslCtx.getBoolType());
             genLT(type, lhs, rhs);
             break;
-        case TokenKind::LESS_EQUAL:
+        case BinaryKind::LESS_EQUAL:
             node.setType(vslCtx.getBoolType());
             genLE(type, lhs, rhs);
             break;
@@ -545,11 +546,11 @@ void IREmitter::genShortCircuit(BinaryNode& node)
     auto* currBlock = builder.GetInsertBlock();
     llvm::Function* currFunc = currBlock->getParent();
     // setup blocks
-    llvm::Twine name = (node.getOp() == TokenKind::AND) ? "and" : "or";
+    llvm::Twine name = (node.getOp() == BinaryKind::AND) ? "and" : "or";
     auto* longCheck = llvm::BasicBlock::Create(llvmCtx, name + ".long");
     auto* cont = llvm::BasicBlock::Create(llvmCtx, name + ".cont");
     // create the branch
-    if (node.getOp() == TokenKind::AND)
+    if (node.getOp() == BinaryKind::AND)
     {
         builder.CreateCondBr(cond1, longCheck, cont);
     }
@@ -581,7 +582,7 @@ void IREmitter::genShortCircuit(BinaryNode& node)
     // create the phi instruction
     auto* phi = builder.CreatePHI(builder.getInt1Ty(), 2, name);
     // if the branch came from currBlock, then the operation short-circuited
-    phi->addIncoming(builder.getInt1(node.getOp() == TokenKind::OR),
+    phi->addIncoming(builder.getInt1(node.getOp() == BinaryKind::OR),
         currBlock);
     // if it came from longCheck, then the result is determined by rhs
     phi->addIncoming(cond2, longCheck);

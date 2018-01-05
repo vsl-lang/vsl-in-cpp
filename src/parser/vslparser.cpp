@@ -1,4 +1,5 @@
 #include "parser/vslparser.hpp"
+#include "ast/opKind.hpp"
 
 VSLParser::VSLParser(VSLContext& vslContext, Lexer& lexer)
     : vslContext{ vslContext }, lexer{ lexer }, diag{ lexer.getDiag() }
@@ -89,6 +90,129 @@ std::vector<Node*> VSLParser::parseGlobals()
         }
     }
     return globals;
+}
+
+// function -> funcInterface block | extfunc
+// extfunc -> funcInterface external lparen ident rparen semicolon
+// funcInterface -> func ident lparen param (comma param)* rparen arrow type
+Node* VSLParser::parseFunction()
+{
+    // parse the function name
+    if (current().isNot(TokenKind::KW_FUNC))
+    {
+        return errorExpected("'func'");
+    }
+    Location location = consume().getLoc();
+    if (current().isNot(TokenKind::IDENTIFIER))
+    {
+        return errorExpected("identifier");
+    }
+    llvm::StringRef name = consume().getText();
+    // parse the parameter list
+    if (current().isNot(TokenKind::LPAREN))
+    {
+        return errorExpected("'('");
+    }
+    consume();
+    std::vector<ParamNode*> params;
+    if (current().isNot(TokenKind::RPAREN))
+    {
+        while (true)
+        {
+            ParamNode* param = parseParam();
+            if (param->getType() != vslContext.getVoidType())
+            {
+                params.push_back(param);
+            }
+            else
+            {
+                diag.print<Diag::INVALID_PARAM_TYPE>(*param);
+                // FIXME: delete the invalid ParamNode
+            }
+            if (current().isNot(TokenKind::COMMA))
+            {
+                break;
+            }
+            consume();
+        }
+    }
+    if (current().isNot(TokenKind::RPAREN))
+    {
+        return errorExpected("')'");
+    }
+    consume();
+    // parse the return type
+    if (current().isNot(TokenKind::ARROW))
+    {
+        return errorExpected("'->'");
+    }
+    consume();
+    const Type* returnType = parseType();
+    // build the FunctionType
+    std::vector<const Type*> paramTypes;
+    paramTypes.resize(params.size());
+    std::transform(params.begin(), params.end(), paramTypes.begin(),
+        [](ParamNode* p)
+        {
+            return p->getType();
+        });
+    const FunctionType* ft = vslContext.getFunctionType(std::move(paramTypes),
+        returnType);
+    // parse an external function
+    if (current().is(TokenKind::KW_EXTERNAL))
+    {
+        consume();
+        if (current().isNot(TokenKind::LPAREN))
+        {
+            return errorExpected("'('");
+        }
+        consume();
+        if (current().isNot(TokenKind::IDENTIFIER))
+        {
+            return errorExpected("identifier");
+        }
+        llvm::StringRef alias = consume().getText();
+        if (current().isNot(TokenKind::RPAREN))
+        {
+            return errorExpected("')'");
+        }
+        consume();
+        if (current().isNot(TokenKind::SEMICOLON))
+        {
+            return errorExpected("';'");
+        }
+        consume();
+        return makeNode<ExtFuncNode>(location, name, std::move(params),
+            returnType, ft, alias);
+    }
+    // parse a normal function
+    Node* body = parseBlock();
+    return makeNode<FunctionNode>(location, name, std::move(params), returnType,
+        ft, body);
+}
+
+// param -> identifier ':' type
+ParamNode* VSLParser::parseParam()
+{
+    Location location = current().getLoc();
+    llvm::StringRef name;
+    if (current().isNot(TokenKind::IDENTIFIER))
+    {
+        errorExpected("identifier");
+        name = "";
+        consume();
+    }
+    else
+    {
+        name = consume().getText();
+    }
+    if (consume().isNot(TokenKind::COLON))
+    {
+        // consumed here because the missing colon was likely a typo
+        errorExpected("':'");
+    }
+    const Type* type = parseType();
+    return makeNode<ParamNode>(location, name, type);
 }
 
 // statements -> statement*
@@ -243,129 +367,6 @@ Node* VSLParser::parseVariable()
     return makeNode<VariableNode>(location, name, type, value, constness);
 }
 
-// function -> funcInterface block | extfunc
-// extfunc -> funcInterface external lparen ident rparen semicolon
-// funcInterface -> func ident lparen param (comma param)* rparen arrow type
-Node* VSLParser::parseFunction()
-{
-    // parse the function name
-    if (current().isNot(TokenKind::KW_FUNC))
-    {
-        return errorExpected("'func'");
-    }
-    Location location = consume().getLoc();
-    if (current().isNot(TokenKind::IDENTIFIER))
-    {
-        return errorExpected("identifier");
-    }
-    llvm::StringRef name = consume().getText();
-    // parse the parameter list
-    if (current().isNot(TokenKind::LPAREN))
-    {
-        return errorExpected("'('");
-    }
-    consume();
-    std::vector<ParamNode*> params;
-    if (current().isNot(TokenKind::RPAREN))
-    {
-        while (true)
-        {
-            ParamNode* param = parseParam();
-            if (param->getType() != vslContext.getVoidType())
-            {
-                params.push_back(param);
-            }
-            else
-            {
-                diag.print<Diag::INVALID_PARAM_TYPE>(*param);
-                // FIXME: delete the invalid ParamNode
-            }
-            if (current().isNot(TokenKind::COMMA))
-            {
-                break;
-            }
-            consume();
-        }
-    }
-    if (current().isNot(TokenKind::RPAREN))
-    {
-        return errorExpected("')'");
-    }
-    consume();
-    // parse the return type
-    if (current().isNot(TokenKind::ARROW))
-    {
-        return errorExpected("'->'");
-    }
-    consume();
-    const Type* returnType = parseType();
-    // build the FunctionType
-    std::vector<const Type*> paramTypes;
-    paramTypes.resize(params.size());
-    std::transform(params.begin(), params.end(), paramTypes.begin(),
-        [](ParamNode* p)
-        {
-            return p->getType();
-        });
-    const FunctionType* ft = vslContext.getFunctionType(std::move(paramTypes),
-        returnType);
-    // parse an external function
-    if (current().is(TokenKind::KW_EXTERNAL))
-    {
-        consume();
-        if (current().isNot(TokenKind::LPAREN))
-        {
-            return errorExpected("'('");
-        }
-        consume();
-        if (current().isNot(TokenKind::IDENTIFIER))
-        {
-            return errorExpected("identifier");
-        }
-        llvm::StringRef alias = consume().getText();
-        if (current().isNot(TokenKind::RPAREN))
-        {
-            return errorExpected("')'");
-        }
-        consume();
-        if (current().isNot(TokenKind::SEMICOLON))
-        {
-            return errorExpected("';'");
-        }
-        consume();
-        return makeNode<ExtFuncNode>(location, name, std::move(params),
-            returnType, ft, alias);
-    }
-    // parse a normal function
-    Node* body = parseBlock();
-    return makeNode<FunctionNode>(location, name, std::move(params), returnType,
-        ft, body);
-}
-
-// param -> identifier ':' type
-ParamNode* VSLParser::parseParam()
-{
-    Location location = current().getLoc();
-    llvm::StringRef name;
-    if (current().isNot(TokenKind::IDENTIFIER))
-    {
-        errorExpected("identifier");
-        name = "";
-        consume();
-    }
-    else
-    {
-        name = consume().getText();
-    }
-    if (consume().isNot(TokenKind::COLON))
-    {
-        // consumed here because the missing colon was likely a typo
-        errorExpected("':'");
-    }
-    const Type* type = parseType();
-    return makeNode<ParamNode>(location, name, type);
-}
-
 // return -> 'return' expr ';'
 Node* VSLParser::parseReturn()
 {
@@ -419,8 +420,9 @@ ExprNode* VSLParser::parseExpr(int minPrec)
     return lhs;
 }
 
-// unaryop -> ident | number | true | false | minus expr(call and up)
-//          | lparen expr rparen
+// unaryop -> ident | number | true | false | unaryexpr | lparen expr rparen
+// unaryexpr -> (minus | not) expr(minPrec = call-1)
+// only expression that can be parsed before unary is a function call
 ExprNode* VSLParser::parseUnaryOp()
 {
     Token t = consume();
@@ -435,9 +437,9 @@ ExprNode* VSLParser::parseUnaryOp()
     case TokenKind::KW_FALSE:
         return makeNode<LiteralNode>(t.getLoc(), llvm::APInt{ 1, 0 });
     case TokenKind::MINUS:
-        // only expression that can be parsed before unary minus is a func call
-        return makeNode<UnaryNode>(t.getLoc(), t.getKind(),
-            parseExpr(getPrec(TokenKind::LPAREN) - 1));
+    case TokenKind::NOT:
+        return makeNode<UnaryNode>(t.getLoc(), tokenKindToUnary(t.getKind()),
+                parseExpr(getPrec(TokenKind::LPAREN) - 1));
     case TokenKind::LPAREN:
         {
             ExprNode* expr = parseExpr();
@@ -449,49 +451,68 @@ ExprNode* VSLParser::parseUnaryOp()
             return expr;
         }
     default:
-        errorExpected("unary operator, identifier, or number");
+        errorExpected("expression");
+        // FIXME: somehow tell the caller (parseExpr) to tell its caller etc to
+        //  just output an empty statement or something similar, like erasing a
+        //  function argument if parseExpr is being used in that context
+        // either use something like c++17's std::optional or just dump a bunch
+        //  of null checks everywhere
         return makeNode<LiteralNode>(t.getLoc(), llvm::APInt{ 32, 0 });
     }
 }
 
-// binaryop -> lhs (plus | minus | star | slash | percent | equal | not_equal
-//                 | greater | greater_equal | less | less_equal) expr
-//           | ternary | call | lparen expr rparen
+// binaryop -> binaryexpr | ternary | call
 ExprNode* VSLParser::parseBinaryOp(ExprNode* lhs)
 {
     const Token& t = current();
     switch (t.getKind())
     {
-    case TokenKind::PLUS:
-    case TokenKind::MINUS:
-    case TokenKind::STAR:
-    case TokenKind::SLASH:
-    case TokenKind::PERCENT:
-    case TokenKind::EQUAL:
-    case TokenKind::NOT_EQUAL:
-    case TokenKind::GREATER:
-    case TokenKind::GREATER_EQUAL:
-    case TokenKind::LESS:
-    case TokenKind::LESS_EQUAL:
-    case TokenKind::AND:
-    case TokenKind::OR:
-        // left associative
-        consume();
-        return makeNode<BinaryNode>(t.getLoc(), t.getKind(), lhs,
-            parseExpr(getPrec(t.getKind())));
-    case TokenKind::ASSIGN:
-        // right associative
-        consume();
-        return makeNode<BinaryNode>(t.getLoc(), t.getKind(), lhs,
-            parseExpr(getPrec(t.getKind()) - 1));
+        // technically the ternary/call operators aren't really binary operators
+        //  but they come after an expression so that's good enough
     case TokenKind::QUESTION:
         return parseTernary(lhs);
     case TokenKind::LPAREN:
         return parseCall(lhs);
     default:
-        errorExpected("binary operator");
+        return parseBinaryExpr(lhs);
+    }
+}
+
+// binaryexpr -> lhs (star | slash | percent | plus | minus | greater
+//                   | greater_equal | less | less_equal | equal | not_equal
+//                   | and | or | assign) expr
+ExprNode* VSLParser::parseBinaryExpr(ExprNode* lhs)
+{
+    Token t = consume();
+    TokenKind k = t.getKind();
+    BinaryKind op = tokenKindToBinary(k);
+    int minPrec = getPrec(k);
+    switch (op)
+    {
+    case BinaryKind::STAR:
+    case BinaryKind::SLASH:
+    case BinaryKind::PERCENT:
+    case BinaryKind::PLUS:
+    case BinaryKind::MINUS:
+    case BinaryKind::GREATER:
+    case BinaryKind::GREATER_EQUAL:
+    case BinaryKind::LESS:
+    case BinaryKind::LESS_EQUAL:
+    case BinaryKind::EQUAL:
+    case BinaryKind::NOT_EQUAL:
+    case BinaryKind::AND:
+    case BinaryKind::OR:
+        // left associative
+        break;
+    case BinaryKind::ASSIGN:
+        // right associative
+        --minPrec;
+        break;
+    default:
+        diag.print<Diag::NOT_A_BINARY_OP>(t);
         return lhs;
     }
+    return makeNode<BinaryNode>(t.getLoc(), op, lhs, parseExpr(minPrec));
 }
 
 int VSLParser::getPrec(TokenKind k)

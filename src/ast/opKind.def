@@ -1,0 +1,30 @@
+#ifndef UNARY
+#define UNARY(kind, name)
+#endif
+#ifndef BINARY
+#define BINARY(kind, name)
+#endif
+
+UNARY(UNKNOWN, "<unknown>")
+UNARY(MINUS, "-")
+UNARY(NOT, "!")
+
+// in order of highest to lowest precedence
+BINARY(UNKNOWN, "<unknown>")
+BINARY(STAR, "*")
+BINARY(SLASH, "/")
+BINARY(PERCENT, "%")
+BINARY(PLUS, "+")
+BINARY(MINUS, "-")
+BINARY(GREATER, ">")
+BINARY(GREATER_EQUAL, ">=")
+BINARY(LESS, "<")
+BINARY(LESS_EQUAL, "<=")
+BINARY(EQUAL, "==")
+BINARY(NOT_EQUAL, "!=")
+BINARY(AND, "&&")
+BINARY(OR, "||")
+BINARY(ASSIGN, "=")
+
+#undef BINARY
+#undef UNARY

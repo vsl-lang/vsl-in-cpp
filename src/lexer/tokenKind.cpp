@@ -5,7 +5,7 @@
 static const llvm::StringMap<TokenKind> keywords
 {
     /** @cond */
-#define KEYWORD(X, Y) { Y, TokenKind::KW_ ## X },
+#define KEYWORD(kind, name) { name, TokenKind::KW_ ## kind },
     /** @endcond */
 #include "lexer/tokenKind.def"
 };
@@ -15,12 +15,12 @@ const char* tokenKindName(TokenKind k)
     switch (k)
     {
         /** @cond */
-#define TOKEN(X, Y) case TokenKind::X: return Y;
-#define KEYWORD(X, Y) TOKEN(KW_ ## X, "'" Y "'")
+#define TOKEN(kind, name) case TokenKind::kind: return name;
+#define KEYWORD(kind, name) TOKEN(KW_ ## kind, "'" name "'")
         /** @endcond */
-#include "lexer/tokenKind.def"
     default:
-        return "unknown";
+        // fallthrough to unknown
+#include "lexer/tokenKind.def"
     }
 }
 
@@ -29,11 +29,11 @@ const char* tokenKindDebugName(TokenKind k)
     switch (k)
     {
         /** @cond */
-#define TOKEN(X, Y) case TokenKind::X: return #X;
+#define TOKEN(kind, name) case TokenKind::kind: return #kind;
         /** @endcond */
-#include "lexer/tokenKind.def"
     default:
-        return "UNKNOWN";
+        // fallthrough to unknown
+#include "lexer/tokenKind.def"
     }
 }
 

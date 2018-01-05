@@ -107,14 +107,15 @@ void NodePrinter::visitLiteral(LiteralNode& node)
 
 void NodePrinter::visitUnary(UnaryNode& node)
 {
-    os << tokenKindName(node.getOp());
+    os << node.getOpSymbol() << '(';
     node.getExpr()->accept(*this);
+    os << ')';
 }
 
 void NodePrinter::visitBinary(BinaryNode& node)
 {
     node.getLhs()->accept(*this);
-    os << tokenKindName(node.getOp());
+    os << ' ' << node.getOpSymbol() << ' ';
     node.getRhs()->accept(*this);
 }
 

@@ -33,6 +33,11 @@ public:
 
 private:
     /**
+     * @name Token Operations
+     * @{
+     */
+
+    /**
      * Gets the current token while consuming it. Any previous references
      * returned by `current()` will be invalidated.
      *
@@ -61,6 +66,13 @@ private:
      * @returns True if empty, false otherwise.
      */
     bool empty() const;
+
+    /**
+     * @}
+     * @name Diagnostics Helpers
+     * @{
+     */
+
     /**
      * Prints an error saying that the parser expected `s` but was given
      * something else.
@@ -78,12 +90,38 @@ private:
      * @returns An empty node.
      */
     EmptyNode* errorUnexpected(const Token& token);
+
+    /**
+     * @}
+     * @name Global Scope Parsing
+     * @{
+     */
+
     /**
      * Parses a sequence of global declarations, e.g.\ functions and what not.
      *
      * @returns A sequence of global declarations.
      */
     std::vector<Node*> parseGlobals();
+    /**
+     * Parses a function, e.g.\ `func f(x: Int) -> Int { ... }`.
+     *
+     * @returns A function.
+     */
+    Node* parseFunction();
+    /**
+     * Parses a function parameter, e.g.\ `x: Int`.
+     *
+     * @returns A function parameter.
+     */
+    ParamNode* parseParam();
+
+    /**
+     * @}
+     * @name Statement Parsing
+     * @{
+     */
+
     /**
      * Parses a sequence of statements. Each statement production must consume
      * all tokens involved in that production, and each production must start
@@ -118,18 +156,6 @@ private:
      */
     Node* parseVariable();
     /**
-     * Parses a function, e.g.\ `func f(x: Int) -> Int { ... }`.
-     *
-     * @returns A function.
-     */
-    Node* parseFunction();
-    /**
-     * Parses a function parameter, e.g.\ `x: Int`.
-     *
-     * @returns A function parameter.
-     */
-    ParamNode* parseParam();
-    /**
      * Parses a return statement, e.g.\ `return 1;` or just `return;`.
      *
      * @returns A return statement.
@@ -141,6 +167,13 @@ private:
      * @returns An expression statement.
      */
     ExprNode* parseExprStmt();
+
+    /**
+     * @}
+     * @name Expression Parsing
+     * @{
+     */
+
     /**
      * Parses an expression, e.g.\ `1+5*(3+4)-6/2`.
      *
@@ -166,7 +199,15 @@ private:
      */
     ExprNode* parseBinaryOp(ExprNode* lhs);
     /**
-     * Gets the precedence of a binary (or ternary) operator.
+     * Parses a binary expression.
+     *
+     * @param lhs Already parsed left hand side.
+     *
+     * @returns A binary expression.
+     */
+    ExprNode* parseBinaryExpr(ExprNode* lhs);
+    /**
+     * Gets the precedence of a binary (or ternary/kind) operator.
      *
      * @param k The kind of operator to use.
      *
@@ -203,12 +244,22 @@ private:
      * @returns A number expression.
      */
     LiteralNode* parseNumber(const Token& token);
+
+    /**
+     * @}
+     * @name Other Helpers
+     * @{
+     */
+
     /**
      * Parses a VSL type, e.g.\ `Int` or `Void`.
      *
      * @returns A VSL type.
      */
     const Type* parseType();
+
+    /** @} */
+
     /** Reference to the VSLContext. */
     VSLContext& vslContext;
     /** The Lexer to get the tokens from. */

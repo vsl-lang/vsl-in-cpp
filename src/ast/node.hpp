@@ -21,6 +21,7 @@ class CallNode;
 class ArgNode;
 
 #include "ast/nodevisitor.hpp"
+#include "ast/opKind.hpp"
 #include "ast/type.hpp"
 #include "lexer/location.hpp"
 #include "lexer/tokenKind.hpp"
@@ -464,15 +465,16 @@ public:
      * @param op The operator of the expression.
      * @param expr The expression to apply the operator to.
      */
-    UnaryNode(Location location, TokenKind op, ExprNode* expr);
+    UnaryNode(Location location, UnaryKind op, ExprNode* expr);
     virtual ~UnaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    TokenKind getOp() const;
+    UnaryKind getOp() const;
+    const char* getOpSymbol() const;
     ExprNode* getExpr() const;
 
 private:
     /** The operator of the expression. */
-    TokenKind op;
+    UnaryKind op;
     /** The expression to apply the operator to. */
     ExprNode* expr;
 };
@@ -491,17 +493,18 @@ public:
      * @param left The left hand side of the expression.
      * @param right The right hand side of the expression.
      */
-    BinaryNode(Location location, TokenKind op, ExprNode* left,
+    BinaryNode(Location location, BinaryKind op, ExprNode* left,
         ExprNode* right);
     virtual ~BinaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    TokenKind getOp() const;
+    BinaryKind getOp() const;
+    const char* getOpSymbol() const;
     ExprNode* getLhs() const;
     ExprNode* getRhs() const;
 
 private:
     /** The operator of the expression. */
-    TokenKind op;
+    BinaryKind op;
     /** The left hand side of the expression. */
     ExprNode* left;
     /** The right hand side of the expression. */

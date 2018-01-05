@@ -1,11 +1,11 @@
 #ifndef TOKEN
-#define TOKEN(X, Y)
+#define TOKEN(kind, name)
 #endif
 #ifndef KEYWORD
-#define KEYWORD(X, Y) TOKEN(KW_ ## X, Y)
+#define KEYWORD(kind, name) TOKEN(KW_ ## kind, name)
 #endif
 #ifndef SYMBOL
-#define SYMBOL(X, Y) TOKEN(X, Y)
+#define SYMBOL(kind, name) TOKEN(kind, name)
 #endif
 
 TOKEN(UNKNOWN, "unknown")

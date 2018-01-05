@@ -287,7 +287,7 @@ llvm::APInt LiteralNode::getValue() const
     return value;
 }
 
-UnaryNode::UnaryNode(Location location, TokenKind op, ExprNode* expr)
+UnaryNode::UnaryNode(Location location, UnaryKind op, ExprNode* expr)
     : ExprNode{ Node::UNARY, location }, op{ op }, expr{ expr }
 {
 }
@@ -297,9 +297,14 @@ void UnaryNode::accept(NodeVisitor& nodeVisitor)
     nodeVisitor.visitUnary(*this);
 }
 
-TokenKind UnaryNode::getOp() const
+UnaryKind UnaryNode::getOp() const
 {
     return op;
+}
+
+const char* UnaryNode::getOpSymbol() const
+{
+    return unaryKindSymbol(op);
 }
 
 ExprNode* UnaryNode::getExpr() const
@@ -307,7 +312,7 @@ ExprNode* UnaryNode::getExpr() const
     return expr;
 }
 
-BinaryNode::BinaryNode(Location location, TokenKind op, ExprNode* left,
+BinaryNode::BinaryNode(Location location, BinaryKind op, ExprNode* left,
     ExprNode* right)
     : ExprNode{ Node::BINARY, location }, op{ op }, left{ left }, right{ right }
 {
@@ -318,9 +323,14 @@ void BinaryNode::accept(NodeVisitor& nodeVisitor)
     nodeVisitor.visitBinary(*this);
 }
 
-TokenKind BinaryNode::getOp() const
+BinaryKind BinaryNode::getOp() const
 {
     return op;
+}
+
+const char* BinaryNode::getOpSymbol() const
+{
+    return binaryKindSymbol(op);
 }
 
 ExprNode* BinaryNode::getLhs() const
