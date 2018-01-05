@@ -1,5 +1,3 @@
 #include "parser/parser.hpp"
 
-Parser::~Parser()
-{
-}
+Parser::~Parser() = default;

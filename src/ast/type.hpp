@@ -9,7 +9,9 @@
 #include <vector>
 
 /**
- * Represents a VSL type.
+ * Represents a VSL type. Derived Types are stored in a VSLContext separate from
+ * eachother, therefore not needing a virtual destructor. This may change in the
+ * future as the type system becomes more complex.
  */
 class Type
 {
@@ -173,10 +175,10 @@ struct hash<FunctionType>
     size_t operator()(const FunctionType& ft) const
     {
         size_t value = 17;
-        value = value * 31 + std::hash<const Type*>{}(ft.returnType);
+        value = value * 31 + hash<const Type*>{}(ft.returnType);
         for (const Type* param : ft.params)
         {
-            value = value * 31 + std::hash<const Type*>{}(param);
+            value = value * 31 + hash<const Type*>{}(param);
         }
         return value;
     }

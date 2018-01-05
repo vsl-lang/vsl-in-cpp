@@ -5,9 +5,7 @@ Node::Node(Kind kind, Location location)
 {
 }
 
-Node::~Node()
-{
-}
+Node::~Node() = default;
 
 bool Node::is(Kind k) const
 {

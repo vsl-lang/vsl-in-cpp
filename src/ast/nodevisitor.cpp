@@ -1,8 +1,6 @@
 #include "ast/nodevisitor.hpp"
 
-NodeVisitor::~NodeVisitor()
-{
-}
+NodeVisitor::~NodeVisitor() = default;
 
 void NodeVisitor::visitStatements(llvm::ArrayRef<Node*> statements)
 {

@@ -5,9 +5,7 @@ Lexer::Lexer(Diag& diag)
 {
 }
 
-Lexer::~Lexer()
-{
-}
+Lexer::~Lexer() = default;
 
 Diag& Lexer::getDiag() const
 {
