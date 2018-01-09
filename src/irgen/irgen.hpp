@@ -8,6 +8,9 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/IR/Module.h"
 
+/**
+ * Manages all the AST passes to emit LLVM IR.
+ */
 class IRGen
 {
 public:
