@@ -281,8 +281,15 @@ void IREmitter::visitUnary(UnaryNode& node)
     // choose the appropriate operator to generate code for
     switch (node.getOp())
     {
-    case UnaryKind::MINUS:
     case UnaryKind::NOT:
+        // should only be valid on booleans
+        if (type != vslCtx.getBoolType())
+        {
+            node.setType(vslCtx.getBoolType());
+            break;
+        }
+        // fallthrough
+    case UnaryKind::MINUS:
         genNeg(type, value);
         break;
     default:
@@ -490,6 +497,12 @@ void IREmitter::visitArg(ArgNode& node)
     node.getValue()->accept(*this);
 }
 
+void IREmitter::genNeg(const Type* type, llvm::Value* value)
+{
+    result = (type == vslCtx.getIntType() || type == vslCtx.getBoolType()) ?
+        builder.CreateNeg(value, "neg") : nullptr;
+}
+
 void IREmitter::genAssign(BinaryNode& node)
 {
     ExprNode& lhs = *node.getLhs();
@@ -587,12 +600,6 @@ void IREmitter::genShortCircuit(BinaryNode& node)
     // if it came from longCheck, then the result is determined by rhs
     phi->addIncoming(cond2, longCheck);
     result = phi;
-}
-
-void IREmitter::genNeg(const Type* type, llvm::Value* value)
-{
-    result = (type == vslCtx.getIntType() || type == vslCtx.getBoolType()) ?
-        builder.CreateNeg(value, "neg") : nullptr;
 }
 
 void IREmitter::genAdd(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
