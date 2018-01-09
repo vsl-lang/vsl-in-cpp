@@ -51,6 +51,25 @@ public:
 
 private:
     /**
+     * @name Unary operations
+     * @{
+     */
+
+    /**
+     * Generates a unary negation.
+     *
+     * @param type The VSL type of the operand.
+     * @param value The LLVM value to operate on.
+     */
+    void genNeg(const Type* type, llvm::Value* value);
+
+    /**
+     * @}
+     * @name Special Binary Operations
+     * @{
+     */
+
+    /**
      * Generates a variable assignment.
      *
      * @param node The expression to generate code for.
@@ -64,13 +83,13 @@ private:
      * @param node The expression to generate code for.
      */
     void genShortCircuit(BinaryNode& node);
+
     /**
-     * Generates a unary negation.
-     *
-     * @param type The VSL type of the operand.
-     * @param value The LLVM value to operate on.
+     * @}
+     * @name Binary Operations
+     * @{
      */
-    void genNeg(const Type* type, llvm::Value* value);
+
     /**
      * Generates a binary add instruction.
      *
@@ -111,6 +130,13 @@ private:
      * @param rhs Right operand.
      */
     void genMod(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+
+    /**
+     * @}
+     * @name Comparison Operations
+     * @{
+     */
+
     /**
      * Generates an equals comparison.
      *
@@ -159,6 +185,13 @@ private:
      * @param rhs Right operand.
      */
     void genLE(const Type* type, llvm::Value* lhs, llvm::Value* rhs);
+
+    /**
+     * @}
+     * @name Other Helpers
+     * @{
+     */
+
     /**
      * Creates an `alloca` instruction in the entry block of the current
      * function. This is useful for stuff like variables and function parameters
@@ -181,6 +214,9 @@ private:
      * @returns The branch instruction that was created, or nullptr otherwise.
      */
     llvm::BranchInst* branchTo(llvm::BasicBlock* target);
+
+    /** @} */
+
     /** The VSLContext object to be used. */
     VSLContext& vslCtx;
     /** Diagnostics manager. */
