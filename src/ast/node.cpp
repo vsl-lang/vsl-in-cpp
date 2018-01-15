@@ -27,90 +27,6 @@ bool Node::isExpr() const
     return false;
 }
 
-EmptyNode::EmptyNode(Location location)
-    : Node{ Node::EMPTY, location }
-{
-}
-
-void EmptyNode::accept(NodeVisitor& nodeVisitor)
-{
-    nodeVisitor.visitEmpty(*this);
-}
-
-BlockNode::BlockNode(Location location, std::vector<Node*> statements)
-    : Node{ Node::BLOCK, location }, statements{ std::move(statements) }
-{
-}
-
-void BlockNode::accept(NodeVisitor& nodeVisitor)
-{
-    nodeVisitor.visitBlock(*this);
-}
-
-llvm::ArrayRef<Node*> BlockNode::getStatements() const
-{
-    return statements;
-}
-
-IfNode::IfNode(Location location, ExprNode* condition, Node* thenCase,
-    Node* elseCase)
-    : Node{ Node::IF, location }, condition{ condition }, thenCase{ thenCase },
-    elseCase{ elseCase }
-{
-}
-
-void IfNode::accept(NodeVisitor& nodeVisitor)
-{
-    nodeVisitor.visitIf(*this);
-}
-
-ExprNode* IfNode::getCondition() const
-{
-    return condition;
-}
-
-Node* IfNode::getThen() const
-{
-    return thenCase;
-}
-
-Node* IfNode::getElse() const
-{
-    return elseCase;
-}
-
-VariableNode::VariableNode(Location location, llvm::StringRef name,
-    const Type* type, ExprNode* init, bool constness)
-    : Node{ Node::VARIABLE, location }, name{ name }, type{ type },
-    init{ init }, constness{ constness }
-{
-}
-
-void VariableNode::accept(NodeVisitor& nodeVisitor)
-{
-    nodeVisitor.visitVariable(*this);
-}
-
-llvm::StringRef VariableNode::getName() const
-{
-    return name;
-}
-
-const Type* VariableNode::getType() const
-{
-    return type;
-}
-
-ExprNode* VariableNode::getInit() const
-{
-    return init;
-}
-
-bool VariableNode::isConst() const
-{
-    return constness;
-}
-
 FuncInterfaceNode::FuncInterfaceNode(Node::Kind kind, Location location,
     llvm::StringRef name, std::vector<ParamNode*> params,
     const Type* returnType, const FunctionType* ft)
@@ -213,6 +129,91 @@ llvm::StringRef ParamNode::getName() const
 const Type* ParamNode::getType() const
 {
     return type;
+}
+
+
+BlockNode::BlockNode(Location location, std::vector<Node*> statements)
+    : Node{ Node::BLOCK, location }, statements{ std::move(statements) }
+{
+}
+
+void BlockNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitBlock(*this);
+}
+
+llvm::ArrayRef<Node*> BlockNode::getStatements() const
+{
+    return statements;
+}
+
+EmptyNode::EmptyNode(Location location)
+    : Node{ Node::EMPTY, location }
+{
+}
+
+void EmptyNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitEmpty(*this);
+}
+
+VariableNode::VariableNode(Location location, llvm::StringRef name,
+    const Type* type, ExprNode* init, bool constness)
+    : Node{ Node::VARIABLE, location }, name{ name }, type{ type },
+    init{ init }, constness{ constness }
+{
+}
+
+void VariableNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitVariable(*this);
+}
+
+llvm::StringRef VariableNode::getName() const
+{
+    return name;
+}
+
+const Type* VariableNode::getType() const
+{
+    return type;
+}
+
+ExprNode* VariableNode::getInit() const
+{
+    return init;
+}
+
+bool VariableNode::isConst() const
+{
+    return constness;
+}
+
+IfNode::IfNode(Location location, ExprNode* condition, Node* thenCase,
+    Node* elseCase)
+    : Node{ Node::IF, location }, condition{ condition }, thenCase{ thenCase },
+    elseCase{ elseCase }
+{
+}
+
+void IfNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitIf(*this);
+}
+
+ExprNode* IfNode::getCondition() const
+{
+    return condition;
+}
+
+Node* IfNode::getThen() const
+{
+    return thenCase;
+}
+
+Node* IfNode::getElse() const
+{
+    return elseCase;
 }
 
 ReturnNode::ReturnNode(Location location, ExprNode* value)

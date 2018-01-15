@@ -22,48 +22,6 @@ void NodePrinter::visitStatements(llvm::ArrayRef<Node*> statements)
     }
 }
 
-void NodePrinter::visitEmpty(EmptyNode& node)
-{
-    indent() << ';';
-}
-
-void NodePrinter::visitBlock(BlockNode& node)
-{
-    // in most cases this lines up the curly braces with the statement behind
-    //  it, which always increments indentLevel with the intention to indent the
-    //  statements within, not the actual curly braces
-    --indentLevel;
-    indent() << "{\n";
-    ++indentLevel;
-    visitStatements(node.getStatements());
-    --indentLevel;
-    indent() << '}';
-    ++indentLevel;
-}
-
-void NodePrinter::visitIf(IfNode& node)
-{
-    indent() << "if (";
-    node.getCondition()->accept(*this);
-    os << ")\n";
-    ++indentLevel;
-    printStatement(*node.getThen());
-    --indentLevel;
-    indent() << "else\n";
-    ++indentLevel;
-    // FIXME: extra newline here
-    printStatement(*node.getElse());
-    --indentLevel;
-}
-
-void NodePrinter::visitVariable(VariableNode& node)
-{
-    indent() << (node.isConst() ? "let " : "var ") << node.getName() << ": " <<
-        *node.getType() << " = ";
-    node.getInit()->accept(*this);
-    os << ';';
-}
-
 void NodePrinter::visitFunction(FunctionNode& node)
 {
     printFuncInterface(node);
@@ -82,6 +40,48 @@ void NodePrinter::visitExtFunc(ExtFuncNode& node)
 void NodePrinter::visitParam(ParamNode& node)
 {
     os << node.getName() << ": " << *node.getType();
+}
+
+void NodePrinter::visitBlock(BlockNode& node)
+{
+    // in most cases this lines up the curly braces with the statement behind
+    //  it, which always increments indentLevel with the intention to indent the
+    //  statements within, not the actual curly braces
+    --indentLevel;
+    indent() << "{\n";
+    ++indentLevel;
+    visitStatements(node.getStatements());
+    --indentLevel;
+    indent() << '}';
+    ++indentLevel;
+}
+
+void NodePrinter::visitEmpty(EmptyNode& node)
+{
+    indent() << ';';
+}
+
+void NodePrinter::visitVariable(VariableNode& node)
+{
+    indent() << (node.isConst() ? "let " : "var ") << node.getName() << ": " <<
+        *node.getType() << " = ";
+    node.getInit()->accept(*this);
+    os << ';';
+}
+
+void NodePrinter::visitIf(IfNode& node)
+{
+    indent() << "if (";
+    node.getCondition()->accept(*this);
+    os << ")\n";
+    ++indentLevel;
+    printStatement(*node.getThen());
+    --indentLevel;
+    indent() << "else\n";
+    ++indentLevel;
+    // FIXME: extra newline here
+    printStatement(*node.getElse());
+    --indentLevel;
 }
 
 void NodePrinter::visitReturn(ReturnNode& node)

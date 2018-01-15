@@ -33,13 +33,13 @@ public:
      * Destroys an IREmitter object.
      */
     virtual ~IREmitter() override = default;
-    virtual void visitEmpty(EmptyNode& node) override;
-    virtual void visitBlock(BlockNode& node) override;
-    virtual void visitIf(IfNode& node) override;
-    virtual void visitVariable(VariableNode& node) override;
     virtual void visitFunction(FunctionNode& node) override;
     virtual void visitExtFunc(ExtFuncNode& node) override;
     virtual void visitParam(ParamNode& node) override;
+    virtual void visitBlock(BlockNode& node) override;
+    virtual void visitEmpty(EmptyNode& node) override;
+    virtual void visitVariable(VariableNode& node) override;
+    virtual void visitIf(IfNode& node) override;
     virtual void visitReturn(ReturnNode& node) override;
     virtual void visitIdent(IdentNode& node) override;
     virtual void visitLiteral(LiteralNode& node) override;

@@ -291,39 +291,6 @@ Node* VSLParser::parseBlock()
     return makeNode<BlockNode>(location, std::move(statements));
 }
 
-// conditional -> if lparen expr rparen statement (else statement)?
-Node* VSLParser::parseIf()
-{
-    if (current().isNot(TokenKind::KW_IF))
-    {
-        return errorExpected("'if'");
-    }
-    Location location = consume().getLoc();
-    if (current().isNot(TokenKind::LPAREN))
-    {
-        return errorExpected("'('");
-    }
-    consume();
-    ExprNode* condition = parseExpr();
-    if (current().isNot(TokenKind::RPAREN))
-    {
-        return errorExpected("')'");
-    }
-    consume();
-    Node* thenCase = parseStatement();
-    Node* elseCase;
-    if (current().is(TokenKind::KW_ELSE))
-    {
-        consume();
-        elseCase = parseStatement();
-    }
-    else
-    {
-        elseCase = makeNode<EmptyNode>(current().getLoc());
-    }
-    return makeNode<IfNode>(location, condition, thenCase, elseCase);
-}
-
 // assignment -> (var | let) identifier colon type assign expr semicolon
 Node* VSLParser::parseVariable()
 {
@@ -365,6 +332,39 @@ Node* VSLParser::parseVariable()
     }
     consume();
     return makeNode<VariableNode>(location, name, type, value, constness);
+}
+
+// conditional -> if lparen expr rparen statement (else statement)?
+Node* VSLParser::parseIf()
+{
+    if (current().isNot(TokenKind::KW_IF))
+    {
+        return errorExpected("'if'");
+    }
+    Location location = consume().getLoc();
+    if (current().isNot(TokenKind::LPAREN))
+    {
+        return errorExpected("'('");
+    }
+    consume();
+    ExprNode* condition = parseExpr();
+    if (current().isNot(TokenKind::RPAREN))
+    {
+        return errorExpected("')'");
+    }
+    consume();
+    Node* thenCase = parseStatement();
+    Node* elseCase;
+    if (current().is(TokenKind::KW_ELSE))
+    {
+        consume();
+        elseCase = parseStatement();
+    }
+    else
+    {
+        elseCase = makeNode<EmptyNode>(current().getLoc());
+    }
+    return makeNode<IfNode>(location, condition, thenCase, elseCase);
 }
 
 // return -> 'return' expr ';'

@@ -15,117 +15,6 @@ IREmitter::IREmitter(VSLContext& vslCtx, Diag& diag, FuncScope& func,
 {
 }
 
-void IREmitter::visitEmpty(EmptyNode& node)
-{
-    result = nullptr;
-}
-
-void IREmitter::visitBlock(BlockNode& node)
-{
-    // create a new scope and visit all the statements inside
-    func.enter();
-    for (Node* statement : node.getStatements())
-    {
-        statement->accept(*this);
-    }
-    func.exit();
-    result = nullptr;
-}
-
-void IREmitter::visitIf(IfNode& node)
-{
-    // make sure that it's in a function
-    if (func.empty())
-    {
-        diag.print<Diag::TOPLEVEL_CTRL_FLOW>(node.getLoc());
-    }
-    // setup the condition
-    func.enter();
-    node.getCondition()->accept(*this);
-    const Type* type = node.getCondition()->getType();
-    llvm::Value* cond;
-    // make sure it's a bool
-    if (type == vslCtx.getBoolType())
-    {
-        cond = result;
-    }
-    else
-    {
-        diag.print<Diag::CANNOT_CONVERT>(*node.getCondition(),
-            *vslCtx.getBoolType());
-        cond = builder.getFalse();
-    }
-    // create the necessary basic blocks
-    llvm::Function* currentFunc = builder.GetInsertBlock()->getParent();
-    auto* thenBlock = llvm::BasicBlock::Create(llvmCtx, "if.then");
-    auto* elseBlock = llvm::BasicBlock::Create(llvmCtx, "if.else");
-    auto* endBlock = llvm::BasicBlock::Create(llvmCtx, "if.end");
-    // create the branch instruction
-    builder.CreateCondBr(cond, thenBlock, elseBlock);
-    // generate then block
-    func.enter();
-    thenBlock->insertInto(currentFunc);
-    builder.SetInsertPoint(thenBlock);
-    node.getThen()->accept(*this);
-    branchTo(endBlock);
-    func.exit();
-    // generate else block
-    func.enter();
-    elseBlock->insertInto(currentFunc);
-    builder.SetInsertPoint(elseBlock);
-    node.getElse()->accept(*this);
-    branchTo(endBlock);
-    func.exit();
-    // setup end block for other code after the IfNode if needed
-    // this handles when both then and else cases have a return statement
-    func.exit();
-    if (!endBlock->use_empty())
-    {
-        // insert the end block
-        endBlock->insertInto(currentFunc);
-        builder.SetInsertPoint(endBlock);
-    }
-    else
-    {
-        // endBlock shouldn't've been created in the first place
-        delete endBlock;
-        // all code after the IfNode is unreachable
-        builder.ClearInsertionPoint();
-    }
-    result = nullptr;
-}
-
-void IREmitter::visitVariable(VariableNode& node)
-{
-    ExprNode& init = *node.getInit();
-    init.accept(*this);
-    llvm::Value* initializer = result;
-    result = nullptr;
-    // do type checking
-    if (!node.getType()->isValid())
-    {
-        diag.print<Diag::INVALID_VAR_TYPE>(node);
-        return;
-    }
-    if (node.getType() != init.getType())
-    {
-        diag.print<Diag::MISMATCHING_VAR_TYPES>(node);
-        return;
-    }
-    // allocate the variable
-    llvm::AllocaInst* alloca = createEntryAlloca(
-        node.getType()->toLLVMType(llvmCtx), node.getName());
-    // add to current scope
-    if (func.set(node.getName(), node.getType(), alloca))
-    {
-        diag.print<Diag::VAR_ALREADY_DEFINED>(node);
-        alloca->eraseFromParent();
-        return;
-    }
-    // store the variable
-    builder.CreateStore(initializer, alloca);
-}
-
 void IREmitter::visitFunction(FunctionNode& node)
 {
     if (node.isAlreadyDefined())
@@ -189,6 +78,117 @@ void IREmitter::visitExtFunc(ExtFuncNode& node)
 
 void IREmitter::visitParam(ParamNode& node)
 {
+}
+
+void IREmitter::visitBlock(BlockNode& node)
+{
+    // create a new scope and visit all the statements inside
+    func.enter();
+    for (Node* statement : node.getStatements())
+    {
+        statement->accept(*this);
+    }
+    func.exit();
+    result = nullptr;
+}
+
+void IREmitter::visitEmpty(EmptyNode& node)
+{
+    result = nullptr;
+}
+
+void IREmitter::visitVariable(VariableNode& node)
+{
+    ExprNode& init = *node.getInit();
+    init.accept(*this);
+    llvm::Value* initializer = result;
+    result = nullptr;
+    // do type checking
+    if (!node.getType()->isValid())
+    {
+        diag.print<Diag::INVALID_VAR_TYPE>(node);
+        return;
+    }
+    if (node.getType() != init.getType())
+    {
+        diag.print<Diag::MISMATCHING_VAR_TYPES>(node);
+        return;
+    }
+    // allocate the variable
+    llvm::AllocaInst* alloca = createEntryAlloca(
+        node.getType()->toLLVMType(llvmCtx), node.getName());
+    // add to current scope
+    if (func.set(node.getName(), node.getType(), alloca))
+    {
+        diag.print<Diag::VAR_ALREADY_DEFINED>(node);
+        alloca->eraseFromParent();
+        return;
+    }
+    // store the variable
+    builder.CreateStore(initializer, alloca);
+}
+
+void IREmitter::visitIf(IfNode& node)
+{
+    // make sure that it's in a function
+    if (func.empty())
+    {
+        diag.print<Diag::TOPLEVEL_CTRL_FLOW>(node.getLoc());
+    }
+    // setup the condition
+    func.enter();
+    node.getCondition()->accept(*this);
+    const Type* type = node.getCondition()->getType();
+    llvm::Value* cond;
+    // make sure it's a bool
+    if (type == vslCtx.getBoolType())
+    {
+        cond = result;
+    }
+    else
+    {
+        diag.print<Diag::CANNOT_CONVERT>(*node.getCondition(),
+            *vslCtx.getBoolType());
+        cond = builder.getFalse();
+    }
+    // create the necessary basic blocks
+    llvm::Function* currentFunc = builder.GetInsertBlock()->getParent();
+    auto* thenBlock = llvm::BasicBlock::Create(llvmCtx, "if.then");
+    auto* elseBlock = llvm::BasicBlock::Create(llvmCtx, "if.else");
+    auto* endBlock = llvm::BasicBlock::Create(llvmCtx, "if.end");
+    // create the branch instruction
+    builder.CreateCondBr(cond, thenBlock, elseBlock);
+    // generate then block
+    func.enter();
+    thenBlock->insertInto(currentFunc);
+    builder.SetInsertPoint(thenBlock);
+    node.getThen()->accept(*this);
+    branchTo(endBlock);
+    func.exit();
+    // generate else block
+    func.enter();
+    elseBlock->insertInto(currentFunc);
+    builder.SetInsertPoint(elseBlock);
+    node.getElse()->accept(*this);
+    branchTo(endBlock);
+    func.exit();
+    // setup end block for other code after the IfNode if needed
+    // this handles when both then and else cases have a return statement
+    func.exit();
+    if (!endBlock->use_empty())
+    {
+        // insert the end block
+        endBlock->insertInto(currentFunc);
+        builder.SetInsertPoint(endBlock);
+    }
+    else
+    {
+        // endBlock shouldn't've been created in the first place
+        delete endBlock;
+        // all code after the IfNode is unreachable
+        builder.ClearInsertionPoint();
+    }
+    result = nullptr;
 }
 
 void IREmitter::visitReturn(ReturnNode& node)

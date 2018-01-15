@@ -21,13 +21,13 @@ public:
      * @param statements The statements to visit.
      */
     virtual void visitStatements(llvm::ArrayRef<Node*> statements);
-    virtual void visitEmpty(EmptyNode& node);
-    virtual void visitBlock(BlockNode& node);
-    virtual void visitIf(IfNode& node);
-    virtual void visitVariable(VariableNode& node);
     virtual void visitFunction(FunctionNode& node);
     virtual void visitExtFunc(ExtFuncNode& node);
     virtual void visitParam(ParamNode& node);
+    virtual void visitBlock(BlockNode& node);
+    virtual void visitEmpty(EmptyNode& node);
+    virtual void visitVariable(VariableNode& node);
+    virtual void visitIf(IfNode& node);
     virtual void visitReturn(ReturnNode& node);
     virtual void visitIdent(IdentNode& node);
     virtual void visitLiteral(LiteralNode& node);

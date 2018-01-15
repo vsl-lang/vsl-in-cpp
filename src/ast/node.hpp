@@ -2,14 +2,14 @@
 #define NODE_HPP
 
 class Node;
-class EmptyNode;
-class BlockNode;
-class IfNode;
-class VariableNode;
 class FuncInterfaceNode;
 class FunctionNode;
 class ExtFuncNode;
 class ParamNode;
+class BlockNode;
+class EmptyNode;
+class VariableNode;
+class IfNode;
 class ReturnNode;
 class ExprNode;
 class IdentNode;
@@ -46,18 +46,18 @@ public:
      */
     enum Kind
     {
-        /** Empty statement. */
-        EMPTY,
-        /** Code block. */
-        BLOCK,
-        /** If/else statement. */
-        IF,
-        /** Variable definition. */
-        VARIABLE,
         /** Function. */
         FUNCTION,
         /** External function. */
         EXTFUNC,
+        /** Code block. */
+        BLOCK,
+        /** Empty statement. */
+        EMPTY,
+        /** Variable definition. */
+        VARIABLE,
+        /** If/else statement. */
+        IF,
         /** Return statement. */
         RETURN,
         /** Identifier. */
@@ -118,110 +118,6 @@ private:
     Kind kind;
     /** Where this Node was found in the source. */
     Location location;
-};
-
-/**
- * Represents an empty statement, e.g.\ `;`.
- */
-class EmptyNode : public Node
-{
-public:
-    /**
-     * Creates an EmptyNode.
-     *
-     * @param location Where this EmptyNode was found in the source.
-     */
-    EmptyNode(Location location);
-    virtual ~EmptyNode() override = default;
-    virtual void accept(NodeVisitor& nodeVisitor) override;
-};
-
-/**
- * Represents a block of code, e.g.\ `{ ... }`.
- */
-class BlockNode : public Node
-{
-public:
-    /**
-     * Creates a BlockNode.
-     *
-     * @param location Where this BlockNode was found in the source.
-     * @param statements The statements inside the block.
-     */
-    BlockNode(Location location, std::vector<Node*> statements);
-    virtual ~BlockNode() override = default;
-    virtual void accept(NodeVisitor& nodeVisitor) override;
-    llvm::ArrayRef<Node*> getStatements() const;
-
-private:
-    /** The statements inside the block. */
-    std::vector<Node*> statements;
-};
-
-/**
- * Represents an if/else statement, e.g.\ `if (x) { ... } else { ... }`.
- */
-class IfNode : public Node
-{
-public:
-    /**
-     * Creates a IfNode.
-     *
-     * @param location Where this IfNode was found in the source.
-     * @param condition The condition to test.
-     * @param thenCase The code to run if the condition is true.
-     * @param elseCase The code to run if the condition is false.
-     */
-    IfNode(Location location, ExprNode* condition, Node* thenCase,
-        Node* elseCase);
-    virtual ~IfNode() override = default;
-    virtual void accept(NodeVisitor& nodeVisitor) override;
-    ExprNode* getCondition() const;
-    Node* getThen() const;
-    Node* getElse() const;
-
-private:
-    /** The condition to test. */
-    ExprNode* condition;
-    /** The code to run if the condition is true. */
-    Node* thenCase;
-    /** The code to run if the condition is false. */
-    Node* elseCase;
-};
-
-/**
- * Represents a variable declaration, e.g.\ `var x: Int = 5;`.
- */
-class VariableNode : public Node
-{
-public:
-    /**
-     * Creates a VariableNode.
-     *
-     * @param location Where this VariableNode was found in the source.
-     * @param name The name of the variable.
-     * @param type The type of the variable.
-     * @param init The variable's initial value.
-     * @param constness If this variable is const or not (TODO).
-     */
-    VariableNode(Location location, llvm::StringRef name, const Type* type,
-        ExprNode* init, bool constness);
-    virtual ~VariableNode() override = default;
-    virtual void accept(NodeVisitor& nodeVisitor) override;
-    llvm::StringRef getName() const;
-    const Type* getType() const;
-    ExprNode* getInit() const;
-    bool isConst() const;
-
-private:
-    /** The name of the variable. */
-    llvm::StringRef name;
-    /** The type of the variable. */
-    const Type* type;
-    /** The variable's initial value. */
-    ExprNode* init;
-    /** If this variable is const or not. */
-    bool constness;
 };
 
 /**
@@ -358,6 +254,111 @@ private:
     llvm::StringRef name;
     /** The type of the parameter. */
     const Type* type;
+};
+
+
+/**
+ * Represents a block of code, e.g.\ `{ ... }`.
+ */
+class BlockNode : public Node
+{
+public:
+    /**
+     * Creates a BlockNode.
+     *
+     * @param location Where this BlockNode was found in the source.
+     * @param statements The statements inside the block.
+     */
+    BlockNode(Location location, std::vector<Node*> statements);
+    virtual ~BlockNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+    llvm::ArrayRef<Node*> getStatements() const;
+
+private:
+    /** The statements inside the block. */
+    std::vector<Node*> statements;
+};
+
+/**
+ * Represents an empty statement, e.g.\ `;`.
+ */
+class EmptyNode : public Node
+{
+public:
+    /**
+     * Creates an EmptyNode.
+     *
+     * @param location Where this EmptyNode was found in the source.
+     */
+    EmptyNode(Location location);
+    virtual ~EmptyNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+};
+
+/**
+ * Represents a variable declaration, e.g.\ `var x: Int = 5;`.
+ */
+class VariableNode : public Node
+{
+public:
+    /**
+     * Creates a VariableNode.
+     *
+     * @param location Where this VariableNode was found in the source.
+     * @param name The name of the variable.
+     * @param type The type of the variable.
+     * @param init The variable's initial value.
+     * @param constness If this variable is const or not (TODO).
+     */
+    VariableNode(Location location, llvm::StringRef name, const Type* type,
+        ExprNode* init, bool constness);
+    virtual ~VariableNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+    llvm::StringRef getName() const;
+    const Type* getType() const;
+    ExprNode* getInit() const;
+    bool isConst() const;
+
+private:
+    /** The name of the variable. */
+    llvm::StringRef name;
+    /** The type of the variable. */
+    const Type* type;
+    /** The variable's initial value. */
+    ExprNode* init;
+    /** If this variable is const or not. */
+    bool constness;
+};
+
+/**
+ * Represents an if/else statement, e.g.\ `if (x) { ... } else { ... }`.
+ */
+class IfNode : public Node
+{
+public:
+    /**
+     * Creates a IfNode.
+     *
+     * @param location Where this IfNode was found in the source.
+     * @param condition The condition to test.
+     * @param thenCase The code to run if the condition is true.
+     * @param elseCase The code to run if the condition is false.
+     */
+    IfNode(Location location, ExprNode* condition, Node* thenCase,
+        Node* elseCase);
+    virtual ~IfNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+    ExprNode* getCondition() const;
+    Node* getThen() const;
+    Node* getElse() const;
+
+private:
+    /** The condition to test. */
+    ExprNode* condition;
+    /** The code to run if the condition is true. */
+    Node* thenCase;
+    /** The code to run if the condition is false. */
+    Node* elseCase;
 };
 
 /**

@@ -144,17 +144,17 @@ private:
      */
     Node* parseBlock();
     /**
-     * Parses an if/else statement, e.g.\ `if (x) { y; } else { z; }`.
-     *
-     * @returns An if/else statement.
-     */
-    Node* parseIf();
-    /**
      * Parses a variable declaration, e.g.\ `var x: Int = 1;`.
      *
      * @returns A variable declaration.
      */
     Node* parseVariable();
+    /**
+     * Parses an if/else statement, e.g.\ `if (x) { y; } else { z; }`.
+     *
+     * @returns An if/else statement.
+     */
+    Node* parseIf();
     /**
      * Parses a return statement, e.g.\ `return 1;` or just `return;`.
      *
