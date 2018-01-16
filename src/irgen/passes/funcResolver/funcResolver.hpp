@@ -29,6 +29,15 @@ public:
     virtual void visitExtFunc(ExtFuncNode& node) override;
 
 private:
+    /**
+     * Creates an LLVM function.
+     *
+     * @param access VSL access modifier.
+     * @param ft VSL function type.
+     * @param name Function name.
+     */
+    llvm::Function* createFunc(AccessMod access, const FunctionType* ft,
+        const llvm::Twine& name = "");
     /** Diagnostics manager. */
     Diag& diag;
     /** Used for entering in VSL functions. */

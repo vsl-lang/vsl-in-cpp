@@ -25,25 +25,28 @@ static bool validate(const char* src)
 
 TEST(IRGenTest, Functions)
 {
-    valid("func f() -> Void {}");
-    valid("func f(x: Int) -> Void { return; }");
-    valid("func f(x: Int) -> Int { return x + 1; }");
-    valid("func f() -> Void { g(); } func g() -> Void external(h);");
-    invalid("func f() -> Void { h(); } func g() -> Void external(h);");
+    valid("public func f() -> Void {}");
+    valid("public func f(x: Int) -> Void { return; }");
+    valid("public func f(x: Int) -> Int { return x + 1; }");
+    valid("public func f() -> Void { g(); } "
+        "public func g() -> Void external(h);");
+    invalid("public func f() -> Void { h(); } "
+        "public func g() -> Void external(h);");
     // can't have void parameters
-    invalid("func f(x: Void) -> Void { return x; }");
+    invalid("public func f(x: Void) -> Void { return x; }");
     // can't return a void expression
-    invalid("func f() -> Void { return f(); }");
+    invalid("public func f() -> Void { return f(); }");
     // able to call a function ahead of its definition
-    valid("func f() -> Void { g(); } func g() -> Void {}");
+    valid("public func f() -> Void { g(); } private func g() -> Void {}");
 }
 
 TEST(IRGenTest, Conditionals)
 {
     // else case is optional
-    valid("func f(x: Int) -> Int { if (x % 2 == 0) return 1337; return x; }");
+    valid("public func f(x: Int) -> Int { if (x % 2 == 0) return 1337; "
+        "return x; }");
     // if/else can be nested
-    valid("func f(x: Int) -> Int "
+    valid("public func f(x: Int) -> Int "
         "{ "
             "if (x > 0) "
                 "if (x > 1337) "
@@ -55,23 +58,24 @@ TEST(IRGenTest, Conditionals)
             "return x; "
         "}");
     // if/else can be chained
-    valid("func f(x: Int) -> Int { if (x == 0) return 0; "
+    valid("public func f(x: Int) -> Int { if (x == 0) return 0; "
         "else if (x == 1) return 1; else return x; }");
-    valid("func fibonacci(x: Int) -> Int "
+    valid("public func fibonacci(x: Int) -> Int "
         "{ "
             "if (x <= 0) return 0; "
             "else if (x == 1) return 1; "
             "else return fibonacci(x: x - 1) + fibonacci(x: x - 2); "
         "}");
     // make sure ternary works
-    valid("func f(x: Int) -> Int { return x == 4 ? x : x + 1; }");
+    valid("public func f(x: Int) -> Int { return x == 4 ? x : x + 1; }");
     // ternaries can also be chained on both sides of the colon without parens
-    valid("func f(x: Int) -> Int { return x == 4 ? "
+    valid("public func f(x: Int) -> Int { return x == 4 ? "
         "x == 3 ? x : x + 1 :"
             "x == 2 ? x + 2 : x + 3; }");
 }
 
 TEST(IRGenTest, Variables)
 {
-    valid("func f(x: Int) -> Int { let y: Int = x * 2; y = y / x; return y; }");
+    valid("public func f(x: Int) -> Int { let y: Int = x * 2; y = y / x; "
+        "return y; }");
 }

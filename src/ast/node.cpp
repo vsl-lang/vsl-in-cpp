@@ -27,11 +27,21 @@ bool Node::isExpr() const
     return false;
 }
 
+DeclNode::DeclNode(Node::Kind kind, Location location, AccessMod access)
+    : Node{ kind, location }, access{ access }
+{
+}
+
+AccessMod DeclNode::getAccessMod() const
+{
+    return access;
+}
+
 FuncInterfaceNode::FuncInterfaceNode(Node::Kind kind, Location location,
-    llvm::StringRef name, std::vector<ParamNode*> params,
+    AccessMod access, llvm::StringRef name, std::vector<ParamNode*> params,
     const Type* returnType, const FunctionType* ft)
-    : Node{ kind, location }, name{ name }, params{ std::move(params) },
-    returnType{ returnType }, ft{ ft }
+    : DeclNode{ kind, location, access }, name{ name },
+    params{ std::move(params) }, returnType{ returnType }, ft{ ft }
 {
 }
 
@@ -65,11 +75,12 @@ const FunctionType* FuncInterfaceNode::getFuncType() const
     return ft;
 }
 
-FunctionNode::FunctionNode(Location location, llvm::StringRef name,
-    std::vector<ParamNode*> params, const Type* returnType,
-    const FunctionType* ft, Node* body)
-    : FuncInterfaceNode{ Node::FUNCTION, location, name, std::move(params),
-        returnType, ft }, body{ body }, alreadyDefined{ false }
+FunctionNode::FunctionNode(Location location, AccessMod access,
+    llvm::StringRef name, std::vector<ParamNode*> params,
+    const Type* returnType, const FunctionType* ft, Node* body)
+    : FuncInterfaceNode{ Node::FUNCTION, location, access, name,
+        std::move(params), returnType, ft }, body{ body },
+    alreadyDefined{ false }
 {
 }
 
@@ -93,11 +104,11 @@ Node* FunctionNode::getBody() const
     return body;
 }
 
-ExtFuncNode::ExtFuncNode(Location location, llvm::StringRef name,
-    std::vector<ParamNode*> params, const Type* returnType,
-    const FunctionType* ft, llvm::StringRef alias)
-    : FuncInterfaceNode{ Node::EXTFUNC, location, name, std::move(params),
-        returnType, ft }, alias{ alias }
+ExtFuncNode::ExtFuncNode(Location location, AccessMod access,
+    llvm::StringRef name, std::vector<ParamNode*> params,
+    const Type* returnType, const FunctionType* ft, llvm::StringRef alias)
+    : FuncInterfaceNode{ Node::EXTFUNC, location, access, name,
+        std::move(params), returnType, ft }, alias{ alias }
 {
 }
 

@@ -13,6 +13,8 @@ TOKEN(END, "eof")
 TOKEN(IDENTIFIER, "identifier")
 TOKEN(NUMBER, "number")
 
+KEYWORD(PUBLIC, "public")
+KEYWORD(PRIVATE, "private")
 KEYWORD(FUNC, "func")
 KEYWORD(EXTERNAL, "external")
 KEYWORD(VAR, "var")

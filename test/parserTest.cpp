@@ -27,68 +27,72 @@ TEST(ParserTest, OnlyGlobalsAllowed)
 
 TEST(ParserTest, Functions)
 {
-    valid("func f(x: Int) -> Void {;}");
-    valid("func f(x: Bool, y: Int) -> Bool external(g);");
+    valid("public func f(x: Int) -> Void {;}");
+    valid("public func f(x: Bool, y: Int) -> Bool external(g);");
+    // invalid usave of access specifiers
+    invalid("public public func f() -> Void {}");
+    invalid("func f() -> Void {}");
     // void parameters are rejected
-    invalid("func f(x: Void, y: Int) -> Int { return 0; }");
+    invalid("public func f(x: Void, y: Int) -> Int { return 0; }");
     // can't define a function within a function
-    invalid("func f() -> Void { func g() -> Void {} }");
+    invalid("public func f() -> Void { private func g() -> Void {} }");
 }
 
 TEST(ParserTest, EmptyStmts)
 {
-    valid("func f() -> Void { ; }");
-    valid("func f() -> Void { ;;;;; }");
+    valid("public func f() -> Void { ; }");
+    valid("public func f() -> Void { ;;;;; }");
 }
 
 TEST(ParserTest, Blocks)
 {
-    valid("func f() -> Void { { hi; } }");
+    valid("public func f() -> Void { { hi; } }");
     // unbalanced braces
-    invalid("func f() -> Void { { hi; }");
-    invalid("func f() -> Void { hi; } }");
+    invalid("public func f() -> Void { { hi; }");
+    invalid("public func f() -> Void { hi; } }");
 }
 
 TEST(ParserTest, Ifs)
 {
-    valid("func f() -> Void { if (x == 1) {;} }");
-    invalid("func f() -> Void { if x == 1 {;} }");
+    valid("public func f() -> Void { if (x == 1) {;} }");
+    invalid("public func f() -> Void { if x == 1 {;} }");
     // parser only does syntax checking so this should still be fine
-    valid("func f() -> Void { if (x == 1) { return 3; } else return x; }");
+    valid("public func f() -> Void { if (x == 1) { return 3; } else return x; "
+        "}");
 }
 
 TEST(ParserTest, Variables)
 {
-    valid("func f() -> Void { let x: Int = 1337; }");
-    valid("func f() -> Void { var y: Void = x; }");
+    valid("public func f() -> Void { let x: Int = 1337; }");
+    valid("public func f() -> Void { var y: Void = x; }");
 }
 
 TEST(ParserTest, Returns)
 {
-    valid("func f() -> Void { return; }");
-    valid("func f() -> Void { return x; }");
+    valid("public func f() -> Void { return; }");
+    valid("public func f() -> Void { return x; }");
 }
 
 TEST(ParserTest, Expressions)
 {
-    valid("func f() -> Void { -x-1; }");
-    invalid("func f() -> Void { x*; }");
+    valid("public func f() -> Void { -x-1; }");
+    invalid("public func f() -> Void { x*; }");
     // needs a semicolon at the end
-    invalid("func f() -> Void { x }");
+    invalid("public func f() -> Void { x }");
     // some weird expression
-    valid("func f() -> Void { x(y: z % 2) - -z * 2 + 9 / 2; }");
+    valid("public func f() -> Void { x(y: z % 2) - -z * 2 + 9 / 2; }");
 }
 
 TEST(ParserTest, Numbers)
 {
-    valid("func f() -> Int { return 1337; }");
+    valid("public func f() -> Int { return 1337; }");
     // emits a warning so this should be fine
-    valid("func f() -> Int { return 999999999999999999999999999; }");
+    valid("public func f() -> Int { return 999999999999999999999999999; }");
 }
 
 TEST(ParserTest, Parentheses)
 {
-    valid("func f() -> Void { (x + y) / 2; }");
-    invalid("func f() -> Void { (x + 1; }");
-    invalid("func f() -> Void { x + 1); }");
+    valid("public func f() -> Void { (x + y) / 2; }");
+    invalid("public func f() -> Void { (x + 1; }");
+    invalid("public func f() -> Void { x + 1); }");
 }

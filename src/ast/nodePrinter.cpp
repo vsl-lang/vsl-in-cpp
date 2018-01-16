@@ -152,7 +152,9 @@ void NodePrinter::visitArg(ArgNode& node)
 
 void NodePrinter::printFuncInterface(FuncInterfaceNode& node)
 {
-    indent() << "func " << node.getName() << '(';
+    indent() <<
+        (node.getAccessMod() == AccessMod::PUBLIC ? "public" : "private") <<
+        " func " << node.getName() << '(';
     if (node.getNumParams() > 0)
     {
         node.getParam(0)->accept(*this);

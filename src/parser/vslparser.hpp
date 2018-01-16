@@ -104,11 +104,14 @@ private:
      */
     std::vector<Node*> parseGlobals();
     /**
-     * Parses a function, e.g.\ `func f(x: Int) -> Int { ... }`.
+     * Parses a function, e.g.\ `public func f(x: Int) -> Int { ... }`. External
+     * functions are also included here.
+     *
+     * @param access Access modifier.
      *
      * @returns A function.
      */
-    Node* parseFunction();
+    Node* parseFunction(AccessMod access);
     /**
      * Parses a function parameter, e.g.\ `x: Int`.
      *

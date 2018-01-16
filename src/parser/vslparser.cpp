@@ -76,12 +76,18 @@ std::vector<Node*> VSLParser::parseGlobals()
         // only functions can be in the global scope
         switch (current().getKind())
         {
-        case TokenKind::KW_FUNC:
-            globals.emplace_back(parseFunction());
+        case TokenKind::KW_PUBLIC:
+            consume();
+            globals.emplace_back(parseFunction(AccessMod::PUBLIC));
+            break;
+        case TokenKind::KW_PRIVATE:
+            consume();
+            globals.emplace_back(parseFunction(AccessMod::PRIVATE));
+            break;
         case TokenKind::END:
             break;
         default:
-            errorExpected("'func'");
+            errorExpected("function");
             consume();
         }
         if (current().is(TokenKind::END))
@@ -92,10 +98,11 @@ std::vector<Node*> VSLParser::parseGlobals()
     return globals;
 }
 
-// function -> funcInterface block | extfunc
+// function -> accessmod funcInterface block | extfunc
 // extfunc -> funcInterface external lparen ident rparen semicolon
 // funcInterface -> func ident lparen param (comma param)* rparen arrow type
-Node* VSLParser::parseFunction()
+// accessmod provided by caller
+Node* VSLParser::parseFunction(AccessMod access)
 {
     // parse the function name
     if (current().isNot(TokenKind::KW_FUNC))
@@ -182,13 +189,13 @@ Node* VSLParser::parseFunction()
             return errorExpected("';'");
         }
         consume();
-        return makeNode<ExtFuncNode>(location, name, std::move(params),
+        return makeNode<ExtFuncNode>(location, access, name, std::move(params),
             returnType, ft, alias);
     }
     // parse a normal function
     Node* body = parseBlock();
-    return makeNode<FunctionNode>(location, name, std::move(params), returnType,
-        ft, body);
+    return makeNode<FunctionNode>(location, access, name, std::move(params),
+        returnType, ft, body);
 }
 
 // param -> identifier ':' type
