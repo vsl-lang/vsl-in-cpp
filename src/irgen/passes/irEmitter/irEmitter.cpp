@@ -10,8 +10,8 @@
 IREmitter::IREmitter(VSLContext& vslCtx, Diag& diag, FuncScope& func,
     GlobalScope& global, llvm::Module& module)
     : vslCtx{ vslCtx }, diag{ diag }, func{ func }, global{ global },
-    llvmCtx{ module.getContext() }, builder{ llvmCtx },
-    allocaInsertPoint{ nullptr }, result{ nullptr }
+    module{ module }, llvmCtx{ module.getContext() }, builder{ llvmCtx },
+    allocaInsertPoint{ nullptr }, vslInit{ nullptr }, result{ Value::getNull() }
 {
 }
 
@@ -22,11 +22,14 @@ void IREmitter::visitFunction(FunctionNode& node)
         // probably flagged by FuncResolver
         return;
     }
+    // make sure everything is valid
     assert(func.empty() && "parser didn't reject func within func");
-    // create the llvm function and the entry block
-    llvm::Function* f = global.getFunc(node.getName()).getLLVMFunc();
-    assert(f && "FuncResolver didn't run or didn't register function");
-    auto* entry = llvm::BasicBlock::Create(llvmCtx, "entry", f);
+    Value value = global.get(node.getName());
+    assert(value.isFunc() &&
+        "FuncResolver didn't run or didn't register function");
+    llvm::Function* llvmFunc = value.getLLVMFunc();
+    // create the entry block
+    auto* entry = llvm::BasicBlock::Create(llvmCtx, "entry", llvmFunc);
     // add to current scope
     func.enter();
     func.setReturnType(node.getReturnType());
@@ -34,12 +37,15 @@ void IREmitter::visitFunction(FunctionNode& node)
     builder.SetInsertPoint(entry);
     for (size_t i = 0; i < node.getNumParams(); ++i)
     {
+        // get the vsl and llvm parameter representation
         const ParamNode& param = *node.getParam(i);
-        llvm::Argument* llvmParam = &*std::next(f->arg_begin(), i);
+        llvm::Argument* llvmParam = &*std::next(llvmFunc->arg_begin(), i);
+        // load the parameter into a runtime variable
         llvm::Value* alloca = createEntryAlloca(llvmParam->getType(),
             param.getName());
         builder.CreateStore(llvmParam, alloca);
-        func.set(param.getName(), param.getType(), alloca);
+        // add that variable to function scope
+        func.set(param.getName(), Value::getVar(param.getType(), alloca));
     }
     // generate the body
     node.getBody()->accept(*this);
@@ -68,7 +74,7 @@ void IREmitter::visitFunction(FunctionNode& node)
         allocaInsertPoint->eraseFromParent();
         allocaInsertPoint = nullptr;
     }
-    result = nullptr;
+    result = Value::getNull();
 }
 
 void IREmitter::visitExtFunc(ExtFuncNode& node)
@@ -89,43 +95,96 @@ void IREmitter::visitBlock(BlockNode& node)
         statement->accept(*this);
     }
     func.exit();
-    result = nullptr;
+    result = Value::getNull();
 }
 
 void IREmitter::visitEmpty(EmptyNode& node)
 {
-    result = nullptr;
+    result = Value::getNull();
 }
 
 void IREmitter::visitVariable(VariableNode& node)
 {
-    ExprNode& init = *node.getInit();
-    init.accept(*this);
-    llvm::Value* initializer = result;
-    result = nullptr;
-    // do type checking
+    // make sure the variable type is valid
     if (!node.getType()->isValid())
     {
         diag.print<Diag::INVALID_VAR_TYPE>(node);
         return;
     }
-    if (node.getType() != init.getType())
+    llvm::Type* llvmType = node.getType()->toLLVMType(llvmCtx);
+    llvm::Value* llvmValue;
+    if (isGlobal())
     {
-        diag.print<Diag::MISMATCHING_VAR_TYPES>(node);
+        // global variable
+        // add a global constructor for this variable
+        auto* funcType = llvm::FunctionType::get(builder.getVoidTy(),
+            /*isVarArg=*/false);
+        auto* ctorFunc = llvm::Function::Create(funcType,
+            llvm::GlobalValue::InternalLinkage,
+            llvm::Twine{ "vsl.init." } + node.getName());
+        addGlobalCtor(ctorFunc);
+        // ctorFunc is inserted after the global constructor here so that the
+        //  global constructor doesn't become sandwiched in between two variable
+        //  constructors which just looks bad
+        module.getFunctionList().push_back(ctorFunc);
+        // setup IRBuilder to emit code to initialize the global variable
+        auto* insertBlock = llvm::BasicBlock::Create(llvmCtx, "entry",
+            ctorFunc);
+        builder.SetInsertPoint(insertBlock);
+        builder.CreateRetVoid();
+        // insert instructions before the return
+        builder.SetInsertPoint(insertBlock->getTerminator());
+        // add code to declare and initialize the global variable
+        // determine the linkage type
+        llvm::GlobalValue::LinkageTypes linkage;
+        auto access = node.getAccessMod();
+        if (access == AccessMod::PUBLIC)
+        {
+            linkage = llvm::GlobalValue::ExternalLinkage;
+        }
+        else
+        {
+            linkage = llvm::GlobalValue::InternalLinkage;
+        }
+        // create a placeholder initializer value
+        llvm::Constant* initializer = llvm::Constant::getNullValue(llvmType);
+        // create the variable
+        llvmValue = new llvm::GlobalVariable{ module, llvmType,
+            /*isConstant=*/false, linkage, initializer, node.getName() };
+        // add to global scope
+        global.setVar(node.getName(), node.getType(), llvmValue);
+    }
+    else
+    {
+        // local variable
+        llvm::AllocaInst* inst = createEntryAlloca(llvmType, node.getName());
+        llvmValue = inst;
+        // add to current scope
+        if (func.set(node.getName(), Value::getVar(node.getType(), inst)))
+        {
+            diag.print<Diag::VAR_ALREADY_DEFINED>(node);
+            inst->eraseFromParent();
+            return;
+        }
+    }
+    // generate initialization code
+    node.getInit()->accept(*this);
+    Value init = result;
+    result = Value::getNull();
+    // before initializing the variable, make sure that the initializer
+    //  expression is actually valid
+    if (!init)
+    {
         return;
     }
-    // allocate the variable
-    llvm::AllocaInst* alloca = createEntryAlloca(
-        node.getType()->toLLVMType(llvmCtx), node.getName());
-    // add to current scope
-    if (func.set(node.getName(), node.getType(), alloca))
+    // match the var and init types
+    if (node.getType() != init.getVSLType())
     {
-        diag.print<Diag::VAR_ALREADY_DEFINED>(node);
-        alloca->eraseFromParent();
+        diag.print<Diag::MISMATCHING_VAR_TYPES>(node, *init.getVSLType());
         return;
     }
     // store the variable
-    builder.CreateStore(initializer, alloca);
+    builder.CreateStore(init.getLLVMValue(), llvmValue);
 }
 
 void IREmitter::visitIf(IfNode& node)
@@ -138,17 +197,20 @@ void IREmitter::visitIf(IfNode& node)
     // setup the condition
     func.enter();
     node.getCondition()->accept(*this);
-    const Type* type = node.getCondition()->getType();
+    if (!result)
+    {
+        return;
+    }
     llvm::Value* cond;
     // make sure it's a bool
-    if (type == vslCtx.getBoolType())
+    if (result.getVSLType() == vslCtx.getBoolType())
     {
-        cond = result;
+        cond = result.getLLVMValue();
     }
     else
     {
         diag.print<Diag::CANNOT_CONVERT>(*node.getCondition(),
-            *vslCtx.getBoolType());
+            *result.getVSLType(), *vslCtx.getBoolType());
         cond = builder.getFalse();
     }
     // create the necessary basic blocks
@@ -188,7 +250,7 @@ void IREmitter::visitIf(IfNode& node)
         // all code after the IfNode is unreachable
         builder.ClearInsertionPoint();
     }
-    result = nullptr;
+    result = Value::getNull();
 }
 
 void IREmitter::visitReturn(ReturnNode& node)
@@ -201,24 +263,23 @@ void IREmitter::visitReturn(ReturnNode& node)
     }
     // validate the return value
     node.getValue()->accept(*this);
-    const Type* type = node.getValue()->getType();
-    llvm::Value* retVal = result;
-    result = nullptr;
-    if (retVal)
+    Value value = result;
+    result = Value::getNull();
+    if (value)
     {
-        if (type == vslCtx.getVoidType())
-        {
-            diag.print<Diag::CANT_RETURN_VOID_VALUE>(node);
-        }
-        else if (type != func.getReturnType())
+        if (value.getVSLType() != func.getReturnType())
         {
             diag.print<Diag::RETVAL_MISMATCHES_RETTYPE>(*node.getValue(),
-                *func.getReturnType());
+                *value.getVSLType(), *func.getReturnType());
+        }
+        else if (value.getVSLType() == vslCtx.getVoidType())
+        {
+            diag.print<Diag::CANT_RETURN_VOID_VALUE>(node);
         }
         else
         {
             // nothing bad happened yay
-            builder.CreateRet(retVal);
+            builder.CreateRet(value.getLLVMValue());
             return;
         }
     }
@@ -229,24 +290,29 @@ void IREmitter::visitReturn(ReturnNode& node)
 
 void IREmitter::visitIdent(IdentNode& node)
 {
-    // load a variable
-    if (VarItem var = func.get(node.getName()))
+    // lookup the identifier within the function scope
+    Value value = func.get(node.getName());
+    if (!value)
     {
-        node.setType(var.getVSLType());
-        result = builder.CreateLoad(var.getLLVMValue());
+        // not in function scope so must be in the global scope
+        value = global.get(node.getName());
     }
-    // call a function
-    else if (FuncItem fn = global.getFunc(node.getName()))
+    // variables require a load instruction
+    if (value.isVar())
     {
-        node.setType(fn.getVSLType());
-        result = fn.getLLVMFunc();
+        const Type* type = value.getVSLType();
+        result = Value::getExpr(type, builder.CreateLoad(value.getLLVMValue()));
     }
-    // or emit an error
+    // functions and expressions can be taken as is
+    else if (value.isFunc() || value.isExpr())
+    {
+        result = value;
+    }
+    // emit an error if something bad happened
     else
     {
         diag.print<Diag::UNKNOWN_IDENT>(node);
-        node.setType(vslCtx.getErrorType());
-        result = nullptr;
+        result = Value::getNull();
     }
 }
 
@@ -254,30 +320,34 @@ void IREmitter::visitLiteral(LiteralNode& node)
 {
     // create an LLVM integer
     unsigned width = node.getValue().getBitWidth();
+    const Type* type;
     switch (width)
     {
     case 1:
-        node.setType(vslCtx.getBoolType());
+        type = vslCtx.getBoolType();
         break;
     case 32:
-        node.setType(vslCtx.getIntType());
+        type = vslCtx.getIntType();
         break;
     default:
         // should never happen
         diag.print<Diag::INVALID_INT_WIDTH>(node);
-        node.setType(vslCtx.getErrorType());
+        result = Value::getNull();
+        return;
     }
-    result = llvm::ConstantInt::get(llvmCtx, node.getValue());
+    result = Value::getExpr(type,
+        llvm::ConstantInt::get(llvmCtx, node.getValue()));
 }
 
 void IREmitter::visitUnary(UnaryNode& node)
 {
     // verify the contained expression
     node.getExpr()->accept(*this);
-    const Type* type = node.getExpr()->getType();
-    node.setType(type);
-    llvm::Value* value = result;
-    result = nullptr;
+    if (!result)
+    {
+        return;
+    }
+    const Type* type = result.getVSLType();
     // choose the appropriate operator to generate code for
     switch (node.getOp())
     {
@@ -285,20 +355,20 @@ void IREmitter::visitUnary(UnaryNode& node)
         // should only be valid on booleans
         if (type != vslCtx.getBoolType())
         {
-            node.setType(vslCtx.getBoolType());
+            result = Value::getNull();
             break;
         }
         // fallthrough
     case UnaryKind::MINUS:
-        genNeg(type, value);
+        genNeg(result);
         break;
     default:
         // should never happen
-        ;
+        result = Value::getNull();
     }
-    if (result == nullptr)
+    if (!result)
     {
-        diag.print<Diag::INVALID_UNARY>(node);
+        diag.print<Diag::INVALID_UNARY>(node, *type);
     }
 }
 
@@ -318,74 +388,68 @@ void IREmitter::visitBinary(BinaryNode& node)
     }
     // verify the left and right expressions
     node.getLhs()->accept(*this);
-    llvm::Value* lhs = result;
+    if (!result)
+    {
+        return;
+    }
+    Value lhs = result;
     node.getRhs()->accept(*this);
-    llvm::Value* rhs = result;
-    result = nullptr;
+    if (!result)
+    {
+        return;
+    }
+    Value rhs = result;
+    result = Value::getNull();
     // make sure the types match
-    if (node.getLhs()->getType() == node.getRhs()->getType())
+    if (lhs.getVSLType() == rhs.getVSLType())
     {
         // choose the appropriate operator to generate code for
-        const Type* type = node.getLhs()->getType();
+        const Type* type = lhs.getVSLType();
+        llvm::Value* lhsVal = lhs.getLLVMValue();
+        llvm::Value* rhsVal = rhs.getLLVMValue();
         switch (node.getOp())
         {
         case BinaryKind::PLUS:
-            node.setType(node.getLhs()->getType());
-            genAdd(type, lhs, rhs);
+            genAdd(type, lhsVal, rhsVal);
             break;
         case BinaryKind::MINUS:
-            node.setType(node.getLhs()->getType());
-            genSub(type, lhs, rhs);
+            genSub(type, lhsVal, rhsVal);
             break;
         case BinaryKind::STAR:
-            node.setType(node.getLhs()->getType());
-            genMul(type, lhs, rhs);
+            genMul(type, lhsVal, rhsVal);
             break;
         case BinaryKind::SLASH:
-            node.setType(node.getLhs()->getType());
-            genDiv(type, lhs, rhs);
+            genDiv(type, lhsVal, rhsVal);
             break;
         case BinaryKind::PERCENT:
-            node.setType(node.getLhs()->getType());
-            genMod(type, lhs, rhs);
+            genMod(type, lhsVal, rhsVal);
             break;
         case BinaryKind::EQUAL:
-            node.setType(vslCtx.getBoolType());
-            genEQ(type, lhs, rhs);
+            genEQ(type, lhsVal, rhsVal);
             break;
         case BinaryKind::NOT_EQUAL:
-            node.setType(vslCtx.getBoolType());
-            genNE(type, lhs, rhs);
+            genNE(type, lhsVal, rhsVal);
             break;
         case BinaryKind::GREATER:
-            node.setType(vslCtx.getBoolType());
-            genGT(type, lhs, rhs);
+            genGT(type, lhsVal, rhsVal);
             break;
         case BinaryKind::GREATER_EQUAL:
-            node.setType(vslCtx.getBoolType());
-            genGE(type, lhs, rhs);
+            genGE(type, lhsVal, rhsVal);
             break;
         case BinaryKind::LESS:
-            node.setType(vslCtx.getBoolType());
-            genLT(type, lhs, rhs);
+            genLT(type, lhsVal, rhsVal);
             break;
         case BinaryKind::LESS_EQUAL:
-            node.setType(vslCtx.getBoolType());
-            genLE(type, lhs, rhs);
+            genLE(type, lhsVal, rhsVal);
             break;
         default:
-            // should never happen
-            node.setType(node.getLhs()->getType());
+            ; // should never happen
         }
     }
-    else
+    if (!result)
     {
-        // types mismatch, assume lhs' type
-        node.setType(node.getLhs()->getType());
-    }
-    if (result == nullptr)
-    {
-        diag.print<Diag::INVALID_BINARY>(node);
+        diag.print<Diag::INVALID_BINARY>(node, *lhs.getVSLType(),
+            *rhs.getVSLType());
     }
 }
 
@@ -393,12 +457,14 @@ void IREmitter::visitTernary(TernaryNode& node)
 {
     // generate condition and make sure its a bool
     node.getCondition()->accept(*this);
-    llvm::Value* condition = result;
-    result = nullptr;
-    if (node.getCondition()->getType() != vslCtx.getBoolType())
+    if (!result)
+    {
+        return;
+    }
+    if (result.getVSLType() != vslCtx.getBoolType())
     {
         diag.print<Diag::CANNOT_CONVERT>(*node.getCondition(),
-            *vslCtx.getBoolType());
+            *result.getVSLType(), *vslCtx.getBoolType());
         return;
     }
     // setup blocks
@@ -407,89 +473,111 @@ void IREmitter::visitTernary(TernaryNode& node)
     auto* thenBlock = llvm::BasicBlock::Create(llvmCtx, "ternary.then");
     auto* elseBlock = llvm::BasicBlock::Create(llvmCtx, "ternary.else");
     auto* contBlock = llvm::BasicBlock::Create(llvmCtx, "ternary.cont");
-    // branch
-    builder.CreateCondBr(condition, thenBlock, elseBlock);
+    // branch based on the condition
+    builder.CreateCondBr(result.getLLVMValue(), thenBlock, elseBlock);
     // generate then
     // we get a reference to the current block after generating code because an
     //  expression can span multiple basic blocks, e.g. a ternary such as this
     thenBlock->insertInto(currFunc);
     builder.SetInsertPoint(thenBlock);
     node.getThen()->accept(*this);
-    llvm::Value* thenCase = result;
+    Value thenCase = result;
     auto* thenEnd = builder.GetInsertBlock();
     branchTo(contBlock);
     // generate else
     elseBlock->insertInto(currFunc);
     builder.SetInsertPoint(elseBlock);
+    // make sure thenCase is valid before generating elseCase
+    if (!thenCase)
+    {
+        // something very bad happened
+        delete contBlock;
+        return;
+    }
     node.getElse()->accept(*this);
-    llvm::Value* elseCase = result;
+    Value elseCase = result;
     auto* elseEnd = builder.GetInsertBlock();
     branchTo(contBlock);
     // setup cont block for code that comes after
     contBlock->insertInto(currFunc);
     builder.SetInsertPoint(contBlock);
-    // do type checking to make sure everything's fine
-    node.setType(node.getThen()->getType());
-    if (node.getThen()->getType() != node.getElse()->getType())
+    if (!elseCase)
     {
-        diag.print<Diag::TERNARY_TYPE_MISMATCH>(node);
-        result = nullptr;
+        return;
+    }
+    // do type checking to make sure everything's fine
+    if (thenCase.getVSLType() != elseCase.getVSLType())
+    {
+        diag.print<Diag::TERNARY_TYPE_MISMATCH>(node, *thenCase.getVSLType(),
+            *elseCase.getVSLType());
+        result = Value::getNull();
         return;
     }
     // bring it all together with a phi node
-    auto* phi = builder.CreatePHI(thenCase->getType(), 2, "ternary.phi");
-    phi->addIncoming(thenCase, thenEnd);
-    phi->addIncoming(elseCase, elseEnd);
-    result = phi;
+    auto* phi = builder.CreatePHI(thenCase.getLLVMValue()->getType(), 2,
+        "ternary.phi");
+    phi->addIncoming(thenCase.getLLVMValue(), thenEnd);
+    phi->addIncoming(elseCase.getLLVMValue(), elseEnd);
+    result = Value::getExpr(thenCase.getVSLType(), phi);
 }
 
 void IREmitter::visitCall(CallNode& node)
 {
     // make sure the callee is an actual function
     node.getCallee()->accept(*this);
-    const auto* calleeType =
-        static_cast<const FunctionType*>(node.getCallee()->getType());
-    if (!calleeType->isFunctionType())
+    if (!result)
     {
-        diag.print<Diag::NOT_A_FUNCTION>(*node.getCallee());
+        return;
     }
+    if (!result.isFunc() || !result.getVSLType()->isFunctionType())
+    {
+        diag.print<Diag::NOT_A_FUNCTION>(*node.getCallee(),
+            *result.getVSLType());
+        result = Value::getNull();
+        return;
+    }
+    auto* calleeType = static_cast<const FunctionType*>(result.getVSLType());
     // make sure the right amount of arguments is used
-    else if (calleeType->getNumParams() != node.getNumArgs())
+    if (calleeType->getNumParams() != node.getNumArgs())
     {
         diag.print<Diag::MISMATCHING_ARG_COUNT>(node.getLoc(),
             node.getNumArgs(), calleeType->getNumParams());
+        result = Value::getNull();
+        return;
+    }
+    llvm::Value* func = result.getLLVMValue();
+    std::vector<llvm::Value*> llvmArgs;
+    // verify each argument
+    for (size_t i = 0; i < calleeType->getNumParams(); ++i)
+    {
+        const Type* paramType = calleeType->getParamType(i);
+        ArgNode& arg = *node.getArg(i);
+        arg.accept(*this);
+        if (!result)
+        {
+            return;
+        }
+        // check that the types match
+        if (result.getVSLType() == paramType)
+        {
+            llvmArgs.push_back(result.getLLVMValue());
+        }
+        else
+        {
+            diag.print<Diag::CANNOT_CONVERT>(*arg.getValue(),
+                *result.getVSLType(), *paramType);
+        }
+    }
+    // create the call instruction if all args are fine with it
+    if (calleeType->getNumParams() == llvmArgs.size())
+    {
+        result = Value::getExpr(calleeType->getReturnType(),
+            builder.CreateCall(func, llvmArgs));
     }
     else
     {
-        llvm::Value* func = result;
-        std::vector<llvm::Value*> llvmArgs;
-        // verify each argument
-        for (size_t i = 0; i < calleeType->getNumParams(); ++i)
-        {
-            const Type* paramType = calleeType->getParamType(i);
-            ArgNode& arg = *node.getArg(i);
-            arg.accept(*this);
-            // check that the types match
-            if (arg.getValue()->getType() != paramType)
-            {
-                diag.print<Diag::CANNOT_CONVERT>(*arg.getValue(), *paramType);
-            }
-            else
-            {
-                llvmArgs.push_back(result);
-            }
-        }
-        // create the call instruction if all args were successfully validated
-        if (calleeType->getNumParams() == llvmArgs.size())
-        {
-            node.setType(calleeType->getReturnType());
-            result = builder.CreateCall(func, llvmArgs);
-            return;
-        }
+        result = Value::getNull();
     }
-    // if any sort of error occured, then this happens
-    node.setType(vslCtx.getErrorType());
-    result = nullptr;
 }
 
 void IREmitter::visitArg(ArgNode& node)
@@ -497,10 +585,12 @@ void IREmitter::visitArg(ArgNode& node)
     node.getValue()->accept(*this);
 }
 
-void IREmitter::genNeg(const Type* type, llvm::Value* value)
+void IREmitter::genNeg(Value value)
 {
+    const Type* type = value.getVSLType();
     result = (type == vslCtx.getIntType() || type == vslCtx.getBoolType()) ?
-        builder.CreateNeg(value, "neg") : nullptr;
+        Value::getExpr(type, builder.CreateNeg(value.getLLVMValue(), "neg")) :
+        Value::getNull();
 }
 
 void IREmitter::genAssign(BinaryNode& node)
@@ -508,26 +598,29 @@ void IREmitter::genAssign(BinaryNode& node)
     ExprNode& lhs = *node.getLhs();
     ExprNode& rhs = *node.getRhs();
     rhs.accept(*this);
-    llvm::Value* rightValue = result;
-    node.setType(vslCtx.getVoidType());
-    result = nullptr;
+    if (!result)
+    {
+        return;
+    }
     // make sure that the lhs is an identifier
     if (lhs.is(Node::IDENT))
     {
         // lookup the identifier
         auto& id = static_cast<IdentNode&>(lhs);
-        if (VarItem var = func.get(id.getName()))
+        if (Value value = func.get(id.getName()))
         {
             // make sure the types match up
-            if (var.getVSLType() == rhs.getType())
+            if (value.getVSLType() == result.getVSLType())
             {
                 // finally, create the store instruction
-                builder.CreateStore(rightValue, var.getLLVMValue());
+                builder.CreateStore(result.getLLVMValue(),
+                    value.getLLVMValue());
                 return;
             }
             else
             {
-                diag.print<Diag::CANNOT_CONVERT>(rhs, *var.getVSLType());
+                diag.print<Diag::CANNOT_CONVERT>(rhs, *result.getVSLType(),
+                    *value.getVSLType());
             }
         }
         else
@@ -539,20 +632,25 @@ void IREmitter::genAssign(BinaryNode& node)
     {
         diag.print<Diag::LHS_NOT_ASSIGNABLE>(lhs);
     }
+    result = Value::getNull();
 }
+
 void IREmitter::genShortCircuit(BinaryNode& node)
 {
-    // boolean and/or obviously return bool sooo
-    node.setType(vslCtx.getBoolType());
     // generate code to calculate lhs
     ExprNode& lhs = *node.getLhs();
     lhs.accept(*this);
-    llvm::Value* cond1 = result;
-    // of course, lhs has to be a bool for this to work
-    if (lhs.getType() != vslCtx.getBoolType())
+    if (!result)
     {
-        diag.print<Diag::CANNOT_CONVERT>(lhs, *vslCtx.getBoolType());
-        result = nullptr;
+        return;
+    }
+    Value cond1 = result;
+    // of course, lhs has to be a bool for this to work
+    if (cond1.getVSLType() != vslCtx.getBoolType())
+    {
+        diag.print<Diag::CANNOT_CONVERT>(lhs, *cond1.getVSLType(),
+            *vslCtx.getBoolType());
+        result = Value::getNull();
         return;
     }
     // helper variables so i don't have to type as much
@@ -565,11 +663,11 @@ void IREmitter::genShortCircuit(BinaryNode& node)
     // create the branch
     if (node.getOp() == BinaryKind::AND)
     {
-        builder.CreateCondBr(cond1, longCheck, cont);
+        builder.CreateCondBr(cond1.getLLVMValue(), longCheck, cont);
     }
     else // or
     {
-        builder.CreateCondBr(cond1, cont, longCheck);
+        builder.CreateCondBr(cond1.getLLVMValue(), cont, longCheck);
     }
     // the long check is when the operation did not short circuit, and depends
     //  on the value of rhs to fully determine the result
@@ -578,18 +676,23 @@ void IREmitter::genShortCircuit(BinaryNode& node)
     // generate code to calculate rhs
     ExprNode& rhs = *node.getRhs();
     rhs.accept(*this);
-    llvm::Value* cond2 = result;
+    Value cond2 = result;
     // setup the cont block
     branchTo(cont);
     cont->insertInto(currFunc);
     builder.SetInsertPoint(cont);
+    if (!result)
+    {
+        return;
+    }
     // of course, rhs has to be a bool for this to work
     // the check happens later so that the cont block is neither a memory leak
     //  nor a dangling pointer, and we can safely insert other code afterwards
-    if (rhs.getType() != vslCtx.getBoolType())
+    if (result.getVSLType() != vslCtx.getBoolType())
     {
-        diag.print<Diag::CANNOT_CONVERT>(rhs, *vslCtx.getBoolType());
-        result = nullptr;
+        diag.print<Diag::CANNOT_CONVERT>(rhs, *cond2.getVSLType(),
+            *vslCtx.getBoolType());
+        result = Value::getNull();
         return;
     }
     // create the phi instruction
@@ -598,76 +701,91 @@ void IREmitter::genShortCircuit(BinaryNode& node)
     phi->addIncoming(builder.getInt1(node.getOp() == BinaryKind::OR),
         currBlock);
     // if it came from longCheck, then the result is determined by rhs
-    phi->addIncoming(cond2, longCheck);
-    result = phi;
+    phi->addIncoming(cond2.getLLVMValue(), longCheck);
+    result = Value::getExpr(vslCtx.getBoolType(), phi);
 }
 
 void IREmitter::genAdd(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
     result = (type == vslCtx.getIntType()) ?
-        builder.CreateAdd(lhs, rhs, "add") : nullptr;
+        Value::getExpr(type, builder.CreateAdd(lhs, rhs, "add")) :
+        Value::getNull();
 }
 
 void IREmitter::genSub(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
     result = (type == vslCtx.getIntType()) ?
-        builder.CreateSub(lhs, rhs, "sub") : nullptr;
+        Value::getExpr(type, builder.CreateSub(lhs, rhs, "sub")) :
+        Value::getNull();
 }
 
 void IREmitter::genMul(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
     result = (type == vslCtx.getIntType()) ?
-        builder.CreateMul(lhs, rhs, "mul") : nullptr;
+        Value::getExpr(type, builder.CreateMul(lhs, rhs, "mul")) :
+        Value::getNull();
 }
 
 void IREmitter::genDiv(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
     result = (type == vslCtx.getIntType()) ?
-        builder.CreateSDiv(lhs, rhs, "sdiv") : nullptr;
+        Value::getExpr(type, builder.CreateSDiv(lhs, rhs, "sdiv")) :
+        Value::getNull();
 }
 
 void IREmitter::genMod(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
     result = (type == vslCtx.getIntType()) ?
-        builder.CreateSRem(lhs, rhs, "srem") : nullptr;
+        Value::getExpr(type, builder.CreateSRem(lhs, rhs, "srem")) :
+        Value::getNull();
 }
 
 void IREmitter::genEQ(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
-    result = (type == vslCtx.getIntType() ||
-            type == vslCtx.getBoolType()) ?
-        builder.CreateICmpEQ(lhs, rhs, "cmp") : nullptr;
+    result = (type == vslCtx.getIntType() || type == vslCtx.getBoolType()) ?
+        Value::getExpr(vslCtx.getBoolType(),
+            builder.CreateICmpEQ(lhs, rhs, "cmp")) :
+        Value::getNull();
 }
 
 void IREmitter::genNE(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
-    result = (type == vslCtx.getIntType() ||
-            type == vslCtx.getBoolType()) ?
-        builder.CreateICmpNE(lhs, rhs, "cmp") : nullptr;
+    result = (type == vslCtx.getIntType() || type == vslCtx.getBoolType()) ?
+        Value::getExpr(vslCtx.getBoolType(),
+            builder.CreateICmpNE(lhs, rhs, "cmp")) :
+        Value::getNull();
 }
 
 void IREmitter::genGT(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
     result = (type == vslCtx.getIntType()) ?
-        builder.CreateICmpSGT(lhs, rhs, "cmp") : nullptr;
+        Value::getExpr(vslCtx.getBoolType(),
+            builder.CreateICmpSGT(lhs, rhs, "cmp")) :
+        Value::getNull();
 }
 
 void IREmitter::genGE(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
     result = (type == vslCtx.getIntType()) ?
-        builder.CreateICmpSGE(lhs, rhs, "cmp") : nullptr;
+        Value::getExpr(vslCtx.getBoolType(),
+            builder.CreateICmpSGE(lhs, rhs, "cmp")) :
+        Value::getNull();
 }
 
 void IREmitter::genLT(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
     result = (type == vslCtx.getIntType()) ?
-        builder.CreateICmpSLT(lhs, rhs, "cmp") : nullptr;
+        Value::getExpr(vslCtx.getBoolType(),
+            builder.CreateICmpSLT(lhs, rhs, "cmp")) :
+        Value::getNull();
 }
 
 void IREmitter::genLE(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
     result = (type == vslCtx.getIntType()) ?
-        builder.CreateICmpSLE(lhs, rhs, "cmp") : nullptr;
+        Value::getExpr(vslCtx.getBoolType(),
+            builder.CreateICmpSLE(lhs, rhs, "cmp")) :
+        Value::getNull();
 }
 
 llvm::AllocaInst* IREmitter::createEntryAlloca(llvm::Type* type,
@@ -697,4 +815,64 @@ llvm::BranchInst* IREmitter::branchTo(llvm::BasicBlock* target)
         return builder.CreateBr(target);
     }
     return nullptr;
+}
+
+bool IREmitter::isGlobal() const
+{
+    return func.empty();
+}
+
+void IREmitter::addGlobalCtor(llvm::Function* f)
+{
+    // get/create the global vsl initialization function
+    auto* funcType = llvm::FunctionType::get(builder.getVoidTy(),
+        /*isVarArg=*/false);
+    llvm::BasicBlock* insertBlock;
+    if (vslInit)
+    {
+        // function @vsl.init already exists
+        assert(vslInit->getFunctionType() == funcType &&
+            "Function @vsl.init has invalid type! Should be void ().");
+        insertBlock = &vslInit->back();
+    }
+    else
+    {
+        // function @vsl.init doesn't already exist so create it now
+        vslInit = llvm::Function::Create(funcType,
+            llvm::GlobalValue::InternalLinkage, "vsl.init", &module);
+        // terminate the function with a void return
+        insertBlock = llvm::BasicBlock::Create(llvmCtx, "entry", vslInit);
+        builder.SetInsertPoint(insertBlock);
+        builder.CreateRetVoid();
+        // create the @llvm.global_ctors intrinsic variable so that @vsl.init
+        //  gets called at runtime
+        /*
+         * End result:
+         * %0 = type { i32, void ()*, i8* }
+         * @llvm.global_ctors = appending global [1 x %0]
+         *     [%0 { i32 65535, void ()* @vsl.init, i8* null }]
+         */
+        assert(!module.getNamedGlobal("llvm.global_ctors") &&
+            "@llvm.global_ctors already defined!");
+        // create the required llvm::Type objects
+        auto* priorityType = builder.getInt32Ty();
+        auto* dataType = llvm::PointerType::getUnqual(builder.getInt8Ty());
+        auto* ctorType = llvm::StructType::create("", priorityType,
+            llvm::PointerType::getUnqual(funcType), dataType);
+        auto* ctorArrayType = llvm::ArrayType::get(ctorType, 1);
+        // create the initializer object
+        auto* ctor = llvm::ConstantStruct::get(ctorType,
+            builder.getInt32(65535), vslInit,
+            llvm::ConstantPointerNull::get(dataType));
+        auto* ctorArray = llvm::ConstantArray::get(ctorArrayType, ctor);
+        // create the variable, which is automatically added to the module
+        new llvm::GlobalVariable{ module, ctorArrayType, /*isConstant=*/false,
+            llvm::GlobalValue::AppendingLinkage, ctorArray,
+            "llvm.global_ctors" };
+    }
+    builder.SetInsertPoint(insertBlock->getTerminator());
+    // call the given global ctor function
+    assert(f->getFunctionType() == funcType &&
+        "Invalid global ctor type! Should be void ().");
+    builder.CreateCall(f);
 }

@@ -1,42 +1,18 @@
 #include "irgen/scope/globalScope.hpp"
 
-FuncItem::FuncItem()
-    : type{ nullptr }, func{ nullptr }
+Value GlobalScope::get(llvm::StringRef name) const
 {
-}
-
-FuncItem::FuncItem(const FunctionType* type, llvm::Function* func)
-    : type{ type }, func{ func }
-{
-}
-
-const FunctionType* FuncItem::getVSLType() const
-{
-    return type;
-}
-
-llvm::Function* FuncItem::getLLVMFunc() const
-{
-    return func;
-}
-
-bool FuncItem::isValid() const
-{
-    return type && func;
-}
-
-FuncItem::operator bool() const
-{
-    return isValid();
-}
-
-FuncItem GlobalScope::getFunc(llvm::StringRef name) const
-{
-    return funcs.lookup(name);
+    return symtab.lookup(name);
 }
 
 bool GlobalScope::setFunc(llvm::StringRef name, const FunctionType* type,
     llvm::Function* func)
 {
-    return !funcs.try_emplace(name, type, func).second;
+    return !symtab.try_emplace(name, Value::getFunc(type, func)).second;
+}
+
+bool GlobalScope::setVar(llvm::StringRef name, const Type* type,
+    llvm::Value* var)
+{
+    return !symtab.try_emplace(name, Value::getVar(type, var)).second;
 }

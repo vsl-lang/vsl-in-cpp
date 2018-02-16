@@ -38,6 +38,8 @@ TEST(IRGenTest, Functions)
     invalid("public func f() -> Void { return f(); }");
     // able to call a function ahead of its definition
     valid("public func f() -> Void { g(); } private func g() -> Void {}");
+    // can't call non-functions
+    invalid("public func f(x: Int) -> Int { return x(); }");
 }
 
 TEST(IRGenTest, Conditionals)
@@ -78,4 +80,11 @@ TEST(IRGenTest, Variables)
 {
     valid("public func f(x: Int) -> Int { let y: Int = x * 2; y = y / x; "
         "return y; }");
+    valid("public var x: Int = f(); private func f() -> Int { return 2; }");
+    valid("public var x: Int = 4; public func f() -> Int { return x + 1; }");
+    valid("private var x: Int = 3; public var y: Int = x + 2;");
+    // can't access a global variable before it gets initialized
+    invalid("public var x: Int = z; public var z: Int = 1;");
+    // not implemented yet
+    invalid("public func f() -> Int { return x + 1; } public var x: Int = 2;");
 }

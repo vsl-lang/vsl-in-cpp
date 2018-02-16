@@ -9,7 +9,7 @@ FuncResolver::FuncResolver(Diag& diag, GlobalScope& global,
 
 void FuncResolver::visitFunction(FunctionNode& node)
 {
-    if (global.getFunc(node.getName()))
+    if (global.get(node.getName()))
     {
         diag.print<Diag::FUNC_ALREADY_DEFINED>(node);
         node.setAlreadyDefined(true);
@@ -23,7 +23,7 @@ void FuncResolver::visitFunction(FunctionNode& node)
 
 void FuncResolver::visitExtFunc(ExtFuncNode& node)
 {
-    if (global.getFunc(node.getName()))
+    if (global.get(node.getName()))
     {
         diag.print<Diag::FUNC_ALREADY_DEFINED>(node);
     }

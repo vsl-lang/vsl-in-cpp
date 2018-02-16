@@ -142,35 +142,9 @@ const Type* ParamNode::getType() const
     return type;
 }
 
-
-BlockNode::BlockNode(Location location, std::vector<Node*> statements)
-    : Node{ Node::BLOCK, location }, statements{ std::move(statements) }
-{
-}
-
-void BlockNode::accept(NodeVisitor& nodeVisitor)
-{
-    nodeVisitor.visitBlock(*this);
-}
-
-llvm::ArrayRef<Node*> BlockNode::getStatements() const
-{
-    return statements;
-}
-
-EmptyNode::EmptyNode(Location location)
-    : Node{ Node::EMPTY, location }
-{
-}
-
-void EmptyNode::accept(NodeVisitor& nodeVisitor)
-{
-    nodeVisitor.visitEmpty(*this);
-}
-
-VariableNode::VariableNode(Location location, llvm::StringRef name,
-    const Type* type, ExprNode* init, bool constness)
-    : Node{ Node::VARIABLE, location }, name{ name }, type{ type },
+VariableNode::VariableNode(Location location, AccessMod access,
+    llvm::StringRef name, const Type* type, ExprNode* init, bool constness)
+    : DeclNode{ Node::VARIABLE, location, access }, name{ name }, type{ type },
     init{ init }, constness{ constness }
 {
 }
@@ -198,6 +172,31 @@ ExprNode* VariableNode::getInit() const
 bool VariableNode::isConst() const
 {
     return constness;
+}
+
+BlockNode::BlockNode(Location location, std::vector<Node*> statements)
+    : Node{ Node::BLOCK, location }, statements{ std::move(statements) }
+{
+}
+
+void BlockNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitBlock(*this);
+}
+
+llvm::ArrayRef<Node*> BlockNode::getStatements() const
+{
+    return statements;
+}
+
+EmptyNode::EmptyNode(Location location)
+    : Node{ Node::EMPTY, location }
+{
+}
+
+void EmptyNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitEmpty(*this);
 }
 
 IfNode::IfNode(Location location, ExprNode* condition, Node* thenCase,
@@ -248,23 +247,13 @@ ExprNode* ReturnNode::getValue() const
 }
 
 ExprNode::ExprNode(Node::Kind kind, Location location)
-    : Node{ kind, location }, type{ nullptr }
+    : Node{ kind, location }
 {
 }
 
 bool ExprNode::isExpr() const
 {
     return true;
-}
-
-const Type* ExprNode::getType() const
-{
-    return type;
-}
-
-void ExprNode::setType(const Type* t)
-{
-    type = t;
 }
 
 IdentNode::IdentNode(Location location, llvm::StringRef name)

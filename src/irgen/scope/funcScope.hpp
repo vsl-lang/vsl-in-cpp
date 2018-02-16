@@ -2,59 +2,11 @@
 #define FUNCSCOPE_HPP
 
 #include "ast/type.hpp"
+#include "irgen/value/value.hpp"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/IR/Value.h"
 #include <vector>
-
-/**
- * Represents a variable (or parameter) within a scope.
- */
-class VarItem
-{
-public:
-    /**
-     * Creates a null VarItem.
-     */
-    VarItem();
-    /**
-     * Creates a VarItem.
-     *
-     * @param type VSL type.
-     * @param value LLVM value.
-     */
-    VarItem(const Type* type, llvm::Value* value);
-    /**
-     * Gets the VSL type.
-     *
-     * @returns VSL type.
-     */
-    const Type* getVSLType() const;
-    /**
-     * Gets the LLVM value.
-     *
-     * @returns LLVM value.
-     */
-    llvm::Value* getLLVMValue() const;
-    /**
-     * Checks if valid.
-     *
-     * @returns True if valid, false otherwise.
-     */
-    bool isValid() const;
-    /**
-     * Bool conversion.
-     *
-     * @returns True if valid, false otherwise.
-     */
-    operator bool() const;
-
-private:
-    /** VSL type. */
-    const Type* type;
-    /** LLVM value. */
-    llvm::Value* value;
-};
 
 /**
  * Manages the multiple scopes in a function body.
@@ -72,19 +24,18 @@ public:
      *
      * @param name Name of the variable.
      *
-     * @returns The VarItem associated with the given variable name.
+     * @returns The Value associated with the given variable name.
      */
-    VarItem get(llvm::StringRef name) const;
+    Value get(llvm::StringRef name) const;
     /**
      * Sets a name to be associated with a variable.
      *
      * @param name Name of the variable.
-     * @param type VSL type of the variable.
-     * @param value LLVM value.
+     * @param value Value of the variable.
      *
      * @returns False if the operation succeeded, true otherwise.
      */
-    bool set(llvm::StringRef name, const Type* type, llvm::Value* value);
+    bool set(llvm::StringRef name, Value value);
     /**
      * Enters a new scope. The return type is the same as the last scope's
      * return type.
@@ -114,10 +65,8 @@ public:
     void setReturnType(const Type* returnType);
 
 private:
-    /** Symbol table of variables. */
-    using symtab_t = llvm::StringMap<VarItem>;
     /** List of symbol tables in a scope, managed like a stack. */
-    std::vector<symtab_t> vars;
+    std::vector<llvm::StringMap<Value>> vars;
     /** The type that this function is supposed to return. */
     const Type* returnType;
 };

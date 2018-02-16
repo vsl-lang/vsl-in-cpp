@@ -35,44 +35,45 @@ DIAG(FUNC_ALREADY_DEFINED, (FuncInterfaceNode& func), (ERROR, func.getLoc(),
 // irEmitter
 DIAG(TOPLEVEL_CTRL_FLOW, (Location l), (ERROR, l,
         "top level control flow statements are not allowed"))
-DIAG(CANNOT_CONVERT, (const ExprNode& from, const Type& to), (ERROR,
-        from.getLoc(), "cannot convert expression of type '", *from.getType(),
+DIAG(CANNOT_CONVERT, (const ExprNode& expr, const Type& from, const Type& to),
+    (ERROR, expr.getLoc(), "cannot convert expression of type '", from,
         "' to type '", to, '\''))
 DIAG(INVALID_VAR_TYPE, (const VariableNode& var), (ERROR, var.getLoc(),
         "type '", *var.getType(), "' is invalid for variable '", var.getName(),
         '\''))
-DIAG(MISMATCHING_VAR_TYPES, (const VariableNode& var), (ERROR,
-        var.getInit()->getLoc(), "variable '", var.getName(), "' is of type '",
-        *var.getType(),
-        "' but is being initialized with an expression of type '",
-        *var.getInit()->getType(), '\''))
+DIAG(MISMATCHING_VAR_TYPES, (const VariableNode& var, const Type& initType),
+    (ERROR, var.getInit()->getLoc(), "variable '", var.getName(),
+        "' is of type '", *var.getType(),
+        "' but is being initialized with an expression of type '", initType,
+        '\''))
 DIAG(VAR_ALREADY_DEFINED, (const VariableNode& var), (ERROR, var.getLoc(),
         "variable '", var.getName(), "' was already defined in this scope"))
 DIAG(MISSING_RETURN, (const FunctionNode& func), (WARNING, func.getLoc(),
         "missing return statement at the end of function '",
         func.getName(), '\''))
+DIAG(RETVAL_MISMATCHES_RETTYPE, (const ExprNode& retVal, const Type& valType,
+        const Type& retType), (ERROR, retVal.getLoc(), "return value of type '",
+        valType, "' does not match return type '", retType, '\''))
 DIAG(CANT_RETURN_VOID_VALUE, (ReturnNode& ret), (ERROR,
         ret.getValue()->getLoc(), "cannot return a value of type Void"))
-DIAG(RETVAL_MISMATCHES_RETTYPE, (const ExprNode& retVal, const Type& retType),
-    (ERROR, retVal.getLoc(), "return value of type '",
-        *retVal.getType(), "' does not match return type '", retType, '\''))
 DIAG(UNKNOWN_IDENT, (IdentNode& id), (ERROR, id.getLoc(),
         "unknown identifier '", id.getName(), '\''))
 DIAG(INVALID_INT_WIDTH, (LiteralNode& literal), (INTERNAL, literal.getLoc(),
         "VSL does not support ", literal.getValue().getBitWidth(),
         "-bit integers"))
-DIAG(INVALID_UNARY, (UnaryNode& unary), (ERROR, unary.getLoc(),
-        "cannot apply unary operator '", unary.getOpSymbol(),
-        "' to type '", *unary.getExpr()->getType(), '\''))
-DIAG(INVALID_BINARY, (BinaryNode& binary), (ERROR, binary.getLoc(),
-        "cannot apply binary operator '", binary.getOpSymbol(),
-        "' to types '", *binary.getLhs()->getType(), "' and '",
-        *binary.getRhs()->getType(), '\''))
-DIAG(TERNARY_TYPE_MISMATCH, (TernaryNode& ternary), (ERROR, ternary.getLoc(),
-        "ternary operands of type '", *ternary.getThen()->getType(), "' and '",
-        *ternary.getElse()->getType(), "' don't match"))
-DIAG(NOT_A_FUNCTION, (const ExprNode& callee), (ERROR, callee.getLoc(),
-        "called object of type '", *callee.getType(), "' is not a function"))
+DIAG(INVALID_UNARY, (UnaryNode& unary, const Type& type), (ERROR,
+        unary.getLoc(), "cannot apply unary operator '", unary.getOpSymbol(),
+        "' to type '", type, '\''))
+DIAG(INVALID_BINARY, (BinaryNode& binary, const Type& lhs, const Type& rhs),
+    (ERROR, binary.getLoc(), "cannot apply binary operator '",
+        binary.getOpSymbol(), "' to types '", lhs, "' and '", rhs, '\''))
+DIAG(TERNARY_TYPE_MISMATCH, (TernaryNode& ternary, const Type& thenCase,
+        const Type& elseCase), (ERROR, ternary.getLoc(),
+        "ternary operands of type '", thenCase, "' and '", elseCase,
+        "' don't match"))
+DIAG(NOT_A_FUNCTION, (const ExprNode& callee, const Type& type), (ERROR,
+        callee.getLoc(), "called object of type '", type,
+        "' is not a function"))
 DIAG(MISMATCHING_ARG_COUNT, (Location l, size_t args, size_t params), (ERROR, l,
         "mismatched number of arguments ", args, " versus parameters ", params))
 DIAG(LHS_NOT_ASSIGNABLE, (ExprNode& lhs), (ERROR, lhs.getLoc(),

@@ -71,31 +71,40 @@ EmptyNode* VSLParser::errorUnexpected(const Token& token)
 std::vector<Node*> VSLParser::parseGlobals()
 {
     std::vector<Node*> globals;
-    while (!empty())
+    while (current().isNot(TokenKind::END))
     {
-        // only functions can be in the global scope
-        switch (current().getKind())
-        {
-        case TokenKind::KW_PUBLIC:
-            consume();
-            globals.emplace_back(parseFunction(AccessMod::PUBLIC));
-            break;
-        case TokenKind::KW_PRIVATE:
-            consume();
-            globals.emplace_back(parseFunction(AccessMod::PRIVATE));
-            break;
-        case TokenKind::END:
-            break;
-        default:
-            errorExpected("function");
-            consume();
-        }
-        if (current().is(TokenKind::END))
-        {
-            break;
-        }
+        globals.emplace_back(parseDecl());
     }
     return globals;
+}
+
+// decl -> function | variable
+Node* VSLParser::parseDecl()
+{
+    AccessMod access;
+    switch (current().getKind())
+    {
+    case TokenKind::KW_PUBLIC:
+        access = AccessMod::PUBLIC;
+        break;
+    case TokenKind::KW_PRIVATE:
+        access = AccessMod::PRIVATE;
+        break;
+    default:
+        errorExpected("access modifier");
+        access = AccessMod::PRIVATE; // assumed for now
+    }
+    consume();
+    switch (current().getKind())
+    {
+    case TokenKind::KW_FUNC:
+        return parseFunction(access);
+    case TokenKind::KW_VAR:
+    case TokenKind::KW_LET:
+        return parseVariable(access);
+    default:
+        return errorUnexpected(consume());
+    }
 }
 
 // function -> accessmod funcInterface block | extfunc
@@ -222,6 +231,51 @@ ParamNode* VSLParser::parseParam()
     return makeNode<ParamNode>(location, name, type);
 }
 
+// variable -> accessmod (var | let) identifier colon type assign expr semicolon
+// accessmod provided by caller if applicable
+Node* VSLParser::parseVariable(AccessMod access)
+{
+    bool constness;
+    TokenKind k = current().getKind();
+    if (k == TokenKind::KW_VAR)
+    {
+        constness = false;
+    }
+    else if (k == TokenKind::KW_LET)
+    {
+        constness = true;
+    }
+    else
+    {
+        return errorExpected("'let' or 'var'");
+    }
+    Location location = consume().getLoc();
+    if (current().isNot(TokenKind::IDENTIFIER))
+    {
+        return errorExpected("identifier");
+    }
+    llvm::StringRef name = consume().getText();
+    if (current().isNot(TokenKind::COLON))
+    {
+        return errorExpected("':'");
+    }
+    consume();
+    const Type* type = parseType();
+    if (current().isNot(TokenKind::ASSIGN))
+    {
+        return errorExpected("'='");
+    }
+    consume();
+    ExprNode* value = parseExpr();
+    if (current().isNot(TokenKind::SEMICOLON))
+    {
+        return errorExpected("';'");
+    }
+    consume();
+    return makeNode<VariableNode>(location, access, name, type, value,
+        constness);
+}
+
 // statements -> statement*
 std::vector<Node*> VSLParser::parseStatements()
 {
@@ -296,49 +350,6 @@ Node* VSLParser::parseBlock()
     }
     consume();
     return makeNode<BlockNode>(location, std::move(statements));
-}
-
-// assignment -> (var | let) identifier colon type assign expr semicolon
-Node* VSLParser::parseVariable()
-{
-    bool constness;
-    TokenKind k = current().getKind();
-    if (k == TokenKind::KW_VAR)
-    {
-        constness = false;
-    }
-    else if (k == TokenKind::KW_LET)
-    {
-        constness = true;
-    }
-    else
-    {
-        return errorExpected("'let' or 'var'");
-    }
-    Location location = consume().getLoc();
-    if (current().isNot(TokenKind::IDENTIFIER))
-    {
-        return errorExpected("identifier");
-    }
-    llvm::StringRef name = consume().getText();
-    if (current().isNot(TokenKind::COLON))
-    {
-        return errorExpected("':'");
-    }
-    consume();
-    const Type* type = parseType();
-    if (current().isNot(TokenKind::ASSIGN))
-    {
-        return errorExpected("'='");
-    }
-    consume();
-    ExprNode* value = parseExpr();
-    if (current().isNot(TokenKind::SEMICOLON))
-    {
-        return errorExpected("';'");
-    }
-    consume();
-    return makeNode<VariableNode>(location, name, type, value, constness);
 }
 
 // conditional -> if lparen expr rparen statement (else statement)?

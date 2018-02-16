@@ -2,74 +2,26 @@
 #define GLOBALSCOPE_HPP
 
 #include "ast/type.hpp"
+#include "irgen/value/value.hpp"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/IR/Function.h"
 
 /**
- * Represents both a VSL and LLVM function.
- */
-class FuncItem
-{
-public:
-    /**
-     * Creates a null FuncItem.
-     */
-    FuncItem();
-    /**
-     * Creates a FuncItem.
-     *
-     * @param type VSL type.
-     * @param func LLVM function.
-     */
-    FuncItem(const FunctionType* type, llvm::Function* func);
-    /**
-     * Gets the VSL type.
-     *
-     * @returns VSL type.
-     */
-    const FunctionType* getVSLType() const;
-    /**
-     * Gets the LLVM function.
-     *
-     * @returns LLVM function.
-     */
-    llvm::Function* getLLVMFunc() const;
-    /**
-     * Checks if valid.
-     *
-     * @returns True if valid, false otherwise.
-     */
-    bool isValid() const;
-    /**
-     * Bool conversion.
-     *
-     * @returns True if valid, false otherwise.
-     */
-    operator bool() const;
-
-private:
-    /** VSL type. */
-    const FunctionType* type;
-    /** LLVM function. */
-    llvm::Function* func;
-};
-
-/**
- * Manages stuff in the the global scope, like functions and what not.
+ * Manages objects in the the global scope, like functions and what not.
  */
 class GlobalScope
 {
 public:
     /**
-     * Gets the function associated with a name. If it can't be found, a null
-     * FuncItem is constructed and returned.
+     * Gets the object associated with a name. If it can't be found, a null
+     * Value is constructed and returned.
      *
      * @param name Name of the function.
      *
-     * @returns The FuncItem associated with the given function name.
+     * @returns The Value associated with the given object name.
      */
-    FuncItem getFunc(llvm::StringRef name) const;
+    Value get(llvm::StringRef name) const;
     /**
      * Sets a name to be associated with a function.
      *
@@ -81,10 +33,21 @@ public:
      */
     bool setFunc(llvm::StringRef name, const FunctionType* type,
         llvm::Function* func);
+    /**
+     * Sets a name to be associated with a variable.
+     *
+     * @param name Name of the variable.
+     * @param type VSL type of the variable.
+     * @param func LLVM variable.
+     *
+     * @returns False if the operation succeeded, true otherwise.
+     */
+    bool setVar(llvm::StringRef name, const Type* type,
+        llvm::Value* var);
 
 private:
-    /** Symbol table of all the functions. */
-    llvm::StringMap<FuncItem> funcs;
+    /** Symbol table of all the global objects. */
+    llvm::StringMap<Value> symtab;
 };
 
 #endif // GLOBALSCOPE_HPP

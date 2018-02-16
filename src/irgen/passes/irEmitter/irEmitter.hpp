@@ -7,6 +7,7 @@
 #include "diag/diag.hpp"
 #include "irgen/scope/funcScope.hpp"
 #include "irgen/scope/globalScope.hpp"
+#include "irgen/value/value.hpp"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
@@ -58,10 +59,9 @@ private:
     /**
      * Generates a unary negation.
      *
-     * @param type The VSL type of the operand.
-     * @param value The LLVM value to operate on.
+     * @param value The value to operate on.
      */
-    void genNeg(const Type* type, llvm::Value* value);
+    void genNeg(Value value);
 
     /**
      * @}
@@ -214,6 +214,19 @@ private:
      * @returns The branch instruction that was created, or nullptr otherwise.
      */
     llvm::BranchInst* branchTo(llvm::BasicBlock* target);
+    /**
+     * Checks if this is currently in the global scope.
+     *
+     * @returns True if in the global scope, false otherwise.
+     */
+    bool isGlobal() const;
+    /**
+     * Adds a function to be called during initialization.
+     *
+     * @param f The function to be called at runtime. This should take no
+     *     parameters and return void.
+     */
+    void addGlobalCtor(llvm::Function* f);
 
     /** @} */
 
@@ -225,18 +238,22 @@ private:
     FuncScope& func;
     /** Global scope manager. */
     GlobalScope& global;
+    /** LLVM module that holds all the generated code. */
+    llvm::Module& module;
     /** Context object that owns most dynamic LLVM data structures. */
     llvm::LLVMContext& llvmCtx;
     /** Used to build the IR. */
     llvm::IRBuilder<> builder;
     /** Points to the instruction where allocas should be inserted before. */
     llvm::Instruction* allocaInsertPoint;
+    /** Global initialization function. */
+    llvm::Function* vslInit;
     /**
      * Used as a temporary return value for some visitor methods. Most of the
      * time this is used in the ExprNode visitors so it's best to just set it to
-     * `nullptr` otherwise.
+     * `Value::getNull()` otherwise.
      */
-    llvm::Value* result;
+    Value result;
 };
 
 #endif // IREMITTER_HPP

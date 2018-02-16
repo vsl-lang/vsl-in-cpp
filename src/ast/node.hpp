@@ -2,13 +2,14 @@
 #define NODE_HPP
 
 class Node;
+class DeclNode;
 class FuncInterfaceNode;
 class FunctionNode;
 class ExtFuncNode;
 class ParamNode;
+class VariableNode;
 class BlockNode;
 class EmptyNode;
-class VariableNode;
 class IfNode;
 class ReturnNode;
 class ExprNode;
@@ -298,6 +299,41 @@ private:
     const Type* type;
 };
 
+/**
+ * Represents a variable declaration, e.g.\ `var x: Int = 5;`.
+ */
+class VariableNode : public DeclNode
+{
+public:
+    /**
+     * Creates a VariableNode.
+     *
+     * @param location Where this VariableNode was found in the source.
+     * @param access Access modifier.
+     * @param name The name of the variable.
+     * @param type The type of the variable.
+     * @param init The variable's initial value.
+     * @param constness If this variable is const or not (TODO).
+     */
+    VariableNode(Location location, AccessMod access, llvm::StringRef name,
+        const Type* type, ExprNode* init, bool constness);
+    virtual ~VariableNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+    llvm::StringRef getName() const;
+    const Type* getType() const;
+    ExprNode* getInit() const;
+    bool isConst() const;
+
+private:
+    /** The name of the variable. */
+    llvm::StringRef name;
+    /** The type of the variable. */
+    const Type* type;
+    /** The variable's initial value. */
+    ExprNode* init;
+    /** If this variable is const or not. */
+    bool constness;
+};
 
 /**
  * Represents a block of code, e.g.\ `{ ... }`.
@@ -335,41 +371,6 @@ public:
     EmptyNode(Location location);
     virtual ~EmptyNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-};
-
-/**
- * Represents a variable declaration, e.g.\ `var x: Int = 5;`.
- */
-class VariableNode : public Node
-{
-public:
-    /**
-     * Creates a VariableNode.
-     *
-     * @param location Where this VariableNode was found in the source.
-     * @param name The name of the variable.
-     * @param type The type of the variable.
-     * @param init The variable's initial value.
-     * @param constness If this variable is const or not (TODO).
-     */
-    VariableNode(Location location, llvm::StringRef name, const Type* type,
-        ExprNode* init, bool constness);
-    virtual ~VariableNode() override = default;
-    virtual void accept(NodeVisitor& nodeVisitor) override;
-    llvm::StringRef getName() const;
-    const Type* getType() const;
-    ExprNode* getInit() const;
-    bool isConst() const;
-
-private:
-    /** The name of the variable. */
-    llvm::StringRef name;
-    /** The type of the variable. */
-    const Type* type;
-    /** The variable's initial value. */
-    ExprNode* init;
-    /** If this variable is const or not. */
-    bool constness;
 };
 
 /**
@@ -440,15 +441,6 @@ public:
      */
     ExprNode(Node::Kind kind, Location location);
     virtual bool isExpr() const override;
-    const Type* getType() const;
-    void setType(const Type* t);
-
-private:
-    /**
-     * VSL Type that this ExprNode contains. This is usually filled in later by
-     * a NodeVisitor of some sort.
-     */
-    const Type* type;
 };
 
 /**

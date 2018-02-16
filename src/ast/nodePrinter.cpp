@@ -42,6 +42,15 @@ void NodePrinter::visitParam(ParamNode& node)
     os << node.getName() << ": " << *node.getType();
 }
 
+void NodePrinter::visitVariable(VariableNode& node)
+{
+    indent() << accessModPrefix(node.getAccessMod()) <<
+        (node.isConst() ? "let " : "var ") << node.getName() << ": " <<
+        *node.getType() << " = ";
+    node.getInit()->accept(*this);
+    os << ';';
+}
+
 void NodePrinter::visitBlock(BlockNode& node)
 {
     // in most cases this lines up the curly braces with the statement behind
@@ -59,14 +68,6 @@ void NodePrinter::visitBlock(BlockNode& node)
 void NodePrinter::visitEmpty(EmptyNode& node)
 {
     indent() << ';';
-}
-
-void NodePrinter::visitVariable(VariableNode& node)
-{
-    indent() << (node.isConst() ? "let " : "var ") << node.getName() << ": " <<
-        *node.getType() << " = ";
-    node.getInit()->accept(*this);
-    os << ';';
 }
 
 void NodePrinter::visitIf(IfNode& node)
@@ -150,11 +151,23 @@ void NodePrinter::visitArg(ArgNode& node)
     node.getValue()->accept(*this);
 }
 
+const char* NodePrinter::accessModPrefix(AccessMod access)
+{
+    switch (access)
+    {
+    case AccessMod::PUBLIC:
+        return "public ";
+    case AccessMod::PRIVATE:
+        return  "private ";
+    default:
+        return "";
+    }
+}
+
 void NodePrinter::printFuncInterface(FuncInterfaceNode& node)
 {
-    indent() <<
-        (node.getAccessMod() == AccessMod::PUBLIC ? "public" : "private") <<
-        " func " << node.getName() << '(';
+    indent() << accessModPrefix(node.getAccessMod()) << "func " <<
+        node.getName() << '(';
     if (node.getNumParams() > 0)
     {
         node.getParam(0)->accept(*this);

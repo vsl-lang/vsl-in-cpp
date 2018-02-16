@@ -104,6 +104,13 @@ private:
      */
     std::vector<Node*> parseGlobals();
     /**
+     * Parses a declaration with an access specifier. This can be a free
+     * function or a global variable.
+     *
+     * @returns A declaration.
+     */
+    Node* parseDecl();
+    /**
      * Parses a function, e.g.\ `public func f(x: Int) -> Int { ... }`. External
      * functions are also included here.
      *
@@ -118,6 +125,15 @@ private:
      * @returns A function parameter.
      */
     ParamNode* parseParam();
+    /**
+     * Parses a variable declaration, e.g.\ `public var x: Int = 1;`. This can
+     * also be inside a function where there is no access modifier.
+     *
+     * @param access Access modifier.
+     *
+     * @returns A variable declaration.
+     */
+    Node* parseVariable(AccessMod access = AccessMod::NONE);
 
     /**
      * @}
@@ -146,12 +162,6 @@ private:
      * @returns A block of code.
      */
     Node* parseBlock();
-    /**
-     * Parses a variable declaration, e.g.\ `var x: Int = 1;`.
-     *
-     * @returns A variable declaration.
-     */
-    Node* parseVariable();
     /**
      * Parses an if/else statement, e.g.\ `if (x) { y; } else { z; }`.
      *
