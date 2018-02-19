@@ -7,6 +7,21 @@ VSLContext::VSLContext()
 {
 }
 
+void VSLContext::addNode(std::unique_ptr<Node> node)
+{
+    nodes.push_back(std::move(node));
+}
+
+void VSLContext::setGlobal(DeclNode* decl)
+{
+    globals.push_back(decl);
+}
+
+llvm::ArrayRef<DeclNode*> VSLContext::getGlobals() const
+{
+    return globals;
+}
+
 const SimpleType* VSLContext::getBoolType() const
 {
     return &boolType;

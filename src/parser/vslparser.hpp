@@ -7,10 +7,10 @@
 #include "lexer/lexer.hpp"
 #include "lexer/token.hpp"
 #include "parser/parser.hpp"
+#include "llvm/ADT/ArrayRef.h"
 #include <cstddef>
 #include <deque>
 #include <memory>
-#include <vector>
 
 /**
  * Parser for VSL.
@@ -29,7 +29,7 @@ public:
      * Destroys a VSLParser.
      */
     virtual ~VSLParser() override = default;
-    virtual std::vector<Node*> parse() override;
+    virtual llvm::ArrayRef<DeclNode*> parse() override;
 
 private:
     /**
@@ -98,7 +98,7 @@ private:
      *
      * @returns A sequence of global declarations.
      */
-    std::vector<Node*> parseGlobals();
+    llvm::ArrayRef<DeclNode*> parseGlobals();
     /**
      * Parses a declaration with an access specifier. This can be a free
      * function or a global variable.
@@ -269,8 +269,6 @@ private:
 
     /** @} */
 
-    /** Reference to the VSLContext. */
-    VSLContext& vslContext;
     /** The Lexer to get the tokens from. */
     Lexer& lexer;
     /** Diagnostics manager. */

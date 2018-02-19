@@ -17,21 +17,20 @@ public:
     /**
      * Creates an IREmitter object.
      *
-     * @param vslContext Context object for VSL stuff.
+     * @param vslCtx Context object for VSL stuff.
      * @param diag Diagnostics manager.
      * @param module Where to emit LLVM IR.
      */
-    IRGen(VSLContext& vslContext, Diag& diag, llvm::Module& module);
+    IRGen(VSLContext& vslCtx, Diag& diag, llvm::Module& module);
     /**
-     * Runs all the AST passes, converting it to LLVM IR in the module.
-     *
-     * @param statements The statements to visit.
+     * Runs all the AST passes, converting the AST stored in the VSLContext to
+     * LLVM IR in the Module.
      */
-    void run(llvm::ArrayRef<Node*> statements);
+    void run();
 
 private:
     /** Context object for VSL stuff. */
-    VSLContext& vslContext;
+    VSLContext& vslCtx;
     /** Diagnostics manager. */
     Diag& diag;
     /** Where to emit LLVM IR. */

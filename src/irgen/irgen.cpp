@@ -3,17 +3,19 @@
 #include "irgen/passes/irEmitter/irEmitter.hpp"
 #include "llvm/IR/Verifier.h"
 
-IRGen::IRGen(VSLContext& vslContext, Diag& diag, llvm::Module& module)
-    : vslContext{ vslContext }, diag{ diag }, module{ module }
+IRGen::IRGen(VSLContext& vslCtx, Diag& diag, llvm::Module& module)
+    : vslCtx{ vslCtx }, diag{ diag }, module{ module }
 {
 }
 
-void IRGen::run(llvm::ArrayRef<Node*> statements)
+void IRGen::run()
 {
+    // resolve global functions
     FuncResolver funcResolver{ diag, global, module };
-    funcResolver.visitStatements(statements);
-    IREmitter emitter{ vslContext, diag, func, global, module };
-    emitter.visitStatements(statements);
+    funcResolver.visitAST(vslCtx.getGlobals());
+    // emit code for global functions
+    IREmitter irEmitter{ vslCtx, diag, func, global, module };
+    irEmitter.visitAST(vslCtx.getGlobals());
     // the module should be valid after all this
     std::string s;
     llvm::raw_string_ostream sos{ s };

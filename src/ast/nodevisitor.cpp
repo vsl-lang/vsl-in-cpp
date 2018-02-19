@@ -2,11 +2,11 @@
 
 NodeVisitor::~NodeVisitor() = default;
 
-void NodeVisitor::visitStatements(llvm::ArrayRef<Node*> statements)
+void NodeVisitor::visitAST(llvm::ArrayRef<DeclNode*> ast)
 {
-    for (Node* statement : statements)
+    for (DeclNode* decl : ast)
     {
-        statement->accept(*this);
+        decl->accept(*this);
     }
 }
 

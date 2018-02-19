@@ -39,27 +39,29 @@ int Driver::main(int argc, const char* const* argv)
     case OptionParser::REPL_PARSE:
         return repl([](const std::string& in, llvm::raw_ostream& os)
             {
-                VSLContext vslContext;
+                VSLContext vslCtx;
                 Diag diag{ os };
                 VSLLexer lexer{ diag, in.c_str() };
-                VSLParser parser{ vslContext, lexer };
+                VSLParser parser{ vslCtx, lexer };
                 os << '\n';
                 NodePrinter printer{ os };
-                printer.visitStatements(parser.parse());
+                printer.visitAST(parser.parse());
             });
     case OptionParser::REPL_GENERATE:
         return repl([&](const std::string& in, llvm::raw_ostream& os)
             {
-                VSLContext vslContext;
+                VSLContext vslCtx;
                 Diag diag{ os };
+                // lex and parse the file
                 VSLLexer lexer{ diag, in.c_str() };
-                VSLParser parser{ vslContext, lexer };
-                auto statements = parser.parse();
+                VSLParser parser{ vslCtx, lexer };
+                parser.parse();
+                // generate LLVM IR for the ast stored in vslCtx
                 llvm::LLVMContext llvmContext;
                 auto module = std::make_unique<llvm::Module>("repl",
                     llvmContext);
-                IRGen irgen{ vslContext, diag, *module };
-                irgen.run(statements);
+                IRGen irgen{ vslCtx, diag, *module };
+                irgen.run();
                 CodeGen codeGen{ diag, *module };
                 if (op.optimize)
                 {
@@ -103,15 +105,15 @@ int Driver::compile()
         return 1;
     }
     // lex/parse
-    VSLContext vslContext;
+    VSLContext vslCtx;
     VSLLexer lexer{ diag, in.get()->getBuffer().data() };
-    VSLParser parser{ vslContext, lexer };
-    auto statements = parser.parse();
+    VSLParser parser{ vslCtx, lexer };
+    parser.parse();
     // emit llvm ir
     llvm::LLVMContext llvmContext;
     auto module = std::make_unique<llvm::Module>(op.infile, llvmContext);
-    IRGen irgen{ vslContext, diag, *module };
-    irgen.run(statements);
+    IRGen irgen{ vslCtx, diag, *module };
+    irgen.run();
     // recap the amount of errors/warnings that occurred
     if (diag.getNumErrors() > 1)
     {

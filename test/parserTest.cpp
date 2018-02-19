@@ -10,10 +10,10 @@
 // returns true if the syntax is valid, false otherwise
 static bool parse(const char* src)
 {
-    VSLContext vslContext;
+    VSLContext vslCtx;
     Diag diag{ llvm::nulls() };
     VSLLexer lexer{ diag, src };
-    VSLParser parser{ vslContext, lexer };
+    VSLParser parser{ vslCtx, lexer };
     parser.parse();
     return !diag.getNumErrors();
 }

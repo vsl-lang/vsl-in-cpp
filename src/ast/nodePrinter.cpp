@@ -5,20 +5,12 @@ NodePrinter::NodePrinter(llvm::raw_ostream& os)
 {
 }
 
-void NodePrinter::visitStatements(llvm::ArrayRef<Node*> statements)
+void NodePrinter::visitAST(llvm::ArrayRef<DeclNode*> ast)
 {
-    for (Node* statement : statements)
+    for (DeclNode* decl : ast)
     {
-        // blocks need to indent the inner statements
-        if (statement->is(Node::BLOCK))
-        {
-            ++indentLevel;
-        }
-        printStatement(*statement);
-        if (statement->is(Node::BLOCK))
-        {
-            --indentLevel;
-        }
+        decl->accept(*this);
+        os << '\n';
     }
 }
 
@@ -63,7 +55,20 @@ void NodePrinter::visitBlock(BlockNode& node)
     --indentLevel;
     indent() << "{\n";
     ++indentLevel;
-    visitStatements(node.getStatements());
+    // print each statement inside the block
+    for (Node* statement : node.getStatements())
+    {
+        // blocks need to indent the inner statements
+        if (statement->is(Node::BLOCK))
+        {
+            ++indentLevel;
+        }
+        printStatement(*statement);
+        if (statement->is(Node::BLOCK))
+        {
+            --indentLevel;
+        }
+    }
     --indentLevel;
     indent() << '}';
     ++indentLevel;

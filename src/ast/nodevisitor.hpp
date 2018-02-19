@@ -16,11 +16,11 @@ class NodeVisitor
 public:
     virtual ~NodeVisitor() = 0;
     /**
-     * Visits a bunch of statements.
+     * Visits an AST.
      *
-     * @param statements The statements to visit.
+     * @param ast The list of global declarations to process.
      */
-    virtual void visitStatements(llvm::ArrayRef<Node*> statements);
+    virtual void visitAST(llvm::ArrayRef<DeclNode*> ast);
     virtual void visitFunction(FunctionNode& node);
     virtual void visitExtFunc(ExtFuncNode& node);
     virtual void visitParam(ParamNode& node);

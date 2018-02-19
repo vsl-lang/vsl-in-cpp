@@ -11,15 +11,15 @@
 // returns true if semantically valid, false otherwise
 static bool validate(const char* src)
 {
-    VSLContext vslContext;
+    VSLContext vslCtx;
     Diag diag{ llvm::nulls() };
     VSLLexer lexer{ diag, src };
-    VSLParser parser{ vslContext, lexer };
-    auto statements = parser.parse();
+    VSLParser parser{ vslCtx, lexer };
+    parser.parse();
     llvm::LLVMContext llvmContext;
     auto module = std::make_unique<llvm::Module>("test", llvmContext);
-    IRGen irgen{ vslContext, diag, *module };
-    irgen.run(statements);
+    IRGen irgen{ vslCtx, diag, *module };
+    irgen.run();
     return !diag.getNumErrors();
 }
 

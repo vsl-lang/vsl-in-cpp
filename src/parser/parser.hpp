@@ -2,10 +2,10 @@
 #define PARSER_HPP
 
 #include "ast/node.hpp"
-#include <deque>
+#include "ast/vslContext.hpp"
+#include "llvm/ADT/ArrayRef.h"
 #include <memory>
 #include <type_traits>
-#include <vector>
 
 /**
  * Base class for parsers.
@@ -13,14 +13,16 @@
 class Parser
 {
 public:
+    Parser(VSLContext& vslCtx);
     virtual ~Parser() = 0;
     /**
-     * Parses the program. The `Node*`'s returned are owned by the parser and
-     * are invalidated once this Parser is destroyed.
+     * Parses the program. The `DeclNode*`s returned are owned by the VSLContext
+     * provided by this class' constructor.
      *
-     * @returns The AST of the program, wrapped in a vector of statements.
+     * @returns The AST of the program, wrapped in an ArrayRef of global
+     * declarations.
      */
-    virtual std::vector<Node*> parse() = 0;
+    virtual llvm::ArrayRef<DeclNode*> parse() = 0;
 
 protected:
     /**
@@ -37,14 +39,14 @@ protected:
     typename std::enable_if<std::is_base_of<Node, NodeT>::value, NodeT*>::type
     makeNode(Args&&... args)
     {
-        nodes.emplace_back(
-            std::make_unique<NodeT>(std::forward<Args>(args)...));
-        return static_cast<NodeT*>(nodes.back().get());
+        auto node = std::make_unique<NodeT>(std::forward<Args>(args)...);
+        NodeT* nodePtr = node.get();
+        vslCtx.addNode(std::move(node));
+        return nodePtr;
     }
 
-private:
-    /** Owns all the Nodes that the parser creates. */
-    std::deque<std::unique_ptr<Node>> nodes;
+    /** Reference to the VSLContext. */
+    VSLContext& vslCtx;
 };
 
 #endif // PARSER_HPP

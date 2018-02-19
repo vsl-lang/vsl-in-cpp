@@ -1,20 +1,20 @@
 #include "parser/vslparser.hpp"
 #include "ast/opKind.hpp"
 
-VSLParser::VSLParser(VSLContext& vslContext, Lexer& lexer)
-    : vslContext{ vslContext }, lexer{ lexer }, diag{ lexer.getDiag() }
+VSLParser::VSLParser(VSLContext& vslCtx, Lexer& lexer)
+    : Parser{ vslCtx }, lexer{ lexer }, diag{ lexer.getDiag() }
 {
 }
 
-// program -> statements eof
-std::vector<Node*> VSLParser::parse()
+// program -> globals eof
+llvm::ArrayRef<DeclNode*> VSLParser::parse()
 {
-    std::vector<Node*> statements = parseGlobals();
+    auto ast = parseGlobals();
     if (current().isNot(TokenKind::END))
     {
         errorExpected("eof");
     }
-    return statements;
+    return ast;
 }
 
 Token VSLParser::consume()
@@ -64,20 +64,18 @@ void VSLParser::errorUnexpected(const Token& token)
     diag.print<Diag::UNEXPECTED_TOKEN>(token);
 }
 
-// globals -> function*
-std::vector<Node*> VSLParser::parseGlobals()
+// globals -> decl*
+llvm::ArrayRef<DeclNode*> VSLParser::parseGlobals()
 {
-    std::vector<Node*> globals;
     while (current().isNot(TokenKind::END))
     {
-        DeclNode* decl = parseDecl();
-        if (decl)
+        if (DeclNode* decl = parseDecl())
         {
             // the parsed decl is valid
-            globals.emplace_back(decl);
+            vslCtx.setGlobal(decl);
         }
     }
-    return globals;
+    return vslCtx.getGlobals();
 }
 
 // decl -> function | variable
@@ -175,7 +173,7 @@ FuncInterfaceNode* VSLParser::parseFunction(AccessMod access)
         {
             return p->getType();
         });
-    const FunctionType* ft = vslContext.getFunctionType(std::move(paramTypes),
+    const FunctionType* ft = vslCtx.getFunctionType(std::move(paramTypes),
         returnType);
     // parse an external function
     if (current().is(TokenKind::KW_EXTERNAL))
@@ -239,7 +237,7 @@ ParamNode* VSLParser::parseParam()
         errorExpected("':'");
     }
     const Type* type = parseType();
-    if (type == vslContext.getVoidType())
+    if (!type->isValid())
     {
         diag.print<Diag::INVALID_PARAM_TYPE>(location, *type);
         return nullptr;
@@ -720,13 +718,13 @@ const Type* VSLParser::parseType()
     switch (consume().getKind())
     {
     case TokenKind::KW_BOOL:
-        return vslContext.getBoolType();
+        return vslCtx.getBoolType();
     case TokenKind::KW_INT:
-        return vslContext.getIntType();
+        return vslCtx.getIntType();
     case TokenKind::KW_VOID:
-        return vslContext.getVoidType();
+        return vslCtx.getVoidType();
     default:
         errorExpected("type");
-        return vslContext.getErrorType();
+        return vslCtx.getErrorType();
     }
 }

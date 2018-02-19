@@ -1,45 +1,54 @@
 #ifndef VSLCONTEXT_HPP
 #define VSLCONTEXT_HPP
 
+#include "ast/node.hpp"
 #include "ast/type.hpp"
 #include "lexer/location.hpp"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/raw_ostream.h"
+#include <deque>
 #include <unordered_set>
+#include <vector>
 
 /**
- * Context object that owns/manages VSL AST-specific data that shouldn't be kept
- * in the AST itself.
+ * Context object that owns and manages the AST and other objects related to it.
+ * All {@link Node Nodes} and {@link Type Types} are unique so it's fine to
+ * compare pointers to them for equality rather than the actual objects.
  */
 class VSLContext
 {
 public:
-    /**
-     * Constructs a VSLContext.
-     */
     VSLContext();
+
     /**
-     * Gets the Bool type.
-     *
-     * @returns The Bool type.
+     * @name Node Getters
+     * @{
      */
+
+    /**
+     * Transfers ownership of a Node to this object.
+     */
+    void addNode(std::unique_ptr<Node> node);
+    /**
+     * Indicate that a DeclNode is in the global scope. It's not recommended to
+     * call this multiple times with the same pointer.
+     */
+    void setGlobal(DeclNode* decl);
+    /**
+     * Gets a reference to the current list of global DeclNodes. If setGlobal is
+     * called afterwards, the returned ArrayRef may or may not be valid.
+     */
+    llvm::ArrayRef<DeclNode*> getGlobals() const;
+
+    /**
+     * @}
+     * @name Type Getters
+     * @{
+     */
+
     const SimpleType* getBoolType() const;
-    /**
-     * Gets the Int type.
-     *
-     * @returns The Int type.
-     */
     const SimpleType* getIntType() const;
-    /**
-     * Gets the Void type.
-     *
-     * @returns The Void type.
-     */
     const SimpleType* getVoidType() const;
-    /**
-     * Gets the Error type.
-     *
-     * @returns The Error type.
-     */
     const SimpleType* getErrorType() const;
     /**
      * Gets a SimpleType.
@@ -60,7 +69,13 @@ public:
     const FunctionType* getFunctionType(std::vector<const Type*> params,
         const Type* returnType);
 
+    /** @} */
+
 private:
+    /** Owns all the Nodes. */
+    std::deque<std::unique_ptr<Node>> nodes;
+    /** Contains all global declarations in order. */
+    std::vector<DeclNode*> globals;
     /** Placeholder for any type errors. */
     SimpleType errorType;
     /** Represents the Bool type. */
