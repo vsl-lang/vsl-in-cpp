@@ -27,7 +27,7 @@ void NodePrinter::visitFunction(FunctionNode& node)
     printFuncInterface(node);
     os << '\n';
     ++indentLevel;
-    printStatement(*node.getBody());
+    visitBlock(node.getBody());
     --indentLevel;
 }
 
@@ -46,8 +46,12 @@ void NodePrinter::visitVariable(VariableNode& node)
 {
     indent() << accessModPrefix(node.getAccessMod()) <<
         (node.isConst() ? "let " : "var ") << node.getName() << ": " <<
-        *node.getType() << " = ";
-    node.getInit()->accept(*this);
+        *node.getType();
+    if (node.hasInit())
+    {
+        os << " = ";
+        node.getInit().accept(*this);
+    }
     os << ';';
 }
 
@@ -73,16 +77,20 @@ void NodePrinter::visitEmpty(EmptyNode& node)
 void NodePrinter::visitIf(IfNode& node)
 {
     indent() << "if (";
-    node.getCondition()->accept(*this);
+    node.getCondition().accept(*this);
     os << ")\n";
     ++indentLevel;
-    printStatement(*node.getThen());
+    printStatement(node.getThen());
     --indentLevel;
-    indent() << "else\n";
-    ++indentLevel;
-    // FIXME: extra newline here
-    printStatement(*node.getElse());
-    --indentLevel;
+    if (node.hasElse())
+    {
+        indent() << "else\n";
+        ++indentLevel;
+        // FIXME: printing any statement adds a newline after, so technically
+        //  two newlines are added after printing the else case
+        printStatement(node.getElse());
+        --indentLevel;
+    }
 }
 
 void NodePrinter::visitReturn(ReturnNode& node)
@@ -91,7 +99,7 @@ void NodePrinter::visitReturn(ReturnNode& node)
     if (node.hasValue())
     {
         os << ' ';
-        node.getValue()->accept(*this);
+        node.getValue().accept(*this);
     }
     os << ';';
 }
@@ -109,37 +117,37 @@ void NodePrinter::visitLiteral(LiteralNode& node)
 void NodePrinter::visitUnary(UnaryNode& node)
 {
     os << node.getOpSymbol() << '(';
-    node.getExpr()->accept(*this);
+    node.getExpr().accept(*this);
     os << ')';
 }
 
 void NodePrinter::visitBinary(BinaryNode& node)
 {
-    node.getLhs()->accept(*this);
+    node.getLhs().accept(*this);
     os << ' ' << node.getOpSymbol() << ' ';
-    node.getRhs()->accept(*this);
+    node.getRhs().accept(*this);
 }
 
 void NodePrinter::visitTernary(TernaryNode& node)
 {
-    node.getCondition()->accept(*this);
+    node.getCondition().accept(*this);
     os << " ? ";
-    node.getThen()->accept(*this);
+    node.getThen().accept(*this);
     os << " : ";
-    node.getElse()->accept(*this);
+    node.getElse().accept(*this);
 }
 
 void NodePrinter::visitCall(CallNode& node)
 {
-    node.getCallee()->accept(*this);
+    node.getCallee().accept(*this);
     os << '(';
     if (node.getNumArgs() > 0)
     {
-        node.getArg(0)->accept(*this);
+        node.getArg(0).accept(*this);
         for (size_t i = 1; i < node.getNumArgs(); ++i)
         {
             os << ", ";
-            node.getArg(i)->accept(*this);
+            node.getArg(i).accept(*this);
         }
     }
     os << ')';
@@ -148,7 +156,7 @@ void NodePrinter::visitCall(CallNode& node)
 void NodePrinter::visitArg(ArgNode& node)
 {
     os << node.getName() << ": ";
-    node.getValue()->accept(*this);
+    node.getValue().accept(*this);
 }
 
 const char* NodePrinter::accessModPrefix(AccessMod access)
@@ -170,11 +178,11 @@ void NodePrinter::printFuncInterface(FuncInterfaceNode& node)
         node.getName() << '(';
     if (node.getNumParams() > 0)
     {
-        node.getParam(0)->accept(*this);
+        node.getParam(0).accept(*this);
         for (size_t i = 1; i < node.getNumParams(); ++i)
         {
             os << ", ";
-            node.getParam(i)->accept(*this);
+            node.getParam(i).accept(*this);
         }
     }
     os << ") -> " << *node.getReturnType();

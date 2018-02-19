@@ -38,7 +38,7 @@ void IREmitter::visitFunction(FunctionNode& node)
     for (size_t i = 0; i < node.getNumParams(); ++i)
     {
         // get the vsl and llvm parameter representation
-        const ParamNode& param = *node.getParam(i);
+        const ParamNode& param = node.getParam(i);
         llvm::Argument* llvmParam = &*std::next(llvmFunc->arg_begin(), i);
         // load the parameter into a runtime variable
         llvm::Value* alloca = createEntryAlloca(llvmParam->getType(),
@@ -48,7 +48,7 @@ void IREmitter::visitFunction(FunctionNode& node)
         func.set(param.getName(), Value::getVar(param.getType(), alloca));
     }
     // generate the body
-    node.getBody()->accept(*this);
+    node.getBody().accept(*this);
     // make sure the last block is terminated and not waiting to insert anymore
     //  instructions afterward
     auto* bb = builder.GetInsertBlock();
@@ -168,7 +168,7 @@ void IREmitter::visitVariable(VariableNode& node)
         }
     }
     // generate initialization code
-    node.getInit()->accept(*this);
+    node.getInit().accept(*this);
     Value init = result;
     result = Value::getNull();
     // before initializing the variable, make sure that the initializer
@@ -196,7 +196,7 @@ void IREmitter::visitIf(IfNode& node)
     }
     // setup the condition
     func.enter();
-    node.getCondition()->accept(*this);
+    node.getCondition().accept(*this);
     if (!result)
     {
         return;
@@ -209,31 +209,43 @@ void IREmitter::visitIf(IfNode& node)
     }
     else
     {
-        diag.print<Diag::CANNOT_CONVERT>(*node.getCondition(),
+        diag.print<Diag::CANNOT_CONVERT>(node.getCondition(),
             *result.getVSLType(), *vslCtx.getBoolType());
         cond = builder.getFalse();
     }
     // create the necessary basic blocks
     llvm::Function* currentFunc = builder.GetInsertBlock()->getParent();
     auto* thenBlock = llvm::BasicBlock::Create(llvmCtx, "if.then");
-    auto* elseBlock = llvm::BasicBlock::Create(llvmCtx, "if.else");
     auto* endBlock = llvm::BasicBlock::Create(llvmCtx, "if.end");
+    llvm::BasicBlock* elseBlock;
+    if (node.hasElse())
+    {
+        elseBlock = llvm::BasicBlock::Create(llvmCtx, "if.else");
+    }
+    else
+    {
+        // branch to the end if the condition is false
+        elseBlock = endBlock;
+    }
     // create the branch instruction
     builder.CreateCondBr(cond, thenBlock, elseBlock);
     // generate then block
     func.enter();
     thenBlock->insertInto(currentFunc);
     builder.SetInsertPoint(thenBlock);
-    node.getThen()->accept(*this);
+    node.getThen().accept(*this);
     branchTo(endBlock);
     func.exit();
-    // generate else block
-    func.enter();
-    elseBlock->insertInto(currentFunc);
-    builder.SetInsertPoint(elseBlock);
-    node.getElse()->accept(*this);
-    branchTo(endBlock);
-    func.exit();
+    if (node.hasElse())
+    {
+        // generate else block
+        func.enter();
+        elseBlock->insertInto(currentFunc);
+        builder.SetInsertPoint(elseBlock);
+        node.getElse().accept(*this);
+        branchTo(endBlock);
+        func.exit();
+    }
     // setup end block for other code after the IfNode if needed
     // this handles when both then and else cases have a return statement
     func.exit();
@@ -262,14 +274,14 @@ void IREmitter::visitReturn(ReturnNode& node)
         return;
     }
     // validate the return value
-    node.getValue()->accept(*this);
+    node.getValue().accept(*this);
     Value value = result;
     result = Value::getNull();
     if (value)
     {
         if (value.getVSLType() != func.getReturnType())
         {
-            diag.print<Diag::RETVAL_MISMATCHES_RETTYPE>(*node.getValue(),
+            diag.print<Diag::RETVAL_MISMATCHES_RETTYPE>(node.getValue(),
                 *value.getVSLType(), *func.getReturnType());
         }
         else if (value.getVSLType() == vslCtx.getVoidType())
@@ -342,7 +354,7 @@ void IREmitter::visitLiteral(LiteralNode& node)
 void IREmitter::visitUnary(UnaryNode& node)
 {
     // verify the contained expression
-    node.getExpr()->accept(*this);
+    node.getExpr().accept(*this);
     if (!result)
     {
         return;
@@ -387,13 +399,13 @@ void IREmitter::visitBinary(BinaryNode& node)
         return;
     }
     // verify the left and right expressions
-    node.getLhs()->accept(*this);
+    node.getLhs().accept(*this);
     if (!result)
     {
         return;
     }
     Value lhs = result;
-    node.getRhs()->accept(*this);
+    node.getRhs().accept(*this);
     if (!result)
     {
         return;
@@ -456,14 +468,14 @@ void IREmitter::visitBinary(BinaryNode& node)
 void IREmitter::visitTernary(TernaryNode& node)
 {
     // generate condition and make sure its a bool
-    node.getCondition()->accept(*this);
+    node.getCondition().accept(*this);
     if (!result)
     {
         return;
     }
     if (result.getVSLType() != vslCtx.getBoolType())
     {
-        diag.print<Diag::CANNOT_CONVERT>(*node.getCondition(),
+        diag.print<Diag::CANNOT_CONVERT>(node.getCondition(),
             *result.getVSLType(), *vslCtx.getBoolType());
         return;
     }
@@ -480,7 +492,7 @@ void IREmitter::visitTernary(TernaryNode& node)
     //  expression can span multiple basic blocks, e.g. a ternary such as this
     thenBlock->insertInto(currFunc);
     builder.SetInsertPoint(thenBlock);
-    node.getThen()->accept(*this);
+    node.getThen().accept(*this);
     Value thenCase = result;
     auto* thenEnd = builder.GetInsertBlock();
     branchTo(contBlock);
@@ -494,7 +506,7 @@ void IREmitter::visitTernary(TernaryNode& node)
         delete contBlock;
         return;
     }
-    node.getElse()->accept(*this);
+    node.getElse().accept(*this);
     Value elseCase = result;
     auto* elseEnd = builder.GetInsertBlock();
     branchTo(contBlock);
@@ -524,14 +536,14 @@ void IREmitter::visitTernary(TernaryNode& node)
 void IREmitter::visitCall(CallNode& node)
 {
     // make sure the callee is an actual function
-    node.getCallee()->accept(*this);
+    node.getCallee().accept(*this);
     if (!result)
     {
         return;
     }
     if (!result.isFunc() || !result.getVSLType()->isFunctionType())
     {
-        diag.print<Diag::NOT_A_FUNCTION>(*node.getCallee(),
+        diag.print<Diag::NOT_A_FUNCTION>(node.getCallee(),
             *result.getVSLType());
         result = Value::getNull();
         return;
@@ -551,7 +563,7 @@ void IREmitter::visitCall(CallNode& node)
     for (size_t i = 0; i < calleeType->getNumParams(); ++i)
     {
         const Type* paramType = calleeType->getParamType(i);
-        ArgNode& arg = *node.getArg(i);
+        ArgNode& arg = node.getArg(i);
         arg.accept(*this);
         if (!result)
         {
@@ -564,7 +576,7 @@ void IREmitter::visitCall(CallNode& node)
         }
         else
         {
-            diag.print<Diag::CANNOT_CONVERT>(*arg.getValue(),
+            diag.print<Diag::CANNOT_CONVERT>(arg.getValue(),
                 *result.getVSLType(), *paramType);
         }
     }
@@ -582,7 +594,7 @@ void IREmitter::visitCall(CallNode& node)
 
 void IREmitter::visitArg(ArgNode& node)
 {
-    node.getValue()->accept(*this);
+    node.getValue().accept(*this);
 }
 
 void IREmitter::genNeg(Value value)
@@ -595,8 +607,8 @@ void IREmitter::genNeg(Value value)
 
 void IREmitter::genAssign(BinaryNode& node)
 {
-    ExprNode& lhs = *node.getLhs();
-    ExprNode& rhs = *node.getRhs();
+    ExprNode& lhs = node.getLhs();
+    ExprNode& rhs = node.getRhs();
     rhs.accept(*this);
     if (!result)
     {
@@ -638,7 +650,7 @@ void IREmitter::genAssign(BinaryNode& node)
 void IREmitter::genShortCircuit(BinaryNode& node)
 {
     // generate code to calculate lhs
-    ExprNode& lhs = *node.getLhs();
+    ExprNode& lhs = node.getLhs();
     lhs.accept(*this);
     if (!result)
     {
@@ -674,7 +686,7 @@ void IREmitter::genShortCircuit(BinaryNode& node)
     longCheck->insertInto(currFunc);
     builder.SetInsertPoint(longCheck);
     // generate code to calculate rhs
-    ExprNode& rhs = *node.getRhs();
+    ExprNode& rhs = node.getRhs();
     rhs.accept(*this);
     Value cond2 = result;
     // setup the cont block

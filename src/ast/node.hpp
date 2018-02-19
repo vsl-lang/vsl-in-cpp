@@ -185,7 +185,7 @@ public:
     llvm::StringRef getName() const;
     llvm::ArrayRef<ParamNode*> getParams() const;
     size_t getNumParams() const;
-    ParamNode* getParam(size_t i) const;
+    ParamNode& getParam(size_t i) const;
     const Type* getReturnType() const;
     const FunctionType* getFuncType() const;
 
@@ -229,15 +229,15 @@ public:
      */
     FunctionNode(Location location, AccessMod access, llvm::StringRef name,
         std::vector<ParamNode*> params, const Type* returnType,
-        const FunctionType* ft, Node* body);
+        const FunctionType* ft, BlockNode& body);
     virtual ~FunctionNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    Node* getBody() const;
+    BlockNode& getBody() const;
     bool isAlreadyDefined() const;
     void setAlreadyDefined(bool alreadyDefined = true);
 
 private:
-    Node* body;
+    BlockNode& body;
     /** Whether this function was already defined. */
     bool alreadyDefined;
 };
@@ -312,7 +312,7 @@ public:
      * @param access Access modifier.
      * @param name The name of the variable.
      * @param type The type of the variable.
-     * @param init The variable's initial value.
+     * @param init The variable's initial value. Can be null.
      * @param constness If this variable is const or not (TODO).
      */
     VariableNode(Location location, AccessMod access, llvm::StringRef name,
@@ -321,7 +321,8 @@ public:
     virtual void accept(NodeVisitor& nodeVisitor) override;
     llvm::StringRef getName() const;
     const Type* getType() const;
-    ExprNode* getInit() const;
+    bool hasInit() const;
+    ExprNode& getInit() const;
     bool isConst() const;
 
 private:
@@ -380,27 +381,28 @@ class IfNode : public Node
 {
 public:
     /**
-     * Creates a IfNode.
+     * Creates an IfNode.
      *
      * @param location Where this IfNode was found in the source.
      * @param condition The condition to test.
      * @param thenCase The code to run if the condition is true.
-     * @param elseCase The code to run if the condition is false.
+     * @param elseCase The code to run if the condition is false. Can be null.
      */
-    IfNode(Location location, ExprNode* condition, Node* thenCase,
+    IfNode(Location location, ExprNode& condition, Node& thenCase,
         Node* elseCase);
     virtual ~IfNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    ExprNode* getCondition() const;
-    Node* getThen() const;
-    Node* getElse() const;
+    ExprNode& getCondition() const;
+    Node& getThen() const;
+    bool hasElse() const;
+    Node& getElse() const;
 
 private:
     /** The condition to test. */
-    ExprNode* condition;
+    ExprNode& condition;
     /** The code to run if the condition is true. */
-    Node* thenCase;
-    /** The code to run if the condition is false. */
+    Node& thenCase;
+    /** The code to run if the condition is false. Can be null. */
     Node* elseCase;
 };
 
@@ -414,13 +416,13 @@ public:
      * Creates a ReturnNode.
      *
      * @param location Where this ReturnNode was found in the source.
-     * @param value The value to return.
+     * @param value The value to return. Can be null.
      */
     ReturnNode(Location location, ExprNode* value);
     virtual ~ReturnNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     bool hasValue() const;
-    ExprNode* getValue() const;
+    ExprNode& getValue() const;
 
 private:
     /** The value to return. */
@@ -500,18 +502,18 @@ public:
      * @param op The operator of the expression.
      * @param expr The expression to apply the operator to.
      */
-    UnaryNode(Location location, UnaryKind op, ExprNode* expr);
+    UnaryNode(Location location, UnaryKind op, ExprNode& expr);
     virtual ~UnaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     UnaryKind getOp() const;
     const char* getOpSymbol() const;
-    ExprNode* getExpr() const;
+    ExprNode& getExpr() const;
 
 private:
     /** The operator of the expression. */
     UnaryKind op;
     /** The expression to apply the operator to. */
-    ExprNode* expr;
+    ExprNode& expr;
 };
 
 /**
@@ -528,22 +530,22 @@ public:
      * @param left The left hand side of the expression.
      * @param right The right hand side of the expression.
      */
-    BinaryNode(Location location, BinaryKind op, ExprNode* left,
-        ExprNode* right);
+    BinaryNode(Location location, BinaryKind op, ExprNode& left,
+        ExprNode& right);
     virtual ~BinaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     BinaryKind getOp() const;
     const char* getOpSymbol() const;
-    ExprNode* getLhs() const;
-    ExprNode* getRhs() const;
+    ExprNode& getLhs() const;
+    ExprNode& getRhs() const;
 
 private:
     /** The operator of the expression. */
     BinaryKind op;
     /** The left hand side of the expression. */
-    ExprNode* left;
+    ExprNode& left;
     /** The right hand side of the expression. */
-    ExprNode* right;
+    ExprNode& right;
 };
 
 /**
@@ -560,21 +562,21 @@ public:
      * @param thenCase The expression when the condition is true.
      * @param elseCase The expression when the condition is false.
      */
-    TernaryNode(Location location, ExprNode* condition, ExprNode* thenCase,
-        ExprNode* elseCase);
+    TernaryNode(Location location, ExprNode& condition, ExprNode& thenCase,
+        ExprNode& elseCase);
     virtual ~TernaryNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    ExprNode* getCondition() const;
-    ExprNode* getThen() const;
-    ExprNode* getElse() const;
+    ExprNode& getCondition() const;
+    ExprNode& getThen() const;
+    ExprNode& getElse() const;
 
 private:
     /** The condition to test for. */
-    ExprNode* condition;
+    ExprNode& condition;
     /** The expression when the condition is true. */
-    ExprNode* thenCase;
+    ExprNode& thenCase;
     /** The expression when the condition is false. */
-    ExprNode* elseCase;
+    ExprNode& elseCase;
 };
 
 /**
@@ -590,17 +592,17 @@ public:
      * @param callee The function to call.
      * @param args The arguments to pass to the callee.
      */
-    CallNode(Location location, ExprNode* callee, std::vector<ArgNode*> args);
+    CallNode(Location location, ExprNode& callee, std::vector<ArgNode*> args);
     virtual ~CallNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
-    ExprNode* getCallee() const;
+    ExprNode& getCallee() const;
     llvm::ArrayRef<ArgNode*> getArgs() const;
     size_t getNumArgs() const;
-    ArgNode* getArg(size_t i) const;
+    ArgNode& getArg(size_t i) const;
 
 private:
     /** The function to call. */
-    ExprNode* callee;
+    ExprNode& callee;
     /** The arguments to pass to the callee. */
     std::vector<ArgNode*> args;
 };
@@ -615,20 +617,20 @@ public:
      * Creates an ArgNode.
      *
      * @param location Where this ArgNode was found in the source.
-     * @param name The name of the argument. Used for name parameters (WIP).
+     * @param name The name of the argument. Used for named parameters (TODO).
      * @param value The value of the argument.
      */
-    ArgNode(Location location, llvm::StringRef name, ExprNode* value);
+    ArgNode(Location location, llvm::StringRef name, ExprNode& value);
     ~ArgNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     llvm::StringRef getName() const;
-    ExprNode* getValue() const;
+    ExprNode& getValue() const;
 
 private:
     /** The name of the argument. */
     llvm::StringRef name;
     /** The value of the argument. */
-    ExprNode* value;
+    ExprNode& value;
 };
 
 #endif // NODE_HPP

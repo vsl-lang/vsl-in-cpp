@@ -18,9 +18,8 @@ DIAG(UNEXPECTED_TOKEN, (const Token& t), (ERROR, t.getLoc(),
         "unexpected token '", t.getText(), '\''))
 DIAG(FUNCEPTION, (Location location), (ERROR, location,
         "function being defined within another function scope (funception!)"))
-DIAG(INVALID_PARAM_TYPE, (const ParamNode& param), (ERROR, param.getLoc(),
-        " type '", *param.getType(), "' is invalid for parameter '",
-        param.getName(), '\''))
+DIAG(INVALID_PARAM_TYPE, (Location location, const Type& type), (ERROR,
+        location, "type '", type, "' is an invalid parameter type"))
 DIAG(NOT_A_BINARY_OP, (const Token& t), (ERROR, t.getLoc(), "token '",
         t.getText(), "' is not a binary operator"))
 DIAG(INVALID_INT, (const Token& t), (ERROR, t.getLoc(), "invalid integer '",
@@ -42,7 +41,7 @@ DIAG(INVALID_VAR_TYPE, (const VariableNode& var), (ERROR, var.getLoc(),
         "type '", *var.getType(), "' is invalid for variable '", var.getName(),
         '\''))
 DIAG(MISMATCHING_VAR_TYPES, (const VariableNode& var, const Type& initType),
-    (ERROR, var.getInit()->getLoc(), "variable '", var.getName(),
+    (ERROR, var.getInit().getLoc(), "variable '", var.getName(),
         "' is of type '", *var.getType(),
         "' but is being initialized with an expression of type '", initType,
         '\''))
@@ -55,7 +54,7 @@ DIAG(RETVAL_MISMATCHES_RETTYPE, (const ExprNode& retVal, const Type& valType,
         const Type& retType), (ERROR, retVal.getLoc(), "return value of type '",
         valType, "' does not match return type '", retType, '\''))
 DIAG(CANT_RETURN_VOID_VALUE, (ReturnNode& ret), (ERROR,
-        ret.getValue()->getLoc(), "cannot return a value of type Void"))
+        ret.getValue().getLoc(), "cannot return a value of type Void"))
 DIAG(UNKNOWN_IDENT, (IdentNode& id), (ERROR, id.getLoc(),
         "unknown identifier '", id.getName(), '\''))
 DIAG(INVALID_INT_WIDTH, (LiteralNode& literal), (INTERNAL, literal.getLoc(),
@@ -67,9 +66,9 @@ DIAG(INVALID_UNARY, (UnaryNode& unary, const Type& type), (ERROR,
 DIAG(INVALID_BINARY, (BinaryNode& binary, const Type& lhs, const Type& rhs),
     (ERROR, binary.getLoc(), "cannot apply binary operator '",
         binary.getOpSymbol(), "' to types '", lhs, "' and '", rhs, '\''))
-DIAG(TERNARY_TYPE_MISMATCH, (TernaryNode& ternary, const Type& thenCase,
-        const Type& elseCase), (ERROR, ternary.getLoc(),
-        "ternary operands of type '", thenCase, "' and '", elseCase,
+DIAG(TERNARY_TYPE_MISMATCH, (TernaryNode& ternary, const Type& thenType,
+        const Type& elseType), (ERROR, ternary.getLoc(),
+        "ternary operands of type '", thenType, "' and '", elseType,
         "' don't match"))
 DIAG(NOT_A_FUNCTION, (const ExprNode& callee, const Type& type), (ERROR,
         callee.getLoc(), "called object of type '", type,

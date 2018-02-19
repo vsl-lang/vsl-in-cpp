@@ -54,17 +54,14 @@ bool VSLParser::empty() const
     return cache.empty() && lexer.empty();
 }
 
-EmptyNode* VSLParser::errorExpected(const char* s)
+void VSLParser::errorExpected(const char* s)
 {
-    const Token& token = current();
-    diag.print<Diag::EXPECTED_BUT_FOUND>(s, token);
-    return makeNode<EmptyNode>(token.getLoc());
+    diag.print<Diag::EXPECTED_BUT_FOUND>(s, current());
 }
 
-EmptyNode* VSLParser::errorUnexpected(const Token& token)
+void VSLParser::errorUnexpected(const Token& token)
 {
     diag.print<Diag::UNEXPECTED_TOKEN>(token);
-    return makeNode<EmptyNode>(token.getLoc());
 }
 
 // globals -> function*
@@ -73,13 +70,18 @@ std::vector<Node*> VSLParser::parseGlobals()
     std::vector<Node*> globals;
     while (current().isNot(TokenKind::END))
     {
-        globals.emplace_back(parseDecl());
+        DeclNode* decl = parseDecl();
+        if (decl)
+        {
+            // the parsed decl is valid
+            globals.emplace_back(decl);
+        }
     }
     return globals;
 }
 
 // decl -> function | variable
-Node* VSLParser::parseDecl()
+DeclNode* VSLParser::parseDecl()
 {
     AccessMod access;
     switch (current().getKind())
@@ -103,7 +105,8 @@ Node* VSLParser::parseDecl()
     case TokenKind::KW_LET:
         return parseVariable(access);
     default:
-        return errorUnexpected(consume());
+        errorUnexpected(consume());
+        return nullptr;
     }
 }
 
@@ -111,23 +114,26 @@ Node* VSLParser::parseDecl()
 // extfunc -> funcInterface external lparen ident rparen semicolon
 // funcInterface -> func ident lparen param (comma param)* rparen arrow type
 // accessmod provided by caller
-Node* VSLParser::parseFunction(AccessMod access)
+FuncInterfaceNode* VSLParser::parseFunction(AccessMod access)
 {
     // parse the function name
     if (current().isNot(TokenKind::KW_FUNC))
     {
-        return errorExpected("'func'");
+        errorExpected("'func'");
+        return nullptr;
     }
     Location location = consume().getLoc();
     if (current().isNot(TokenKind::IDENTIFIER))
     {
-        return errorExpected("identifier");
+        errorExpected("identifier");
+        return nullptr;
     }
     llvm::StringRef name = consume().getText();
     // parse the parameter list
     if (current().isNot(TokenKind::LPAREN))
     {
-        return errorExpected("'('");
+        errorExpected("'('");
+        return nullptr;
     }
     consume();
     std::vector<ParamNode*> params;
@@ -136,14 +142,9 @@ Node* VSLParser::parseFunction(AccessMod access)
         while (true)
         {
             ParamNode* param = parseParam();
-            if (param->getType() != vslContext.getVoidType())
+            if (param)
             {
                 params.push_back(param);
-            }
-            else
-            {
-                diag.print<Diag::INVALID_PARAM_TYPE>(*param);
-                // FIXME: delete the invalid ParamNode
             }
             if (current().isNot(TokenKind::COMMA))
             {
@@ -154,13 +155,15 @@ Node* VSLParser::parseFunction(AccessMod access)
     }
     if (current().isNot(TokenKind::RPAREN))
     {
-        return errorExpected("')'");
+        errorExpected("')'");
+        return nullptr;
     }
     consume();
     // parse the return type
     if (current().isNot(TokenKind::ARROW))
     {
-        return errorExpected("'->'");
+        errorExpected("'->'");
+        return nullptr;
     }
     consume();
     const Type* returnType = parseType();
@@ -180,31 +183,39 @@ Node* VSLParser::parseFunction(AccessMod access)
         consume();
         if (current().isNot(TokenKind::LPAREN))
         {
-            return errorExpected("'('");
+            errorExpected("'('");
+            return nullptr;
         }
         consume();
         if (current().isNot(TokenKind::IDENTIFIER))
         {
-            return errorExpected("identifier");
+            errorExpected("identifier");
+            return nullptr;
         }
         llvm::StringRef alias = consume().getText();
         if (current().isNot(TokenKind::RPAREN))
         {
-            return errorExpected("')'");
+            errorExpected("')'");
+            return nullptr;
         }
         consume();
         if (current().isNot(TokenKind::SEMICOLON))
         {
-            return errorExpected("';'");
+            errorExpected("';'");
+            return nullptr;
         }
         consume();
         return makeNode<ExtFuncNode>(location, access, name, std::move(params),
             returnType, ft, alias);
     }
     // parse a normal function
-    Node* body = parseBlock();
+    BlockNode* body = parseBlock();
+    if (!body)
+    {
+        return nullptr;
+    }
     return makeNode<FunctionNode>(location, access, name, std::move(params),
-        returnType, ft, body);
+        returnType, ft, *body);
 }
 
 // param -> identifier ':' type
@@ -228,12 +239,17 @@ ParamNode* VSLParser::parseParam()
         errorExpected("':'");
     }
     const Type* type = parseType();
+    if (type == vslContext.getVoidType())
+    {
+        diag.print<Diag::INVALID_PARAM_TYPE>(location, *type);
+        return nullptr;
+    }
     return makeNode<ParamNode>(location, name, type);
 }
 
 // variable -> accessmod (var | let) identifier colon type assign expr semicolon
 // accessmod provided by caller if applicable
-Node* VSLParser::parseVariable(AccessMod access)
+VariableNode* VSLParser::parseVariable(AccessMod access)
 {
     bool constness;
     TokenKind k = current().getKind();
@@ -247,32 +263,41 @@ Node* VSLParser::parseVariable(AccessMod access)
     }
     else
     {
-        return errorExpected("'let' or 'var'");
+        errorExpected("'let' or 'var'");
+        return nullptr;
     }
     Location location = consume().getLoc();
     if (current().isNot(TokenKind::IDENTIFIER))
     {
-        return errorExpected("identifier");
+        errorExpected("identifier");
+        return nullptr;
     }
     llvm::StringRef name = consume().getText();
     if (current().isNot(TokenKind::COLON))
     {
-        return errorExpected("':'");
+        errorExpected("':'");
+        return nullptr;
     }
     consume();
     const Type* type = parseType();
+    if (!type)
+    {
+        return nullptr;
+    }
     if (current().isNot(TokenKind::ASSIGN))
     {
-        return errorExpected("'='");
+        errorExpected("'='");
+        return nullptr;
     }
     consume();
-    ExprNode* value = parseExpr();
+    ExprNode* init = parseExpr();
     if (current().isNot(TokenKind::SEMICOLON))
     {
-        return errorExpected("';'");
+        errorExpected("';'");
+        return nullptr;
     }
     consume();
-    return makeNode<VariableNode>(location, access, name, type, value,
+    return makeNode<VariableNode>(location, access, name, type, init,
         constness);
 }
 
@@ -280,21 +305,13 @@ Node* VSLParser::parseVariable(AccessMod access)
 std::vector<Node*> VSLParser::parseStatements()
 {
     std::vector<Node*> statements;
-    while (!empty())
+    while (!empty() && current().isNot(TokenKind::RBRACE) &&
+        current().isNot(TokenKind::END))
     {
-        // the cases here are in the follow set, telling when to stop expanding
-        //  the statements production
-        switch (current().getKind())
+        Node* statement = parseStatement();
+        if (statement)
         {
-        case TokenKind::RBRACE:
-        case TokenKind::END:
-            break;
-        default:
-            statements.push_back(parseStatement());
-        }
-        if (current().is(TokenKind::RBRACE) || current().is(TokenKind::END))
-        {
-            break;
+            statements.push_back(statement);
         }
     }
     return statements;
@@ -323,55 +340,71 @@ Node* VSLParser::parseStatement()
         return parseExprStmt();
     case TokenKind::LBRACE:
         return parseBlock();
-    case TokenKind::KW_FUNC:
-        // function within a function
-        diag.print<Diag::FUNCEPTION>(current().getLoc());
-        // fallthrough
     case TokenKind::SEMICOLON:
         return makeNode<EmptyNode>(consume().getLoc());
+    case TokenKind::KW_FUNC:
+        // function within a function
+        diag.print<Diag::FUNCEPTION>(consume().getLoc());
+        return nullptr;
     default:
-        EmptyNode* e = errorUnexpected(consume());
-        return e;
+        errorUnexpected(consume());
+        return nullptr;
     }
 }
 
 // block -> lbrace statements rbrace
-Node* VSLParser::parseBlock()
+BlockNode* VSLParser::parseBlock()
 {
     if (current().isNot(TokenKind::LBRACE))
     {
-        return errorExpected("'{'");
+        errorExpected("'{'");
+        return nullptr;
     }
     Location location = consume().getLoc();
     std::vector<Node*> statements = parseStatements();
     if (current().isNot(TokenKind::RBRACE))
     {
-        return errorExpected("'}'");
+        errorExpected("'}'");
+        return nullptr;
     }
     consume();
     return makeNode<BlockNode>(location, std::move(statements));
 }
 
 // conditional -> if lparen expr rparen statement (else statement)?
-Node* VSLParser::parseIf()
+IfNode* VSLParser::parseIf()
 {
     if (current().isNot(TokenKind::KW_IF))
     {
-        return errorExpected("'if'");
+        errorExpected("'if'");
+        return nullptr;
     }
     Location location = consume().getLoc();
+    // parse condition wrapped in parens
     if (current().isNot(TokenKind::LPAREN))
     {
-        return errorExpected("'('");
+        errorExpected("'('");
+        return nullptr;
     }
     consume();
     ExprNode* condition = parseExpr();
+    if (!condition)
+    {
+        return nullptr;
+    }
     if (current().isNot(TokenKind::RPAREN))
     {
-        return errorExpected("')'");
+        errorExpected("')'");
+        return nullptr;
     }
     consume();
+    // parse then case
     Node* thenCase = parseStatement();
+    if (!thenCase)
+    {
+        return nullptr;
+    }
+    // parse else case
     Node* elseCase;
     if (current().is(TokenKind::KW_ELSE))
     {
@@ -380,17 +413,18 @@ Node* VSLParser::parseIf()
     }
     else
     {
-        elseCase = makeNode<EmptyNode>(current().getLoc());
+        elseCase = nullptr;
     }
-    return makeNode<IfNode>(location, condition, thenCase, elseCase);
+    return makeNode<IfNode>(location, *condition, *thenCase, elseCase);
 }
 
 // return -> 'return' expr ';'
-Node* VSLParser::parseReturn()
+ReturnNode* VSLParser::parseReturn()
 {
     if (current().isNot(TokenKind::KW_RETURN))
     {
-        return errorExpected("'return'");
+        errorExpected("'return'");
+        return nullptr;
     }
     Location location = consume().getLoc();
     ExprNode* value;
@@ -406,7 +440,8 @@ Node* VSLParser::parseReturn()
         value = parseExpr();
         if (current().isNot(TokenKind::SEMICOLON))
         {
-            return errorExpected("';'");
+            errorExpected("';'");
+            return nullptr;
         }
         consume();
     }
@@ -431,9 +466,9 @@ ExprNode* VSLParser::parseExprStmt()
 ExprNode* VSLParser::parseExpr(int minPrec)
 {
     ExprNode* lhs = parseUnaryOp();
-    while (minPrec < getPrec(current().getKind()))
+    while (lhs && minPrec < getPrec(current().getKind()))
     {
-        lhs = parseBinaryOp(lhs);
+        lhs = parseBinaryOp(*lhs);
     }
     return lhs;
 }
@@ -456,8 +491,15 @@ ExprNode* VSLParser::parseUnaryOp()
         return makeNode<LiteralNode>(t.getLoc(), llvm::APInt{ 1, 0 });
     case TokenKind::MINUS:
     case TokenKind::NOT:
-        return makeNode<UnaryNode>(t.getLoc(), tokenKindToUnary(t.getKind()),
-                parseExpr(getPrec(TokenKind::LPAREN) - 1));
+        {
+            ExprNode* expr = parseExpr(getPrec(TokenKind::LPAREN) - 1);
+            if (!expr)
+            {
+                return nullptr;
+            }
+            return makeNode<UnaryNode>(t.getLoc(),
+                tokenKindToUnary(t.getKind()), *expr);
+        }
     case TokenKind::LPAREN:
         {
             ExprNode* expr = parseExpr();
@@ -470,23 +512,18 @@ ExprNode* VSLParser::parseUnaryOp()
         }
     default:
         errorExpected("expression");
-        // FIXME: somehow tell the caller (parseExpr) to tell its caller etc to
-        //  just output an empty statement or something similar, like erasing a
-        //  function argument if parseExpr is being used in that context
-        // either use something like c++17's std::optional or just dump a bunch
-        //  of null checks everywhere
-        return makeNode<LiteralNode>(t.getLoc(), llvm::APInt{ 32, 0 });
+        return nullptr;
     }
 }
 
 // binaryop -> binaryexpr | ternary | call
-ExprNode* VSLParser::parseBinaryOp(ExprNode* lhs)
+ExprNode* VSLParser::parseBinaryOp(ExprNode& lhs)
 {
     const Token& t = current();
     switch (t.getKind())
     {
-        // technically the ternary/call operators aren't really binary operators
-        //  but they come after an expression so that's good enough
+        // the ternary/call operators aren't actually binary operators, but they
+        //  come after an expression so that's good enough
     case TokenKind::QUESTION:
         return parseTernary(lhs);
     case TokenKind::LPAREN:
@@ -499,7 +536,7 @@ ExprNode* VSLParser::parseBinaryOp(ExprNode* lhs)
 // binaryexpr -> lhs (star | slash | percent | plus | minus | greater
 //                   | greater_equal | less | less_equal | equal | not_equal
 //                   | and | or | assign) expr
-ExprNode* VSLParser::parseBinaryExpr(ExprNode* lhs)
+BinaryNode* VSLParser::parseBinaryExpr(ExprNode& lhs)
 {
     Token t = consume();
     TokenKind k = t.getKind();
@@ -528,9 +565,14 @@ ExprNode* VSLParser::parseBinaryExpr(ExprNode* lhs)
         break;
     default:
         diag.print<Diag::NOT_A_BINARY_OP>(t);
-        return lhs;
+        return nullptr;
     }
-    return makeNode<BinaryNode>(t.getLoc(), op, lhs, parseExpr(minPrec));
+    ExprNode* rhs = parseExpr(minPrec);
+    if (!rhs)
+    {
+        return nullptr;
+    }
+    return makeNode<BinaryNode>(t.getLoc(), op, lhs, *rhs);
 }
 
 int VSLParser::getPrec(TokenKind k)
@@ -566,29 +608,39 @@ int VSLParser::getPrec(TokenKind k)
     }
 }
 
-// tenary -> condition question thenCase colon elseCase
-// condition is passed as an argument from parseLed()
-TernaryNode* VSLParser::parseTernary(ExprNode* condition)
+// ternary -> condition question thenCase colon elseCase
+// condition provided by caller
+TernaryNode* VSLParser::parseTernary(ExprNode& condition)
 {
     if (current().isNot(TokenKind::QUESTION))
     {
         errorExpected("'?'");
+        return nullptr;
     }
     Token question = consume();
     Location location = question.getLoc();
     ExprNode* thenCase = parseExpr(getPrec(TokenKind::QUESTION) - 1);
+    if (!thenCase)
+    {
+        return nullptr;
+    }
     if (current().isNot(TokenKind::COLON))
     {
         errorExpected("':'");
+        return nullptr;
     }
     consume();
     ExprNode* elseCase = parseExpr(getPrec(TokenKind::QUESTION) - 1);
-    return makeNode<TernaryNode>(location, condition, thenCase, elseCase);
+    if (!elseCase)
+    {
+        return nullptr;
+    }
+    return makeNode<TernaryNode>(location, condition, *thenCase, *elseCase);
 }
 
 // call -> callee lparen arg (comma arg)* rparen
-// callee is passed as an argument from parseLed()
-CallNode* VSLParser::parseCall(ExprNode* callee)
+// callee provided by caller
+CallNode* VSLParser::parseCall(ExprNode& callee)
 {
     if (current().isNot(TokenKind::LPAREN))
     {
@@ -600,7 +652,11 @@ CallNode* VSLParser::parseCall(ExprNode* callee)
     {
         while (true)
         {
-            args.emplace_back(parseCallArg());
+            auto* arg = parseCallArg();
+            if (arg)
+            {
+                args.emplace_back(arg);
+            }
             if (current().isNot(TokenKind::COMMA))
             {
                 break;
@@ -623,20 +679,21 @@ ArgNode* VSLParser::parseCallArg()
     if (current().isNot(TokenKind::IDENTIFIER))
     {
         errorExpected("identifier");
-        name = "";
+        return nullptr;
     }
-    else
-    {
-        name = current().getText();
-    }
+    name = current().getText();
     Location location = consume().getLoc();
     if (consume().isNot(TokenKind::COLON))
     {
-        // consumed here because a missing colon is most likely a typo
         errorExpected("':'");
+        return nullptr;
     }
     ExprNode* value = parseExpr();
-    return makeNode<ArgNode>(location, name, value);
+    if (!value)
+    {
+        return nullptr;
+    }
+    return makeNode<ArgNode>(location, name, *value);
 }
 
 LiteralNode* VSLParser::parseNumber(const Token& token)
@@ -669,7 +726,7 @@ const Type* VSLParser::parseType()
     case TokenKind::KW_VOID:
         return vslContext.getVoidType();
     default:
-        errorExpected("a type name");
+        errorExpected("type");
         return vslContext.getErrorType();
     }
 }

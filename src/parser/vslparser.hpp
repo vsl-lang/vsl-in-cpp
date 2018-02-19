@@ -78,18 +78,14 @@ private:
      * something else.
      *
      * @param s What the parser was originally expecting.
-     *
-     * @returns An empty node.
      */
-    EmptyNode* errorExpected(const char* s);
+    void errorExpected(const char* s);
     /**
      * Prints an error saying that the parser didn't expect the given token.
      *
      * @param token The token that the parser didn't expect.
-     *
-     * @returns An empty node.
      */
-    EmptyNode* errorUnexpected(const Token& token);
+    void errorUnexpected(const Token& token);
 
     /**
      * @}
@@ -98,7 +94,7 @@ private:
      */
 
     /**
-     * Parses a sequence of global declarations, e.g.\ functions and what not.
+     * Parses a sequence of global declarations, e.g.\ functions and variables.
      *
      * @returns A sequence of global declarations.
      */
@@ -109,7 +105,7 @@ private:
      *
      * @returns A declaration.
      */
-    Node* parseDecl();
+    DeclNode* parseDecl();
     /**
      * Parses a function, e.g.\ `public func f(x: Int) -> Int { ... }`. External
      * functions are also included here.
@@ -118,7 +114,7 @@ private:
      *
      * @returns A function.
      */
-    Node* parseFunction(AccessMod access);
+    FuncInterfaceNode* parseFunction(AccessMod access);
     /**
      * Parses a function parameter, e.g.\ `x: Int`.
      *
@@ -133,7 +129,7 @@ private:
      *
      * @returns A variable declaration.
      */
-    Node* parseVariable(AccessMod access = AccessMod::NONE);
+    VariableNode* parseVariable(AccessMod access = AccessMod::NONE);
 
     /**
      * @}
@@ -150,8 +146,8 @@ private:
      */
     std::vector<Node*> parseStatements();
     /**
-     * Parses a statement within a function scope. Functions are not allowed
-     * here.
+     * Parses a statement within a function scope. It is assumed that this is
+     * within a function scope, therefore functions are not allowed here.
      *
      * @returns A single statement.
      */
@@ -161,19 +157,19 @@ private:
      *
      * @returns A block of code.
      */
-    Node* parseBlock();
+    BlockNode* parseBlock();
     /**
      * Parses an if/else statement, e.g.\ `if (x) { y; } else { z; }`.
      *
      * @returns An if/else statement.
      */
-    Node* parseIf();
+    IfNode* parseIf();
     /**
      * Parses a return statement, e.g.\ `return 1;` or just `return;`.
      *
      * @returns A return statement.
      */
-    Node* parseReturn();
+    ReturnNode* parseReturn();
     /**
      * Parses an expression statement ending in a semicolon, e.g.\ `x = 1;`.
      *
@@ -210,7 +206,7 @@ private:
      *
      * @returns A binary, ternary, or call expression.
      */
-    ExprNode* parseBinaryOp(ExprNode* lhs);
+    ExprNode* parseBinaryOp(ExprNode& lhs);
     /**
      * Parses a binary expression.
      *
@@ -218,7 +214,7 @@ private:
      *
      * @returns A binary expression.
      */
-    ExprNode* parseBinaryExpr(ExprNode* lhs);
+    BinaryNode* parseBinaryExpr(ExprNode& lhs);
     /**
      * Gets the precedence of a binary (or ternary/kind) operator.
      *
@@ -230,19 +226,19 @@ private:
     /**
      * Parses a ternary expression, e.g.\ `c ? x : y`.
      *
-     * @param condition Condition that was already parsed.
+     * @param condition Condition that was already parsed. Cannot be null.
      *
      * @returns A ternary expression.
      */
-    TernaryNode* parseTernary(ExprNode* condition);
+    TernaryNode* parseTernary(ExprNode& condition);
     /**
      * Parses a function call, e.g.\ `f(x: 1)`.
      *
-     * @param callee The function to call.
+     * @param callee The function to call. Cannot be null.
      *
      * @returns A function call.
      */
-    CallNode* parseCall(ExprNode* callee);
+    CallNode* parseCall(ExprNode& callee);
     /**
      * Parses a function argument, e.g.\ `x: 1`.
      *
