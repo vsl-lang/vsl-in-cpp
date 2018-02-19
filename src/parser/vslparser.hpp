@@ -6,30 +6,28 @@
 #include "diag/diag.hpp"
 #include "lexer/lexer.hpp"
 #include "lexer/token.hpp"
-#include "parser/parser.hpp"
 #include "llvm/ADT/ArrayRef.h"
 #include <cstddef>
-#include <deque>
 #include <memory>
+#include <type_traits>
 
 /**
  * Parser for VSL.
  */
-class VSLParser : public Parser
+class VSLParser
 {
 public:
     /**
      * Creates a VSLParser.
      *
-     * @param vslContext The VSLContext object to be used.
+     * @param vslCtx The VSLContext object to be used.
      * @param lexer The Lexer to get the tokens from.
      */
-    VSLParser(VSLContext& vslContext, Lexer& lexer);
+    VSLParser(VSLContext& vslCtx, Lexer& lexer);
     /**
-     * Destroys a VSLParser.
+     * Parses the program. The AST is stored in the VSLContext.
      */
-    virtual ~VSLParser() override = default;
-    virtual llvm::ArrayRef<DeclNode*> parse() override;
+    void parse();
 
 private:
     /**
@@ -93,12 +91,6 @@ private:
      * @{
      */
 
-    /**
-     * Parses a sequence of global declarations, e.g.\ functions and variables.
-     *
-     * @returns A sequence of global declarations.
-     */
-    llvm::ArrayRef<DeclNode*> parseGlobals();
     /**
      * Parses a declaration with an access specifier. This can be a free
      * function or a global variable.
@@ -267,8 +259,24 @@ private:
      */
     const Type* parseType();
 
+    /**
+     * Creates a Node.
+     *
+     * @tparam NodeT The Node-derived type to instantiate.
+     * @tparam Args NodeT's constructor arguments.
+     *
+     * @param args NodeT's constructor arguments.
+     *
+     * @returns A pointer to a newly created NodeT.
+     */
+    template<typename NodeT, typename... Args>
+    typename std::enable_if<std::is_base_of<Node, NodeT>::value, NodeT*>::type
+    makeNode(Args&&... args) const;
+
     /** @} */
 
+    /** Reference to the VSLContext. */
+    VSLContext& vslCtx;
     /** The Lexer to get the tokens from. */
     Lexer& lexer;
     /** Diagnostics manager. */

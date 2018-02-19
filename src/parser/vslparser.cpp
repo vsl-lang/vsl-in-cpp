@@ -2,19 +2,21 @@
 #include "ast/opKind.hpp"
 
 VSLParser::VSLParser(VSLContext& vslCtx, Lexer& lexer)
-    : Parser{ vslCtx }, lexer{ lexer }, diag{ lexer.getDiag() }
+    : vslCtx{ vslCtx }, lexer{ lexer }, diag{ lexer.getDiag() }
 {
 }
 
-// program -> globals eof
-llvm::ArrayRef<DeclNode*> VSLParser::parse()
+// program -> decl* end
+void VSLParser::parse()
 {
-    auto ast = parseGlobals();
-    if (current().isNot(TokenKind::END))
+    while (current().isNot(TokenKind::END))
     {
-        errorExpected("eof");
+        if (DeclNode* decl = parseDecl())
+        {
+            // the parsed decl is valid
+            vslCtx.setGlobal(decl);
+        }
     }
-    return ast;
 }
 
 Token VSLParser::consume()
@@ -62,20 +64,6 @@ void VSLParser::errorExpected(const char* s)
 void VSLParser::errorUnexpected(const Token& token)
 {
     diag.print<Diag::UNEXPECTED_TOKEN>(token);
-}
-
-// globals -> decl*
-llvm::ArrayRef<DeclNode*> VSLParser::parseGlobals()
-{
-    while (current().isNot(TokenKind::END))
-    {
-        if (DeclNode* decl = parseDecl())
-        {
-            // the parsed decl is valid
-            vslCtx.setGlobal(decl);
-        }
-    }
-    return vslCtx.getGlobals();
 }
 
 // decl -> function | variable
@@ -727,4 +715,14 @@ const Type* VSLParser::parseType()
         errorExpected("type");
         return vslCtx.getErrorType();
     }
+}
+
+template<typename NodeT, typename... Args>
+typename std::enable_if<std::is_base_of<Node, NodeT>::value, NodeT*>::type
+VSLParser::makeNode(Args&&... args) const
+{
+    auto node = std::make_unique<NodeT>(std::forward<Args>(args)...);
+    NodeT* nodePtr = node.get();
+    vslCtx.addNode(std::move(node));
+    return nodePtr;
 }

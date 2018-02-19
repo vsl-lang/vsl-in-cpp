@@ -43,9 +43,10 @@ int Driver::main(int argc, const char* const* argv)
                 Diag diag{ os };
                 VSLLexer lexer{ diag, in.c_str() };
                 VSLParser parser{ vslCtx, lexer };
+                parser.parse();
                 os << '\n';
                 NodePrinter printer{ os };
-                printer.visitAST(parser.parse());
+                printer.visitAST(vslCtx.getGlobals());
             });
     case OptionParser::REPL_GENERATE:
         return repl([&](const std::string& in, llvm::raw_ostream& os)
