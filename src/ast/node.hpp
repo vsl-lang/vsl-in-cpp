@@ -30,21 +30,43 @@ class ArgNode;
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/Twine.h"
+#include "llvm/IR/GlobalValue.h"
 #include <string>
 #include <vector>
 
 /**
- * Types of access modifiers.
+ * Access specifiers for {@link DeclNode DeclNodes}.
  */
-enum class AccessMod
+enum class Access
 {
     /** Can be accessed anywhere. */
     PUBLIC,
-    /** Can be accessed only in context it was declared. */
+    /** Can be accessed only in the context it was declared. */
     PRIVATE,
     /** Not applicable, e.g. inside a function. */
     NONE
 };
+
+/**
+ * Converts a TokenKind keyword to an access specifier. This applies only to the
+ * keywords `public` and `private`.
+ *
+ * @param kind Keyword kind to convert.
+ *
+ * @returns PUBLIC or PRIVATE depending on the keyword kind given, or NONE if
+ * it's not the right keyword kind.
+ */
+Access keywordToAccess(TokenKind kind);
+
+/**
+ * Converts an access specifier to an LLVM linkage. NONE is assumed to be the
+ * same as private.
+ *
+ * @param access Access specifier to convert.
+ *
+ * @returns External linkage if public, Internal if private.
+ */
+llvm::GlobalValue::LinkageTypes accessToLinkage(Access access);
 
 /**
  * Base class for the VSL AST.
@@ -135,7 +157,7 @@ private:
 };
 
 /**
- * Represents a declaration/definition with an access modifier.
+ * Represents a declaration/definition with an access specifier.
  */
 class DeclNode : public Node
 {
@@ -145,19 +167,19 @@ public:
      *
      * @param kind The kind of Node this is.
      * @param location Where this DeclNode was found in the source.
-     * @param access Access modifier.
+     * @param access Access specifier.
      */
-    DeclNode(Node::Kind kind, Location location, AccessMod access);
+    DeclNode(Node::Kind kind, Location location, Access access);
     /**
-     * Gets the access modifier.
+     * Gets the access specifier.
      *
-     * @returns The access modifier.
+     * @returns The access specifier.
      */
-    AccessMod getAccessMod() const;
+    Access getAccess() const;
 
 private:
-    /** Access modifier. */
-    AccessMod access;
+    /** Access specifier. */
+    Access access;
 };
 
 /**
@@ -173,13 +195,13 @@ public:
      *
      * @param kind Node kind.
      * @param location Where this FuncInterfaceNode was found in the source.
-     * @param access Access modifier.
+     * @param access Access specifier.
      * @param name The name of the function.
      * @param params The function's parameters.
      * @param returnType The type that the function returns.
      * @param ft Used for symbol table lookup.
      */
-    FuncInterfaceNode(Node::Kind kind, Location location, AccessMod access,
+    FuncInterfaceNode(Node::Kind kind, Location location, Access access,
         llvm::StringRef name, std::vector<ParamNode*> params,
         const Type* returnType, const FunctionType* ft);
     llvm::StringRef getName() const;
@@ -220,14 +242,14 @@ public:
      * Creates a FunctionNode.
      *
      * @param location Where this FunctionNode was found in the source.
-     * @param access Access modifier.
+     * @param access Access specifier.
      * @param name The name of the function.
      * @param params The function's parameters.
      * @param returnType The type that the function returns.
      * @param ft Used for symbol table lookup.
      * @param body The body of the function.
      */
-    FunctionNode(Location location, AccessMod access, llvm::StringRef name,
+    FunctionNode(Location location, Access access, llvm::StringRef name,
         std::vector<ParamNode*> params, const Type* returnType,
         const FunctionType* ft, BlockNode& body);
     virtual ~FunctionNode() override = default;
@@ -254,14 +276,14 @@ public:
      * Creates an ExtFuncNode.
      *
      * @param location Where this FunctionNode was found in the source.
-     * @param access Access modifier.
+     * @param access Access specifier.
      * @param name The name of the function.
      * @param params The function's parameters.
      * @param returnType The type that the function returns.
      * @param ft Used for symbol table lookup.
      * @param alias What this function's actual name is outside of VSL.
      */
-    ExtFuncNode(Location location, AccessMod access, llvm::StringRef name,
+    ExtFuncNode(Location location, Access access, llvm::StringRef name,
         std::vector<ParamNode*> params, const Type* returnType,
         const FunctionType* ft, llvm::StringRef alias);
     virtual ~ExtFuncNode() override = default;
@@ -309,13 +331,13 @@ public:
      * Creates a VariableNode.
      *
      * @param location Where this VariableNode was found in the source.
-     * @param access Access modifier.
+     * @param access Access specifier.
      * @param name The name of the variable.
      * @param type The type of the variable.
      * @param init The variable's initial value. Can be null.
      * @param constness If this variable is const or not (TODO).
      */
-    VariableNode(Location location, AccessMod access, llvm::StringRef name,
+    VariableNode(Location location, Access access, llvm::StringRef name,
         const Type* type, ExprNode* init, bool constness);
     virtual ~VariableNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;

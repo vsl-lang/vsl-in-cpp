@@ -69,18 +69,12 @@ void VSLParser::errorUnexpected(const Token& token)
 // decl -> function | variable
 DeclNode* VSLParser::parseDecl()
 {
-    AccessMod access;
-    switch (current().getKind())
+    Access access = keywordToAccess(current().getKind());
+    if (access == Access::NONE)
     {
-    case TokenKind::KW_PUBLIC:
-        access = AccessMod::PUBLIC;
-        break;
-    case TokenKind::KW_PRIVATE:
-        access = AccessMod::PRIVATE;
-        break;
-    default:
-        errorExpected("access modifier");
-        access = AccessMod::PRIVATE; // assumed for now
+        errorExpected("access specifier");
+        // assume access is private for now and see if we can parse a func/var
+        access = Access::PRIVATE;
     }
     consume();
     switch (current().getKind())
@@ -96,11 +90,11 @@ DeclNode* VSLParser::parseDecl()
     }
 }
 
-// function -> accessmod funcInterface block | extfunc
+// function -> access funcInterface block | extfunc
 // extfunc -> funcInterface external lparen ident rparen semicolon
 // funcInterface -> func ident lparen param (comma param)* rparen arrow type
-// accessmod provided by caller
-FuncInterfaceNode* VSLParser::parseFunction(AccessMod access)
+// access provided by caller
+FuncInterfaceNode* VSLParser::parseFunction(Access access)
 {
     // parse the function name
     if (current().isNot(TokenKind::KW_FUNC))
@@ -233,9 +227,9 @@ ParamNode* VSLParser::parseParam()
     return makeNode<ParamNode>(location, name, type);
 }
 
-// variable -> accessmod (var | let) identifier colon type assign expr semicolon
+// variable -> access? (var | let) identifier colon type assign expr semicolon
 // accessmod provided by caller if applicable
-VariableNode* VSLParser::parseVariable(AccessMod access)
+VariableNode* VSLParser::parseVariable(Access access)
 {
     bool constness;
     TokenKind k = current().getKind();

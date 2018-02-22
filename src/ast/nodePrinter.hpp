@@ -38,12 +38,12 @@ public:
 
 private:
     /**
-     * Gets an AccessMod in string form with a space at the end (if applicable).
-     * No access type just returns an empty string.
+     * Gets an access specifier in string form with a space at the end. NONE
+     * will just return an empty string.
      *
-     * @param access Access modifier.
+     * @param access Access specifier.
      */
-    static const char* accessModPrefix(AccessMod access);
+    static const char* accessPrefix(Access access);
     /**
      * Prints a function's interface. This excludes the body or the external
      * alias declaration.

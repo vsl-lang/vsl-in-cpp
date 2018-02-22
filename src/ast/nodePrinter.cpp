@@ -36,7 +36,7 @@ void NodePrinter::visitParam(ParamNode& node)
 
 void NodePrinter::visitVariable(VariableNode& node)
 {
-    indent() << accessModPrefix(node.getAccessMod()) <<
+    indent() << accessPrefix(node.getAccess()) <<
         (node.isConst() ? "let " : "var ") << node.getName() << ": " <<
         *node.getType();
     if (node.hasInit())
@@ -164,13 +164,13 @@ void NodePrinter::visitArg(ArgNode& node)
     node.getValue().accept(*this);
 }
 
-const char* NodePrinter::accessModPrefix(AccessMod access)
+const char* NodePrinter::accessPrefix(Access access)
 {
     switch (access)
     {
-    case AccessMod::PUBLIC:
+    case Access::PUBLIC:
         return "public ";
-    case AccessMod::PRIVATE:
+    case Access::PRIVATE:
         return  "private ";
     default:
         return "";
@@ -179,7 +179,7 @@ const char* NodePrinter::accessModPrefix(AccessMod access)
 
 void NodePrinter::printFuncInterface(FuncInterfaceNode& node)
 {
-    indent() << accessModPrefix(node.getAccessMod()) << "func " <<
+    indent() << accessPrefix(node.getAccess()) << "func " <<
         node.getName() << '(';
     if (node.getNumParams() > 0)
     {

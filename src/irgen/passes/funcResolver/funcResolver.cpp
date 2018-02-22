@@ -15,8 +15,7 @@ void FuncResolver::visitFunction(FunctionNode& node)
         node.setAlreadyDefined(true);
     }
     // create the llvm function
-    auto* f = createFunc(node.getAccessMod(), node.getFuncType(),
-        node.getName());
+    auto* f = createFunc(node.getAccess(), node.getFuncType(), node.getName());
     // add to global scope
     global.setFunc(node.getName(), node.getFuncType(), f);
 }
@@ -27,29 +26,21 @@ void FuncResolver::visitExtFunc(ExtFuncNode& node)
     {
         diag.print<Diag::FUNC_ALREADY_DEFINED>(node);
     }
-    // create the llvm function
-    auto* f = createFunc(node.getAccessMod(), node.getFuncType(),
-        node.getAlias());
-    // add to global scope
+    // create the llvm function using the alias name
+    auto* f = createFunc(node.getAccess(), node.getFuncType(), node.getAlias());
+    // add to global scope using the function name
+    // the function is referred to by its real name in VSL and by its alias name
+    //  in the LLVM IR or everywhere else that isn't VSL.
     global.setFunc(node.getName(), node.getFuncType(), f);
 }
 
-llvm::Function* FuncResolver::createFunc(AccessMod access,
-    const FunctionType* ft, const llvm::Twine& name)
+llvm::Function* FuncResolver::createFunc(Access access, const FunctionType* ft,
+    const llvm::Twine& name)
 {
-    assert((access == AccessMod::PUBLIC || access == AccessMod::PRIVATE) &&
-        "functions must have access specifiers");
-    llvm::GlobalValue::LinkageTypes linkage;
-    switch (access)
-    {
-    case AccessMod::PUBLIC:
-        linkage = llvm::GlobalValue::ExternalLinkage;
-        break;
-    default: // should never happen
-    case AccessMod::PRIVATE:
-        linkage = llvm::GlobalValue::InternalLinkage;
-        break;
-    }
+    assert(access != Access::NONE && "functions must have access specifiers");
+    // get the LLVM linkage and function type
+    llvm::GlobalValue::LinkageTypes linkage = accessToLinkage(access);
     auto* llvmft = static_cast<llvm::FunctionType*>(ft->toLLVMType(llvmCtx));
+    // create the LLVM function
     return llvm::Function::Create(llvmft, linkage, name, &module);
 }

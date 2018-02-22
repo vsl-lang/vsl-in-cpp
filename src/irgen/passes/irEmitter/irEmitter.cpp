@@ -136,16 +136,8 @@ void IREmitter::visitVariable(VariableNode& node)
         builder.SetInsertPoint(insertBlock->getTerminator());
         // add code to declare and initialize the global variable
         // determine the linkage type
-        llvm::GlobalValue::LinkageTypes linkage;
-        auto access = node.getAccessMod();
-        if (access == AccessMod::PUBLIC)
-        {
-            linkage = llvm::GlobalValue::ExternalLinkage;
-        }
-        else
-        {
-            linkage = llvm::GlobalValue::InternalLinkage;
-        }
+        llvm::GlobalValue::LinkageTypes linkage =
+            accessToLinkage(node.getAccess());
         // create a placeholder initializer value
         llvm::Constant* initializer = llvm::Constant::getNullValue(llvmType);
         // create the variable

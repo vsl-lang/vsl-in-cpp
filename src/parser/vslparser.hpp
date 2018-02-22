@@ -102,11 +102,11 @@ private:
      * Parses a function, e.g.\ `public func f(x: Int) -> Int { ... }`. External
      * functions are also included here.
      *
-     * @param access Access modifier.
+     * @param access Access specifier.
      *
      * @returns A function.
      */
-    FuncInterfaceNode* parseFunction(AccessMod access);
+    FuncInterfaceNode* parseFunction(Access access);
     /**
      * Parses a function parameter, e.g.\ `x: Int`.
      *
@@ -115,13 +115,13 @@ private:
     ParamNode* parseParam();
     /**
      * Parses a variable declaration, e.g.\ `public var x: Int = 1;`. This can
-     * also be inside a function where there is no access modifier.
+     * also be inside a function where there is no access specifier.
      *
-     * @param access Access modifier.
+     * @param access Access specifier.
      *
      * @returns A variable declaration.
      */
-    VariableNode* parseVariable(AccessMod access = AccessMod::NONE);
+    VariableNode* parseVariable(Access access = Access::NONE);
 
     /**
      * @}

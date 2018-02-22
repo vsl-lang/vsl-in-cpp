@@ -32,11 +32,11 @@ private:
     /**
      * Creates an LLVM function.
      *
-     * @param access VSL access modifier.
+     * @param access VSL access specifier. Must not be NONE.
      * @param ft VSL function type.
      * @param name Function name.
      */
-    llvm::Function* createFunc(AccessMod access, const FunctionType* ft,
+    llvm::Function* createFunc(Access access, const FunctionType* ft,
         const llvm::Twine& name = "");
     /** Diagnostics manager. */
     Diag& diag;
