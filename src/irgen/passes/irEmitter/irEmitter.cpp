@@ -2,16 +2,16 @@
 #include "irgen/passes/irEmitter/irEmitter.hpp"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
-#include "llvm/Support/raw_ostream.h"
 #include <cassert>
 #include <iterator>
 #include <limits>
 
 IREmitter::IREmitter(VSLContext& vslCtx, Diag& diag, FuncScope& func,
-    GlobalScope& global, llvm::Module& module)
+    GlobalScope& global, TypeConverter& converter, llvm::Module& module)
     : vslCtx{ vslCtx }, diag{ diag }, func{ func }, global{ global },
-    module{ module }, llvmCtx{ module.getContext() }, builder{ llvmCtx },
-    allocaInsertPoint{ nullptr }, vslInit{ nullptr }, result{ Value::getNull() }
+    converter{ converter }, module{ module }, llvmCtx{ module.getContext() },
+    builder{ llvmCtx }, allocaInsertPoint{ nullptr }, vslInit{ nullptr },
+    result{ Value::getNull() }
 {
 }
 
@@ -111,7 +111,7 @@ void IREmitter::visitVariable(VariableNode& node)
         diag.print<Diag::INVALID_VAR_TYPE>(node);
         return;
     }
-    llvm::Type* llvmType = node.getType()->toLLVMType(llvmCtx);
+    llvm::Type* llvmType = converter.convert(node.getType());
     llvm::Value* llvmValue;
     if (isGlobal())
     {

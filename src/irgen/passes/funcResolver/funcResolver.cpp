@@ -1,9 +1,11 @@
 #include "irgen/passes/funcResolver/funcResolver.hpp"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/GlobalValue.h"
 
 FuncResolver::FuncResolver(VSLContext& vslCtx, Diag& diag, GlobalScope& global,
-    llvm::Module& module)
-    : vslCtx{ vslCtx }, diag{ diag }, global{ global }, module{ module },
-    llvmCtx{ module.getContext() }
+    TypeConverter& converter, llvm::Module& module)
+    : vslCtx{ vslCtx }, diag{ diag }, global{ global }, converter{ converter },
+    module{ module }
 {
 }
 
@@ -42,7 +44,7 @@ llvm::Function* FuncResolver::createFunc(Access access, const FunctionType* ft,
     assert(access != Access::NONE && "functions must have access specifiers");
     // get the LLVM linkage and function type
     llvm::GlobalValue::LinkageTypes linkage = accessToLinkage(access);
-    auto* llvmft = static_cast<llvm::FunctionType*>(ft->toLLVMType(llvmCtx));
+    llvm::FunctionType* llvmft = converter.convert(ft);
     // create the LLVM function
     return llvm::Function::Create(llvmft, linkage, name, &module);
 }

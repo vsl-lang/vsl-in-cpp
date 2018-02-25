@@ -7,6 +7,7 @@
 #include "diag/diag.hpp"
 #include "irgen/scope/funcScope.hpp"
 #include "irgen/scope/globalScope.hpp"
+#include "irgen/typeConverter/typeConverter.hpp"
 #include "irgen/value/value.hpp"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
@@ -26,10 +27,11 @@ public:
      * @param diag Diagnostics manager.
      * @param func Function scope manager.
      * @param global Global scope manager.
+     * @param converter VSL to LLVM type converter.
      * @param module The module to emit LLVM IR into.
      */
     IREmitter(VSLContext& vslCtx, Diag& diag, FuncScope& func,
-        GlobalScope& global, llvm::Module& module);
+        GlobalScope& global, TypeConverter& converter, llvm::Module& module);
     /**
      * Destroys an IREmitter object.
      */
@@ -238,6 +240,8 @@ private:
     FuncScope& func;
     /** Global scope manager. */
     GlobalScope& global;
+    /** VSL to LLVM type converter. */
+    TypeConverter& converter;
     /** LLVM module that holds all the generated code. */
     llvm::Module& module;
     /** Context object that owns most dynamic LLVM data structures. */

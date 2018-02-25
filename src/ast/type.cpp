@@ -1,7 +1,4 @@
 #include "ast/type.hpp"
-#include "llvm/IR/DerivedTypes.h"
-#include <algorithm>
-#include <iterator>
 
 llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Type& type)
 {
@@ -9,14 +6,29 @@ llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Type& type)
     return os;
 }
 
-bool Type::isValid() const
+Type::Kind Type::getKind() const
 {
-    return kind != ERROR && kind != VOID;
+    return kind;
+}
+
+bool Type::is(Kind kind) const
+{
+    return this->kind == kind;
+}
+
+bool Type::isNot(Kind kind) const
+{
+    return this->kind != kind;
 }
 
 bool Type::isFunctionType() const
 {
     return kind == FUNCTION;
+}
+
+bool Type::isValid() const
+{
+    return kind != ERROR && kind != VOID;
 }
 
 void Type::print(llvm::raw_ostream& os) const
@@ -46,26 +58,6 @@ const char* Type::getKindName(Kind k)
     }
 }
 
-Type::Kind Type::getKind() const
-{
-    return kind;
-}
-
-llvm::Type* SimpleType::toLLVMType(llvm::LLVMContext& context) const
-{
-    switch (getKind())
-    {
-    case Type::BOOL:
-        return llvm::Type::getInt1Ty(context);
-    case Type::INT:
-        return llvm::Type::getInt32Ty(context);
-    case Type::VOID:
-        return llvm::Type::getVoidTy(context);
-    default:
-        return nullptr;
-    }
-}
-
 SimpleType::SimpleType(Type::Kind kind)
     : Type{ kind }
 {
@@ -76,23 +68,9 @@ void SimpleType::printImpl(llvm::raw_ostream& os) const
     os << getKindName(getKind());
 }
 
-llvm::Type* FunctionType::toLLVMType(llvm::LLVMContext& context) const
-{
-    std::vector<llvm::Type*> llvmParams;
-    llvmParams.resize(params.size());
-    std::transform(params.begin(), params.end(), llvmParams.begin(),
-        [&](const auto& param)
-        {
-            return param->toLLVMType(context);
-        });
-    llvm::Type* llvmReturnType = returnType->toLLVMType(context);
-    return llvm::FunctionType::get(llvmReturnType, llvmParams, false);
-}
-
 bool FunctionType::operator==(const FunctionType& ft) const
 {
-    return returnType == ft.returnType && params.size() == ft.params.size() &&
-        std::equal(params.begin(), params.end(), ft.params.begin());
+    return params == ft.params && returnType == ft.returnType;
 }
 
 size_t FunctionType::getNumParams() const
@@ -128,10 +106,10 @@ void FunctionType::printImpl(llvm::raw_ostream& os) const
     if (!params.empty())
     {
         params[0]->print(os);
-        for (auto it = std::next(params.begin()); it != params.end(); ++it)
+        for (size_t i = 0; i < params.size(); ++i)
         {
             os << ", ";
-            (*it)->print(os);
+            params[i]->print(os);
         }
     }
     os << ") -> ";

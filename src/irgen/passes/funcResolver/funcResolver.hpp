@@ -6,7 +6,8 @@
 #include "ast/vslContext.hpp"
 #include "diag/diag.hpp"
 #include "irgen/scope/globalScope.hpp"
-#include "llvm/IR/LLVMContext.h"
+#include "irgen/typeConverter/typeConverter.hpp"
+#include "llvm/ADT/Twine.h"
 #include "llvm/IR/Module.h"
 
 /**
@@ -22,10 +23,11 @@ public:
      * @param vslCtx Context object for VSL stuff.
      * @param diag Diagnostics manager.
      * @param global Used for entering in VSL functions.
+     * @param converter VSL to LLVM type converter.
      * @param module Used for entering in LLVM functions.
      */
     FuncResolver(VSLContext& vslCtx, Diag& diag, GlobalScope& global,
-        llvm::Module& module);
+        TypeConverter& converter, llvm::Module& module);
     virtual ~FuncResolver() override = default;
     virtual void visitFunction(FunctionNode& node) override;
     virtual void visitExtFunc(ExtFuncNode& node) override;
@@ -46,10 +48,10 @@ private:
     Diag& diag;
     /** Used for entering in VSL functions. */
     GlobalScope& global;
+    /** VSL to LLVM type converter. */
+    TypeConverter& converter;
     /** Used for entering in LLVM functions. */
     llvm::Module& module;
-    /** Context object for LLVM stuff. */
-    llvm::LLVMContext& llvmCtx;
 };
 
 #endif // FUNCRESOLVER_HPP

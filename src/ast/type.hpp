@@ -1,12 +1,14 @@
 #ifndef TYPE_HPP
 #define TYPE_HPP
 
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Type.h"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/raw_ostream.h"
 #include <functional>
-#include <string>
 #include <vector>
+
+class Type;
+
+llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Type& type);
 
 /**
  * Represents a VSL type. Derived Types are stored in a VSLContext separate from
@@ -16,38 +18,7 @@
 class Type
 {
     friend class VSLContext;
-    friend llvm::raw_ostream& operator<<(llvm::raw_ostream& os,
-        const Type& type);
 public:
-    /**
-     * Resolves the Type into an LLVM type.
-     *
-     * @param context The context object that owns the LLVM type.
-     *
-     * @returns An LLVM representation of the Type.
-     */
-    virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const = 0;
-    /**
-     * Verifies whether the Type is valid and can be stored in a variable, i.e.,
-     * not Void or Error.
-     *
-     * @returns True if this type is valid, false otherwise.
-     */
-    bool isValid() const;
-    /**
-     * Checks whether this type is a FunctionType.
-     *
-     * @returns True if this type is a FunctionType, false otherwise.
-     */
-    bool isFunctionType() const;
-    /**
-     * Prints a Type.
-     *
-     * @param os Stream to print to.
-     */
-    void print(llvm::raw_ostream& os) const;
-
-protected:
     /**
      * Specifies the kind of Type object being represented. Keep in mind that
      * one Type subclass can be represented by multiple Kinds.
@@ -65,6 +36,25 @@ protected:
         /** Void. */
         VOID
     };
+    Kind getKind() const;
+    bool is(Kind kind) const;
+    bool isNot(Kind kind) const;
+    bool isFunctionType() const;
+    /**
+     * Verifies whether the Type is valid and can be stored in a variable, i.e.,
+     * not Void or Error.
+     *
+     * @returns True if this type is valid, false otherwise.
+     */
+    bool isValid() const;
+    /**
+     * Prints a Type.
+     *
+     * @param os Stream to print to.
+     */
+    void print(llvm::raw_ostream& os) const;
+
+protected:
     /**
      * Creates a Type object.
      *
@@ -72,19 +62,13 @@ protected:
      */
     Type(Kind kind);
     /**
-     * Gets the Type::Kind in a more human-readable format.
+     * Gets the name of a Type::Kind.
      *
      * @param k The Kind to get the name for.
      *
      * @returns The string representation of the Type kind.
      */
     static const char* getKindName(Kind k);
-    /**
-     * Gets the kind of Type this is.
-     *
-     * @returns The kind of Type this is.
-     */
-    Kind getKind() const;
 
 private:
     /**
@@ -98,13 +82,11 @@ private:
 };
 
 /**
- * Simple type with no extra data.
+ * Simple builtin type with no extra data.
  */
 class SimpleType : public Type
 {
     friend class VSLContext;
-public:
-    virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const override;
 
 protected:
     /**
@@ -126,7 +108,6 @@ class FunctionType : public Type
     friend class VSLContext;
     friend struct std::hash<FunctionType>;
 public:
-    virtual llvm::Type* toLLVMType(llvm::LLVMContext& context) const override;
     /**
      * Tests for equality.
      *

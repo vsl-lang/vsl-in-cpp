@@ -5,6 +5,7 @@
 #include "diag/diag.hpp"
 #include "irgen/scope/funcScope.hpp"
 #include "irgen/scope/globalScope.hpp"
+#include "irgen/typeConverter/typeConverter.hpp"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/IR/Module.h"
 
@@ -39,6 +40,8 @@ private:
     FuncScope func;
     /** Global scope manager. */
     GlobalScope global;
+    /** VSL to LLVM type converter. */
+    TypeConverter converter;
 };
 
 #endif // IRGEN_HPP
