@@ -61,9 +61,9 @@ Access DeclNode::getAccess() const
 
 FuncInterfaceNode::FuncInterfaceNode(Node::Kind kind, Location location,
     Access access, llvm::StringRef name, std::vector<ParamNode*> params,
-    const Type* returnType, const FunctionType* ft)
+    const Type* returnType)
     : DeclNode{ kind, location, access }, name{ name },
-    params{ std::move(params) }, returnType{ returnType }, ft{ ft }
+    params{ std::move(params) }, returnType{ returnType }
 {
 }
 
@@ -92,17 +92,11 @@ const Type* FuncInterfaceNode::getReturnType() const
     return returnType;
 }
 
-const FunctionType* FuncInterfaceNode::getFuncType() const
-{
-    return ft;
-}
-
 FunctionNode::FunctionNode(Location location, Access access,
     llvm::StringRef name, std::vector<ParamNode*> params,
-    const Type* returnType, const FunctionType* ft, BlockNode& body)
+    const Type* returnType, BlockNode& body)
     : FuncInterfaceNode{ Node::FUNCTION, location, access, name,
-        std::move(params), returnType, ft }, body{ body },
-    alreadyDefined{ false }
+        std::move(params), returnType }, body{ body }, alreadyDefined{ false }
 {
 }
 
@@ -128,9 +122,9 @@ BlockNode& FunctionNode::getBody() const
 
 ExtFuncNode::ExtFuncNode(Location location, Access access, llvm::StringRef name,
     std::vector<ParamNode*> params, const Type* returnType,
-    const FunctionType* ft, llvm::StringRef alias)
+    llvm::StringRef alias)
     : FuncInterfaceNode{ Node::EXTFUNC, location, access, name,
-        std::move(params), returnType, ft }, alias{ alias }
+        std::move(params), returnType }, alias{ alias }
 {
 }
 

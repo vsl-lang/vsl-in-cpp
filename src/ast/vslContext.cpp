@@ -64,3 +64,15 @@ const FunctionType* VSLContext::getFunctionType(std::vector<const Type*> params,
     FunctionType ft{ std::move(params), returnType };
     return &*functionTypes.emplace(std::move(ft)).first;
 }
+
+const FunctionType* VSLContext::getFunctionType(FuncInterfaceNode& node)
+{
+    // copy only the param types
+    std::vector<const Type*> paramTypes;
+    paramTypes.resize(node.getNumParams());
+    for (size_t i = 0; i < node.getNumParams(); ++i)
+    {
+        paramTypes[i] = node.getParam(i).getType();
+    }
+    return getFunctionType(std::move(paramTypes), node.getReturnType());
+}

@@ -19,11 +19,13 @@ public:
     /**
      * Creates a FuncResolver.
      *
+     * @param vslCtx Context object for VSL stuff.
      * @param diag Diagnostics manager.
      * @param global Used for entering in VSL functions.
      * @param module Used for entering in LLVM functions.
      */
-    FuncResolver(Diag& diag, GlobalScope& global, llvm::Module& module);
+    FuncResolver(VSLContext& vslCtx, Diag& diag, GlobalScope& global,
+        llvm::Module& module);
     virtual ~FuncResolver() override = default;
     virtual void visitFunction(FunctionNode& node) override;
     virtual void visitExtFunc(ExtFuncNode& node) override;
@@ -38,6 +40,8 @@ private:
      */
     llvm::Function* createFunc(Access access, const FunctionType* ft,
         const llvm::Twine& name = "");
+    /** Context object for VSL stuff. */
+    VSLContext& vslCtx;
     /** Diagnostics manager. */
     Diag& diag;
     /** Used for entering in VSL functions. */

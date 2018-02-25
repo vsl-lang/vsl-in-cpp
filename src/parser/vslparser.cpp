@@ -147,16 +147,6 @@ FuncInterfaceNode* VSLParser::parseFunction(Access access)
     }
     consume();
     const Type* returnType = parseType();
-    // build the FunctionType
-    std::vector<const Type*> paramTypes;
-    paramTypes.resize(params.size());
-    std::transform(params.begin(), params.end(), paramTypes.begin(),
-        [](ParamNode* p)
-        {
-            return p->getType();
-        });
-    const FunctionType* ft = vslCtx.getFunctionType(std::move(paramTypes),
-        returnType);
     // parse an external function
     if (current().is(TokenKind::KW_EXTERNAL))
     {
@@ -186,7 +176,7 @@ FuncInterfaceNode* VSLParser::parseFunction(Access access)
         }
         consume();
         return makeNode<ExtFuncNode>(location, access, name, std::move(params),
-            returnType, ft, alias);
+            returnType, alias);
     }
     // parse a normal function
     BlockNode* body = parseBlock();
@@ -195,7 +185,7 @@ FuncInterfaceNode* VSLParser::parseFunction(Access access)
         return nullptr;
     }
     return makeNode<FunctionNode>(location, access, name, std::move(params),
-        returnType, ft, *body);
+        returnType, *body);
 }
 
 // param -> identifier ':' type

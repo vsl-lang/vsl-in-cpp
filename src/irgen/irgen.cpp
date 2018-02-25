@@ -11,7 +11,7 @@ IRGen::IRGen(VSLContext& vslCtx, Diag& diag, llvm::Module& module)
 void IRGen::run()
 {
     // resolve global functions
-    FuncResolver funcResolver{ diag, global, module };
+    FuncResolver funcResolver{ vslCtx, diag, global, module };
     funcResolver.visitAST(vslCtx.getGlobals());
     // emit code for global functions
     IREmitter irEmitter{ vslCtx, diag, func, global, module };

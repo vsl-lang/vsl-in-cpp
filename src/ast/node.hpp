@@ -199,17 +199,15 @@ public:
      * @param name The name of the function.
      * @param params The function's parameters.
      * @param returnType The type that the function returns.
-     * @param ft Used for symbol table lookup.
      */
     FuncInterfaceNode(Node::Kind kind, Location location, Access access,
         llvm::StringRef name, std::vector<ParamNode*> params,
-        const Type* returnType, const FunctionType* ft);
+        const Type* returnType);
     llvm::StringRef getName() const;
     llvm::ArrayRef<ParamNode*> getParams() const;
     size_t getNumParams() const;
     ParamNode& getParam(size_t i) const;
     const Type* getReturnType() const;
-    const FunctionType* getFuncType() const;
 
 protected:
     /**
@@ -228,8 +226,6 @@ private:
     std::vector<ParamNode*> params;
     /** The function's return type. */
     const Type* returnType;
-    /** Used for symbol table lookup. */
-    const FunctionType* ft;
 };
 
 /**
@@ -246,12 +242,11 @@ public:
      * @param name The name of the function.
      * @param params The function's parameters.
      * @param returnType The type that the function returns.
-     * @param ft Used for symbol table lookup.
      * @param body The body of the function.
      */
     FunctionNode(Location location, Access access, llvm::StringRef name,
         std::vector<ParamNode*> params, const Type* returnType,
-        const FunctionType* ft, BlockNode& body);
+        BlockNode& body);
     virtual ~FunctionNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     BlockNode& getBody() const;
@@ -280,12 +275,11 @@ public:
      * @param name The name of the function.
      * @param params The function's parameters.
      * @param returnType The type that the function returns.
-     * @param ft Used for symbol table lookup.
      * @param alias What this function's actual name is outside of VSL.
      */
     ExtFuncNode(Location location, Access access, llvm::StringRef name,
         std::vector<ParamNode*> params, const Type* returnType,
-        const FunctionType* ft, llvm::StringRef alias);
+        llvm::StringRef alias);
     virtual ~ExtFuncNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     llvm::StringRef getAlias() const;

@@ -59,7 +59,8 @@ public:
      */
     const SimpleType* getSimpleType(Type::Kind k) const;
     /**
-     * Gets or constructs a FunctionType.
+     * Gets or constructs a FunctionType. This is a relatively expensive
+     * operation so it should only be called once per function max.
      *
      * @param params The list of parameters.
      * @param returnType The return type.
@@ -68,6 +69,14 @@ public:
      */
     const FunctionType* getFunctionType(std::vector<const Type*> params,
         const Type* returnType);
+    /**
+     * Gets or constructs a FunctionType from a FuncInterfaceNode.
+     *
+     * @param node Function to get the type of.
+     *
+     * @returns A FunctionType from the given function.
+     */
+    const FunctionType* getFunctionType(FuncInterfaceNode& node);
 
     /** @} */
 

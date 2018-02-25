@@ -1,8 +1,8 @@
 #include "irgen/passes/funcResolver/funcResolver.hpp"
 
-FuncResolver::FuncResolver(Diag& diag, GlobalScope& global,
+FuncResolver::FuncResolver(VSLContext& vslCtx, Diag& diag, GlobalScope& global,
     llvm::Module& module)
-    : diag{ diag }, global{ global }, module{ module },
+    : vslCtx{ vslCtx }, diag{ diag }, global{ global }, module{ module },
     llvmCtx{ module.getContext() }
 {
 }
@@ -15,9 +15,10 @@ void FuncResolver::visitFunction(FunctionNode& node)
         node.setAlreadyDefined(true);
     }
     // create the llvm function
-    auto* f = createFunc(node.getAccess(), node.getFuncType(), node.getName());
+    const FunctionType* ft = vslCtx.getFunctionType(node);
+    auto* llvmFunc = createFunc(node.getAccess(), ft, node.getName());
     // add to global scope
-    global.setFunc(node.getName(), node.getFuncType(), f);
+    global.setFunc(node.getName(), ft, llvmFunc);
 }
 
 void FuncResolver::visitExtFunc(ExtFuncNode& node)
@@ -27,11 +28,12 @@ void FuncResolver::visitExtFunc(ExtFuncNode& node)
         diag.print<Diag::FUNC_ALREADY_DEFINED>(node);
     }
     // create the llvm function using the alias name
-    auto* f = createFunc(node.getAccess(), node.getFuncType(), node.getAlias());
+    const FunctionType* ft = vslCtx.getFunctionType(node);
+    auto* llvmFunc = createFunc(node.getAccess(), ft, node.getAlias());
     // add to global scope using the function name
     // the function is referred to by its real name in VSL and by its alias name
     //  in the LLVM IR or everywhere else that isn't VSL.
-    global.setFunc(node.getName(), node.getFuncType(), f);
+    global.setFunc(node.getName(), ft, llvmFunc);
 }
 
 llvm::Function* FuncResolver::createFunc(Access access, const FunctionType* ft,
