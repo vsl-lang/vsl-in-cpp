@@ -61,9 +61,13 @@ int Driver::main(int argc, const char* const* argv)
                 llvm::LLVMContext llvmContext;
                 auto module = std::make_unique<llvm::Module>("repl",
                     llvmContext);
+                // configure the module
+                CodeGen codeGen{ diag, *module };
+                codeGen.configure();
+                // generate llvm ir
                 IRGen irgen{ vslCtx, diag, *module };
                 irgen.run();
-                CodeGen codeGen{ diag, *module };
+                // possibly optimize the ir
                 if (op.optimize)
                 {
                     codeGen.optimize();
@@ -110,9 +114,12 @@ int Driver::compile()
     VSLLexer lexer{ diag, in.get()->getBuffer().data() };
     VSLParser parser{ vslCtx, lexer };
     parser.parse();
-    // emit llvm ir
+    // configure llvm module
     llvm::LLVMContext llvmContext;
     auto module = std::make_unique<llvm::Module>(op.infile, llvmContext);
+    CodeGen codeGen{ diag, *module };
+    codeGen.configure();
+    // emit llvm ir
     IRGen irgen{ vslCtx, diag, *module };
     irgen.run();
     // recap the amount of errors/warnings that occurred
@@ -129,7 +136,6 @@ int Driver::compile()
         return 1;
     }
     // optimize ir
-    CodeGen codeGen{ diag, *module };
     if (op.optimize)
     {
         codeGen.optimize();

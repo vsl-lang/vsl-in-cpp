@@ -19,7 +19,11 @@ public:
      */
     CodeGen(Diag& diag, llvm::Module& module);
     /**
-     * Compiles the module.
+     * Configures the module with target data.
+     */
+    void configure();
+    /**
+     * Compiles the module. Configure must be run before this.
      *
      * @param output The stream to write the result to.
      */
@@ -38,6 +42,8 @@ private:
     llvm::legacy::PassManager pm;
     /** Handles all the function-level transformations, such as optimization. */
     llvm::legacy::FunctionPassManager fpm;
+    /** Machine to generate code for. */
+    llvm::TargetMachine* machine;
 };
 
 #endif // CODEGEN_HPP

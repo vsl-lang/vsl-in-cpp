@@ -14,34 +14,40 @@ CodeGen::CodeGen(Diag& diag, llvm::Module& module)
 {
 }
 
-void CodeGen::compile(llvm::raw_pwrite_stream& output)
+void CodeGen::configure()
 {
-    // configure the compilation target
+    // initialize target machines
     llvm::InitializeAllTargetInfos();
     llvm::InitializeAllTargets();
     llvm::InitializeAllTargetMCs();
     llvm::InitializeAllAsmParsers();
     llvm::InitializeAllAsmPrinters();
+    // find out what target we're generating code for
     std::string targetTriple{ llvm::sys::getDefaultTargetTriple() };
     std::string error;
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget(
         targetTriple, error);
-    if (target == nullptr)
+    if (!target)
     {
         diag.print<Diag::CANT_FIND_TARGET>(std::move(error));
         return;
     }
+    // get the target machine details
     const char* cpu = "generic";
     const char* features = "";
     llvm::TargetOptions options;
     llvm::Optional<llvm::Reloc::Model> rm;
-    llvm::TargetMachine* targetMachine = target->createTargetMachine(
-        targetTriple, cpu, features, options, rm);
-    // configure the module
-    module.setDataLayout(targetMachine->createDataLayout());
+    machine = target->createTargetMachine(targetTriple, cpu, features,
+        options, rm);
+    // configure the module with this new info
+    module.setDataLayout(machine->createDataLayout());
     module.setTargetTriple(targetTriple);
+}
+
+void CodeGen::compile(llvm::raw_pwrite_stream& output)
+{
     // compile the module
-    if (targetMachine->addPassesToEmitFile(pm, output,
+    if (machine->addPassesToEmitFile(pm, output,
             llvm::TargetMachine::CGFT_ObjectFile))
     {
         diag.print<Diag::TARGET_CANT_EMIT_OBJ>();
