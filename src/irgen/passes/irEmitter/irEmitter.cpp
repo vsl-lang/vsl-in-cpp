@@ -294,28 +294,22 @@ void IREmitter::visitReturn(ReturnNode& node)
 
 void IREmitter::visitIdent(IdentNode& node)
 {
-    // lookup the identifier within the function scope
-    Value value = func.get(node.getName());
-    if (!value)
-    {
-        // not in function scope so must be in the global scope
-        value = global.get(node.getName());
-    }
-    // variables require a load instruction
+    // lookup the identifier
+    Value value = lookupIdent(node);
     if (value.isVar())
     {
-        const Type* type = value.getVSLType();
-        result = Value::getExpr(type, builder.CreateLoad(value.getLLVMValue()));
+        // variables require a load instruction
+        result = Value::getExpr(value.getVSLVar(),
+            builder.CreateLoad(value.getLLVMVar()));
     }
-    // functions and expressions can be taken as is
     else if (value.isFunc() || value.isExpr())
     {
+        // functions and expressions can be taken as is
         result = value;
     }
-    // emit an error if something bad happened
     else
     {
-        diag.print<Diag::UNKNOWN_IDENT>(node);
+        // something bad happened
         result = Value::getNull();
     }
 }
@@ -610,8 +604,8 @@ void IREmitter::genAssign(BinaryNode& node)
     if (lhs.is(Node::IDENT))
     {
         // lookup the identifier
-        auto& id = static_cast<IdentNode&>(lhs);
-        if (Value value = func.get(id.getName()))
+        Value value = lookupIdent(static_cast<IdentNode&>(lhs));
+        if (value.isVar())
         {
             // make sure the types match up
             if (value.getVSLType() == result.getVSLType())
@@ -619,7 +613,6 @@ void IREmitter::genAssign(BinaryNode& node)
                 // finally, create the store instruction
                 builder.CreateStore(result.getLLVMValue(),
                     value.getLLVMValue());
-                return;
             }
             else
             {
@@ -629,7 +622,7 @@ void IREmitter::genAssign(BinaryNode& node)
         }
         else
         {
-            diag.print<Diag::UNKNOWN_IDENT>(id);
+            diag.print<Diag::LHS_NOT_ASSIGNABLE>(lhs);
         }
     }
     else
@@ -879,4 +872,21 @@ void IREmitter::addGlobalCtor(llvm::Function* f)
     assert(f->getFunctionType() == funcType &&
         "Invalid global ctor type! Should be void ().");
     builder.CreateCall(f);
+}
+
+Value IREmitter::lookupIdent(IdentNode& node)
+{
+    // try to get it from the function scope first
+    Value value = func.get(node.getName());
+    if (!value)
+    {
+        // maybe global scope?
+        value = global.get(node.getName());
+    }
+    if (!value)
+    {
+        // doesn't exist!
+        diag.print<Diag::UNKNOWN_IDENT>(node);
+    }
+    return value;
 }

@@ -83,6 +83,7 @@ TEST(IRGenTest, Variables)
     valid("public var x: Int = f(); private func f() -> Int { return 2; }");
     valid("public var x: Int = 4; public func f() -> Int { return x + 1; }");
     valid("private var x: Int = 3; public var y: Int = x + 2;");
+    valid("private var x: Int = 10; public func f(y: Int) -> Void { x = y; }");
     // can't access a global variable before it gets initialized
     invalid("public var x: Int = z; public var z: Int = 1;");
     // not implemented yet

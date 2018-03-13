@@ -229,6 +229,15 @@ private:
      *     parameters and return void.
      */
     void addGlobalCtor(llvm::Function* f);
+    /**
+     * Looks up an identifier. Returns null if it doesn't exist. Emits error
+     * diagnostics as usual.
+     *
+     * @param node Node to lookup.
+     *
+     * @returns The node's Value in the function or global scope.
+     */
+    Value lookupIdent(IdentNode& node);
 
     /** @} */
 
