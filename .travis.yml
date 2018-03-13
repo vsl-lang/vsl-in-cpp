@@ -7,11 +7,11 @@ addons:
   apt:
     sources:
     - ubuntu-toolchain-r-test
-    - llvm-toolchain-trusty-5.0
+    - llvm-toolchain-trusty-6.0
     packages:
     - g++-6
-    - clang-5.0
-    - llvm-5.0-dev
+    - clang-6.0
+    - llvm-6.0-dev
     - libedit-dev
     - cmake
     - doxygen
@@ -21,8 +21,8 @@ matrix:
   include:
   - env: CC=gcc-6 CXX=g++-6 BUILD_TYPE=Debug
   - env: CC=gcc-6 CXX=g++-6 BUILD_TYPE=Release
-  - env: CC=clang-5.0 CXX=clang++-5.0 BUILD_TYPE=Debug
-  - env: CC=clang-5.0 CXX=clang++-5.0 BUILD_TYPE=Release
+  - env: CC=clang-6.0 CXX=clang++-6.0 BUILD_TYPE=Debug
+  - env: CC=clang-6.0 CXX=clang++-6.0 BUILD_TYPE=Release
 
 # create the build directory and run cmake
 before_script:
@@ -51,4 +51,4 @@ deploy:
   on:
     branch: master
     tags: true
-    condition: $CXX = clang++-5.0
+    condition: $CXX = clang++-6.0

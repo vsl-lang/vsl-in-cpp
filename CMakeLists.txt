@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.2)
 project(VSL)
 
-find_package(LLVM 5.0.0 REQUIRED CONFIG)
+find_package(LLVM 6.0.0 REQUIRED CONFIG)
 find_package(Doxygen)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")

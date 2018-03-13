@@ -4,6 +4,7 @@
 #include "diag/diag.hpp"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Target/TargetMachine.h"
 
 /**
  * Generates native object code from an llvm::Module.
