@@ -7,12 +7,12 @@ find_package(Doxygen)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-# require c++14 with warnings
+# compiler options
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -Wno-unused-parameter")
+add_compile_options(-Wall -pedantic -Wextra -Wno-unused-parameter
+    -fno-exceptions -fno-rtti)
 
 # vsl specific directories
 set(VSL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
