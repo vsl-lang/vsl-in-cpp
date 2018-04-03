@@ -31,6 +31,41 @@ public:
 
 private:
     /**
+     * Wraps shared data between parseVariable and parseField.
+     */
+    struct VarData
+    {
+        /** Where this was found in the source. */
+        Location location;
+        /** The name of the variable. */
+        llvm::StringRef name;
+        /** The type of the variable. */
+        const Type* type;
+        /** The variable's initial value. */
+        ExprNode* init;
+        /** If this variable is const or not. */
+        bool constness;
+        /** If this VarData is malformed or not. */
+        bool errored;
+    };
+    /**
+     * Wraps shared data between parseFunction and parseMethod.
+     */
+    struct FuncData
+    {
+        /** Where this was found in the source. */
+        Location location;
+        /** The name of the function. */
+        llvm::StringRef name;
+        /** The function's parameters. */
+        std::vector<ParamNode*> params;
+        /** The function's return type. */
+        const Type* returnType;
+        /** If this FuncData is malformed or not. */
+        bool errored;
+    };
+
+    /**
      * @name Token Operations
      * @{
      */
@@ -108,6 +143,18 @@ private:
      */
     FuncInterfaceNode* parseFunction(Access access);
     /**
+     * Parses the shared data between a FunctionNode and MethodNode.
+     *
+     * @returns The shared data wrapped in a FuncData object.
+     */
+    FuncData parseFuncData();
+    /**
+     * Parses a parameter list wrapped in parentheses.
+     *
+     * @returns A parameter list.
+     */
+    std::vector<ParamNode*> parseParams();
+    /**
      * Parses a function parameter, e.g.\ `x: Int`.
      *
      * @returns A function parameter.
@@ -122,6 +169,60 @@ private:
      * @returns A variable declaration.
      */
     VariableNode* parseVariable(Access access = Access::NONE);
+    /**
+     * Parses the shared data between a VariableNode and FieldNode.
+     *
+     * @returns The shared data wrapped in a VarData object.
+     */
+    VarData parseVarData();
+
+    /**
+     * @}
+     * @name Class parsing
+     * @{
+     */
+
+    /**
+     * Parses a class definition.
+     *
+     * @param access Access specifier.
+     *
+     * @returns A class.
+     */
+    ClassNode* parseClass(Access access);
+    /**
+     * Parses the members of a class.
+     *
+     * @param node The ClassNode that the members belong to.
+     */
+    void parseMembers(ClassNode& node);
+    /**
+     * Parses a field.
+     *
+     * @param access Access specifier.
+     * @param parent The ClassNode this field belongs to.
+     *
+     * @returns A field.
+     */
+    FieldNode* parseField(Access access, ClassNode& parent);
+    /**
+     * Parses a constructor.
+     *
+     * @param access Access specifier.
+     * @param parent The ClassNode this ctor belongs to.
+     *
+     * @returns A constructor.
+     */
+    CtorNode* parseCtor(Access access, ClassNode& parent);
+    /**
+     * Parses a method.
+     *
+     * @param access Access specifier.
+     * @param parent The ClassNode this method belongs to.
+     *
+     * @returns A method.
+     */
+    MethodNode* parseMethod(Access access, ClassNode& parent);
 
     /**
      * @}
@@ -218,7 +319,7 @@ private:
     /**
      * Parses a ternary expression, e.g.\ `c ? x : y`.
      *
-     * @param condition Condition that was already parsed. Cannot be null.
+     * @param condition Condition that was already parsed.
      *
      * @returns A ternary expression.
      */
@@ -226,17 +327,31 @@ private:
     /**
      * Parses a function call, e.g.\ `f(x: 1)`.
      *
-     * @param callee The function to call. Cannot be null.
+     * @param callee The function to call.
      *
      * @returns A function call.
      */
     CallNode* parseCall(ExprNode& callee);
+    /**
+     * Parses a function argument list wrapped in parentheses.
+     *
+     * @returns A function argument list.
+     */
+    std::vector<ArgNode*> parseCallArgs();
     /**
      * Parses a function argument, e.g.\ `x: 1`.
      *
      * @returns A function argument.
      */
     ArgNode* parseCallArg();
+    /**
+     * Parses a field access or method call, e.g.\ `obj.x` or `obj.f(x: 1)`.
+     *
+     * @param obj The object to access a member of.
+     *
+     * @returns A member access.
+     */
+    ExprNode* parseMemberAccess(ExprNode& obj);
     /**
      * Parses a number, e.g.\ `1337`.
      *
@@ -258,7 +373,13 @@ private:
      * @returns A VSL type.
      */
     const Type* parseType();
-
+    /**
+     * Parses an access specifier. If there's an error, this method returns
+     * Access::PRIVATE by default.
+     *
+     * @returns An access specifier.
+     */
+    Access parseAccess();
     /**
      * Creates a Node.
      *

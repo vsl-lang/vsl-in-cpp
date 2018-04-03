@@ -98,6 +98,8 @@ Token VSLLexer::nextToken()
             }
             diag.print<Diag::UNKNOWN_SYMBOL>(location, current());
             break;
+        case '.':
+            return createToken(TokenKind::DOT);
         default:
             if (isalpha(current()))
             {

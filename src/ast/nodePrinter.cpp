@@ -47,14 +47,57 @@ void NodePrinter::visitVariable(VariableNode& node)
     os << ';';
 }
 
+void NodePrinter::visitClass(ClassNode& node)
+{
+    indent() << accessPrefix(node.getAccess()) << "class " << node.getName() <<
+        '\n';
+    ++indentLevel;
+    openBlock();
+    // print fields
+    for (FieldNode* field : node.getFields())
+    {
+        field->accept(*this);
+        os << '\n';
+    }
+    // print ctor
+    if (node.hasCtor())
+    {
+        node.getCtor().accept(*this);
+        os << '\n';
+    }
+    // print methods
+    for (MethodNode* method : node.getMethods())
+    {
+        method->accept(*this);
+        os << '\n';
+    }
+    closeBlock();
+    --indentLevel;
+}
+
+void NodePrinter::visitField(FieldNode& node)
+{
+    visitVariable(node);
+}
+
+void NodePrinter::visitMethod(MethodNode& node)
+{
+    visitFunction(node);
+}
+
+void NodePrinter::visitCtor(CtorNode& node)
+{
+    indent() << accessPrefix(node.getAccess()) << "init";
+    printNodeList(node.getParams());
+    os << '\n';
+    ++indentLevel;
+    visitBlock(node.getBody());
+    --indentLevel;
+}
+
 void NodePrinter::visitBlock(BlockNode& node)
 {
-    // in most cases this lines up the curly braces with the statement behind
-    //  it, which always increments indentLevel with the intention to indent the
-    //  statements within, not the actual curly braces
-    --indentLevel;
-    indent() << "{\n";
-    ++indentLevel;
+    openBlock();
     // print each statement inside the block
     for (Node* statement : node.getStatements())
     {
@@ -69,9 +112,7 @@ void NodePrinter::visitBlock(BlockNode& node)
             --indentLevel;
         }
     }
-    --indentLevel;
-    indent() << '}';
-    ++indentLevel;
+    closeBlock();
 }
 
 void NodePrinter::visitEmpty(EmptyNode& node)
@@ -145,23 +186,31 @@ void NodePrinter::visitTernary(TernaryNode& node)
 void NodePrinter::visitCall(CallNode& node)
 {
     node.getCallee().accept(*this);
-    os << '(';
-    if (node.getNumArgs() > 0)
-    {
-        node.getArg(0).accept(*this);
-        for (size_t i = 1; i < node.getNumArgs(); ++i)
-        {
-            os << ", ";
-            node.getArg(i).accept(*this);
-        }
-    }
-    os << ')';
+    printNodeList(node.getArgs());
 }
 
 void NodePrinter::visitArg(ArgNode& node)
 {
     os << node.getName() << ": ";
     node.getValue().accept(*this);
+}
+
+void NodePrinter::visitFieldAccess(FieldAccessNode& node)
+{
+    node.getObject().accept(*this);
+    os << '.' << node.getField();
+}
+
+void NodePrinter::visitMethodCall(MethodCallNode& node)
+{
+    node.getCallee().accept(*this);
+    os << '.' << node.getMethod();
+    printNodeList(node.getArgs());
+}
+
+void NodePrinter::visitSelf(SelfNode& node)
+{
+    os << "self";
 }
 
 const char* NodePrinter::accessPrefix(Access access)
@@ -180,17 +229,40 @@ const char* NodePrinter::accessPrefix(Access access)
 void NodePrinter::printFuncInterface(FuncInterfaceNode& node)
 {
     indent() << accessPrefix(node.getAccess()) << "func " <<
-        node.getName() << '(';
-    if (node.getNumParams() > 0)
+        node.getName();
+    printNodeList(node.getParams());
+    os << " -> " << *node.getReturnType();
+}
+
+template<typename NodeT>
+void NodePrinter::printNodeList(llvm::ArrayRef<NodeT*> nodes)
+{
+    os << '(';
+    if (!nodes.empty())
     {
-        node.getParam(0).accept(*this);
-        for (size_t i = 1; i < node.getNumParams(); ++i)
+        nodes[0]->accept(*this);
+        for (size_t i = 1; i < nodes.size(); ++i)
         {
             os << ", ";
-            node.getParam(i).accept(*this);
+            nodes[i]->accept(*this);
         }
     }
-    os << ") -> " << *node.getReturnType();
+    os << ')';
+}
+
+void NodePrinter::openBlock()
+{
+    // usually we want to indent the statements within, not the actual braces
+    --indentLevel;
+    indent() << "{\n";
+    ++indentLevel;
+}
+
+void NodePrinter::closeBlock()
+{
+    --indentLevel;
+    indent() << '}';
+    ++indentLevel;
 }
 
 void NodePrinter::printStatement(Node& node)

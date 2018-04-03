@@ -1,5 +1,6 @@
 #include "irgen/irgen.hpp"
 #include "irgen/passes/funcResolver/funcResolver.hpp"
+#include "irgen/passes/typeResolver/typeResolver.hpp"
 #include "irgen/passes/irEmitter/irEmitter.hpp"
 #include "llvm/IR/Verifier.h"
 
@@ -11,6 +12,9 @@ IRGen::IRGen(VSLContext& vslCtx, Diag& diag, llvm::Module& module)
 
 void IRGen::run()
 {
+    // resolve type declarations
+    TypeResolver typeResolver{ vslCtx, converter, module };
+    typeResolver.visitAST(vslCtx.getGlobals());
     // resolve global functions
     FuncResolver funcResolver{ vslCtx, diag, global, converter, module };
     funcResolver.visitAST(vslCtx.getGlobals());

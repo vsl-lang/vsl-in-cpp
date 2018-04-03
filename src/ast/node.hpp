@@ -8,6 +8,10 @@ class FunctionNode;
 class ExtFuncNode;
 class ParamNode;
 class VariableNode;
+class ClassNode;
+class FieldNode;
+class MethodNode;
+class CtorNode;
 class BlockNode;
 class EmptyNode;
 class IfNode;
@@ -20,6 +24,22 @@ class BinaryNode;
 class TernaryNode;
 class CallNode;
 class ArgNode;
+class FieldAccessNode;
+class MethodCallNode;
+class SelfNode;
+
+/**
+ * Access specifiers for {@link DeclNode DeclNodes}.
+ */
+enum class Access
+{
+    /** Can be accessed anywhere. */
+    PUBLIC,
+    /** Can be accessed only in the context it was declared. */
+    PRIVATE,
+    /** Not applicable, e.g. inside a function. */
+    NONE
+};
 
 #include "ast/nodevisitor.hpp"
 #include "ast/opKind.hpp"
@@ -35,17 +55,17 @@ class ArgNode;
 #include <vector>
 
 /**
- * Access specifiers for {@link DeclNode DeclNodes}.
+ * Merges two access specifiers. This is used when the grandparent scope wants
+ * to access the child. If the parent is private then the child is private, but
+ * if the parent is public then the child determines the result.
+ *
+ * @param parent Access of the parent scope.
+ * @param child Access of the child declaration
+ *
+ * @returns The perceived access specifier to access the child from the parent's
+ * parent scope.
  */
-enum class Access
-{
-    /** Can be accessed anywhere. */
-    PUBLIC,
-    /** Can be accessed only in the context it was declared. */
-    PRIVATE,
-    /** Not applicable, e.g. inside a function. */
-    NONE
-};
+Access mergeAccess(Access parent, Access child);
 
 /**
  * Converts a TokenKind keyword to an access specifier. This applies only to the
@@ -86,12 +106,22 @@ public:
         FUNCTION,
         /** External function. */
         EXTFUNC,
+        /** Function parameter. */
+        PARAM,
+        /** Variable definition. */
+        VARIABLE,
+        /** Class definition. */
+        CLASS,
+        /** Field. */
+        FIELD,
+        /** Method. */
+        METHOD,
+        /** Class constructor. */
+        CTOR,
         /** Code block. */
         BLOCK,
         /** Empty statement. */
         EMPTY,
-        /** Variable definition. */
-        VARIABLE,
         /** If/else statement. */
         IF,
         /** Return statement. */
@@ -108,10 +138,14 @@ public:
         TERNARY,
         /** Function call. */
         CALL,
-        /** Function parameter. */
-        PARAM,
         /** Function call argument. */
         ARG,
+        /** Field access. */
+        FIELD_ACCESS,
+        /** Method call. */
+        METHOD_CALL,
+        /** Self keyword. */
+        SELF
     };
     /**
      * Creates a Node object.
@@ -209,16 +243,6 @@ public:
     ParamNode& getParam(size_t i) const;
     const Type* getReturnType() const;
 
-protected:
-    /**
-     * Gets the string representation of the name, parameters, and return type.
-     *
-     * @param indent Indentation level.
-     *
-     * @returns String representation.
-     */
-    std::string toStr(int indent) const;
-
 private:
     /** The name of the function. */
     llvm::StringRef name;
@@ -253,7 +277,16 @@ public:
     bool isAlreadyDefined() const;
     void setAlreadyDefined(bool alreadyDefined = true);
 
+protected:
+    /**
+     * Used by subclasses.
+     */
+    FunctionNode(Node::Kind kind, Location location, Access access,
+        llvm::StringRef name, std::vector<ParamNode*> params,
+        const Type* returnType, BlockNode& body);
+
 private:
+    /** The body of the function. */
     BlockNode& body;
     /** Whether this function was already defined. */
     bool alreadyDefined;
@@ -341,6 +374,13 @@ public:
     ExprNode& getInit() const;
     bool isConst() const;
 
+protected:
+    /**
+     * Used by subclasses.
+     */
+    VariableNode(Node::Kind kind, Location location, Access access,
+        llvm::StringRef name, const Type* type, ExprNode* init, bool constness);
+
 private:
     /** The name of the variable. */
     llvm::StringRef name;
@@ -350,6 +390,165 @@ private:
     ExprNode* init;
     /** If this variable is const or not. */
     bool constness;
+};
+
+/**
+ * Represents a class definition. An example of this would be:
+ *
+ *     public class A
+ *     {
+ *         public var x: Int; // FieldNode
+ *         public init(x: Int) // CtorNode
+ *         {
+ *             self.x = x;
+ *         }
+ *         public func f(y: Int) -> Int // MethodNode
+ *         {
+ *             return x * y;
+ *         }
+ *     }
+ */
+class ClassNode : public DeclNode
+{
+public:
+    /**
+     * Represents a class member.
+     */
+    class Member
+    {
+    public:
+        /**
+         * Creates a Member object.
+         *
+         * @param parent The ClassNode this Member belongs to.
+         */
+        Member(ClassNode& parent);
+        ClassNode& getParent() const;
+
+    private:
+        /** The ClassNode this Member belongs to. */
+        ClassNode& parent;
+    };
+
+    /**
+     * Creates a ClassNode. Use some of the other methods to add class members.
+     *
+     * @param location Where this ClassNode was found in the source.
+     * @param access Access specifier.
+     * @param name Name of the class.
+     * @param namedType External type of the class. Should have classType as its
+     * underlying type.
+     * @param classType Class type equivalent.
+     */
+    ClassNode(Location location, Access access, llvm::StringRef name,
+        const NamedType* type, ClassType* classType);
+    virtual ~ClassNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+    llvm::StringRef getName() const;
+    const NamedType* getType() const;
+    const ClassType* getClassType() const;
+    llvm::ArrayRef<FieldNode*> getFields() const;
+    size_t getNumFields() const;
+    FieldNode& getField(size_t i) const;
+    bool hasCtor() const;
+    CtorNode& getCtor() const;
+    llvm::ArrayRef<MethodNode*> getMethods() const;
+    /**
+     * Adds a field. This method fails and returns true if a field with the same
+     * name already exists.
+     *
+     * @param field Field to add.
+     *
+     * @returns True if a duplicate field already exists, false otherwise.
+     */
+    bool addField(FieldNode& field);
+    void setCtor(CtorNode& ctor);
+    void addMethod(MethodNode& method);
+
+private:
+    /** Name of the class. */
+    llvm::StringRef name;
+    /** Type of the class. */
+    const NamedType* type;
+    /** Class type equivalent. */
+    ClassType* classType;
+    /** List of fields. */
+    std::vector<FieldNode*> fields;
+    /** Class constructor. Can be null. */
+    CtorNode* ctor;
+    /** List of instance methods. */
+    std::vector<MethodNode*> methods;
+};
+
+/**
+ * Represents a field of a class.
+ */
+class FieldNode : public VariableNode, public ClassNode::Member
+{
+public:
+    /**
+     * Creates a VariableNode.
+     *
+     * @param location Where this FieldNode was found in the source.
+     * @param access Access specifier.
+     * @param name Name of the field.
+     * @param type Type of the field.
+     * @param init The field's initial value. Can be null.
+     * @param constness If this field is const or not (TODO).
+     * @param parent The ClassNode this FieldNode belongs to.
+     */
+    FieldNode(Location location, Access access, llvm::StringRef name,
+        const Type* type, ExprNode* init, bool constness, ClassNode& parent);
+    virtual ~FieldNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+};
+
+/**
+ * Represents a method of a class.
+ */
+class MethodNode : public FunctionNode, public ClassNode::Member
+{
+public:
+    /**
+     * Creates a MethodNode.
+     *
+     * @param location Where this MethodNode was found in the source.
+     * @param access Access specifier.
+     * @param name The name of the method.
+     * @param params The function's parameters.
+     * @param returnType The type that the method returns.
+     * @param body Body of the method.
+     * @param parent The ClassNode this MethodNode belongs to.
+     */
+    MethodNode(Location location, Access access, llvm::StringRef name,
+        std::vector<ParamNode*> params, const Type* returnType, BlockNode& body,
+        ClassNode& parent);
+    virtual ~MethodNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+};
+
+/**
+ * Represents a class constructor.
+ */
+class CtorNode : public FunctionNode, public ClassNode::Member
+{
+public:
+    // TODO: could create UnresolvedType when parsing ClassNode and use that as
+    //       the return type
+    /**
+     * Creates a CtorNode. The return type will be null until the class type is
+     * resolved.
+     *
+     * @param location Where this MethodNode was found in the source.
+     * @param access Access specifier.
+     * @param params The function's parameters.
+     * @param body Body of the method.
+     * @param parent The ClassNode this CtorNode belongs to.
+     */
+    CtorNode(Location location, Access access, std::vector<ParamNode*> params,
+        BlockNode& body, ClassNode& parent);
+    virtual ~CtorNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
 };
 
 /**
@@ -616,6 +815,19 @@ public:
     size_t getNumArgs() const;
     ArgNode& getArg(size_t i) const;
 
+protected:
+    /**
+     * Creates a CallNode. This allows subclasses to have a different
+     * Node::Kind.
+     *
+     * @param kind The kind of CallNode this is.
+     * @param location Where this CallNode was found in the source.
+     * @param callee The function to call.
+     * @param args The arguments to pass to the callee.
+     */
+    CallNode(Node::Kind kind, Location location, ExprNode& callee,
+        std::vector<ArgNode*> args);
+
 private:
     /** The function to call. */
     ExprNode& callee;
@@ -637,7 +849,7 @@ public:
      * @param value The value of the argument.
      */
     ArgNode(Location location, llvm::StringRef name, ExprNode& value);
-    ~ArgNode() override = default;
+    virtual ~ArgNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     llvm::StringRef getName() const;
     ExprNode& getValue() const;
@@ -647,6 +859,73 @@ private:
     llvm::StringRef name;
     /** The value of the argument. */
     ExprNode& value;
+};
+
+/**
+ * Represents a field access, e.g.\ `object.field`.
+ */
+class FieldAccessNode : public ExprNode
+{
+public:
+    /**
+     * Creates a FieldAccessNode.
+     *
+     * @param location Where this FieldAccessNode was found in the source.
+     * @param object Object to access a field of.
+     * @param field Name of the field to access.
+     */
+    FieldAccessNode(Location location, ExprNode& object, llvm::StringRef field);
+    virtual ~FieldAccessNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+    ExprNode& getObject() const;
+    llvm::StringRef getField() const;
+
+private:
+    /** Object to access a field of. */
+    ExprNode& object;
+    /** Name of the field to access. */
+    llvm::StringRef field;
+};
+
+/**
+ * Represents a method call, e.g.\ `callee.method(arg: 10)`.
+ */
+class MethodCallNode : public CallNode
+{
+public:
+    /**
+     * Creates a MethodCallNode.
+     *
+     * @param location Where this MethodCallNode was found in the source.
+     * @param callee Object to access a method of.
+     * @param method Name of the method.
+     * @param args Arguments to pass to the callee+method.
+     */
+    MethodCallNode(Location location, ExprNode& callee, llvm::StringRef method,
+        std::vector<ArgNode*> args);
+    virtual ~MethodCallNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+    llvm::StringRef getMethod() const;
+
+private:
+    /** Name of the method. */
+    llvm::StringRef method;
+};
+
+/**
+ * Represents the `self` keyword.
+ */
+class SelfNode : public ExprNode
+{
+public:
+    /**
+     * Creates a SelfNode.
+     *
+     * @param location Where this SelfNode was found in the source.
+     */
+    SelfNode(Location location);
+    virtual ~SelfNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
 };
 
 #endif // NODE_HPP

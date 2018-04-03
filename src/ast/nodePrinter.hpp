@@ -24,6 +24,10 @@ public:
     virtual void visitExtFunc(ExtFuncNode& node) override;
     virtual void visitParam(ParamNode& node) override;
     virtual void visitVariable(VariableNode& node) override;
+    virtual void visitClass(ClassNode& node) override;
+    virtual void visitField(FieldNode& node) override;
+    virtual void visitMethod(MethodNode& node) override;
+    virtual void visitCtor(CtorNode& node) override;
     virtual void visitBlock(BlockNode& node) override;
     virtual void visitEmpty(EmptyNode& node) override;
     virtual void visitIf(IfNode& node) override;
@@ -35,6 +39,9 @@ public:
     virtual void visitTernary(TernaryNode& node) override;
     virtual void visitCall(CallNode& node) override;
     virtual void visitArg(ArgNode& node) override;
+    virtual void visitFieldAccess(FieldAccessNode& node) override;
+    virtual void visitMethodCall(MethodCallNode& node) override;
+    virtual void visitSelf(SelfNode& node) override;
 
 private:
     /**
@@ -49,6 +56,24 @@ private:
      * alias declaration.
      */
     void printFuncInterface(FuncInterfaceNode& node);
+    /**
+     * Prints a comma-separated list of Nodes wrapped in parentheses.
+     *
+     * @tparam NodeT Node-derived type to print.
+     *
+     * @param nodes List of nodes to print.
+     */
+    template<typename NodeT>
+    void printNodeList(llvm::ArrayRef<NodeT*> nodes);
+    /**
+     * Prints a left brace, used to open a block, with correct indentation and a
+     * newline at the end.
+     */
+    void openBlock();
+    /**
+     * Prints a right brace, used to close a block, with correct indentation.
+     */
+    void closeBlock();
     /**
      * Prints a single statement, with special handling for blocks and
      * expression statements.

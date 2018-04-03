@@ -1,5 +1,14 @@
 #include "ast/node.hpp"
 
+Access mergeAccess(Access parent, Access child)
+{
+    if (parent == Access::PUBLIC)
+    {
+        return child;
+    }
+    return parent;
+}
+
 Access keywordToAccess(TokenKind kind)
 {
     switch (kind)
@@ -95,14 +104,19 @@ const Type* FuncInterfaceNode::getReturnType() const
 FunctionNode::FunctionNode(Location location, Access access,
     llvm::StringRef name, std::vector<ParamNode*> params,
     const Type* returnType, BlockNode& body)
-    : FuncInterfaceNode{ Node::FUNCTION, location, access, name,
-        std::move(params), returnType }, body{ body }, alreadyDefined{ false }
+    : FunctionNode{ Node::FUNCTION, location, access, name, std::move(params),
+        returnType, body }
 {
 }
 
 void FunctionNode::accept(NodeVisitor& nodeVisitor)
 {
     nodeVisitor.visitFunction(*this);
+}
+
+BlockNode& FunctionNode::getBody() const
+{
+    return body;
 }
 
 bool FunctionNode::isAlreadyDefined() const
@@ -115,9 +129,12 @@ void FunctionNode::setAlreadyDefined(bool alreadyDefined)
     this->alreadyDefined = alreadyDefined;
 }
 
-BlockNode& FunctionNode::getBody() const
+FunctionNode::FunctionNode(Node::Kind kind, Location location, Access access,
+    llvm::StringRef name, std::vector<ParamNode*> params,
+    const Type* returnType, BlockNode& body)
+    : FuncInterfaceNode{ kind, location, access, name, std::move(params),
+        returnType }, body{ body }, alreadyDefined{ false }
 {
-    return body;
 }
 
 ExtFuncNode::ExtFuncNode(Location location, Access access, llvm::StringRef name,
@@ -160,8 +177,8 @@ const Type* ParamNode::getType() const
 
 VariableNode::VariableNode(Location location, Access access,
     llvm::StringRef name, const Type* type, ExprNode* init, bool constness)
-    : DeclNode{ Node::VARIABLE, location, access }, name{ name }, type{ type },
-    init{ init }, constness{ constness }
+    : VariableNode{ Node::VARIABLE, location, access, name, type, init,
+        constness }
 {
 }
 
@@ -193,6 +210,140 @@ ExprNode& VariableNode::getInit() const
 bool VariableNode::isConst() const
 {
     return constness;
+}
+
+VariableNode::VariableNode(Node::Kind kind, Location location, Access access,
+    llvm::StringRef name, const Type* type, ExprNode* init, bool constness)
+    : DeclNode{ kind, location, access }, name{ name }, type{ type },
+    init{ init }, constness{ constness }
+{
+}
+
+
+ClassNode::Member::Member(ClassNode& parent)
+    : parent { parent }
+{
+}
+
+ClassNode& ClassNode::Member::getParent() const
+{
+    return parent;
+}
+
+ClassNode::ClassNode(Location location, Access access, llvm::StringRef name,
+    const NamedType* type, ClassType* classType)
+    : DeclNode{ Node::CLASS, location, access }, name{ name }, type{ type },
+    classType{ classType }, ctor{ nullptr }
+{
+}
+
+void ClassNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitClass(*this);
+}
+
+llvm::StringRef ClassNode::getName() const
+{
+    return name;
+}
+
+const NamedType* ClassNode::getType() const
+{
+    return type;
+}
+
+const ClassType* ClassNode::getClassType() const
+{
+    return classType;
+}
+
+llvm::ArrayRef<FieldNode*> ClassNode::getFields() const
+{
+    return fields;
+}
+
+size_t ClassNode::getNumFields() const
+{
+    return fields.size();
+}
+
+FieldNode& ClassNode::getField(size_t i) const
+{
+    return *fields[i];
+}
+
+bool ClassNode::hasCtor() const
+{
+    return ctor;
+}
+
+CtorNode& ClassNode::getCtor() const
+{
+    return *ctor;
+}
+
+llvm::ArrayRef<MethodNode*> ClassNode::getMethods() const
+{
+    return methods;
+}
+
+bool ClassNode::addField(FieldNode& field)
+{
+    if (classType->setField(field.getName(), field.getType(), fields.size(),
+            field.getAccess()))
+    {
+        return true;
+    }
+    fields.push_back(&field);
+    return false;
+}
+
+void ClassNode::setCtor(CtorNode& ctor)
+{
+    this->ctor = &ctor;
+}
+
+void ClassNode::addMethod(MethodNode& method)
+{
+    methods.push_back(&method);
+}
+
+FieldNode::FieldNode(Location location, Access access, llvm::StringRef name,
+    const Type* type, ExprNode* init, bool constness, ClassNode& parent)
+    : VariableNode{ Node::FIELD, location, access, name, type, init,
+        constness },
+    ClassNode::Member{ parent }
+{
+}
+
+void FieldNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitField(*this);
+}
+
+MethodNode::MethodNode(Location location, Access access, llvm::StringRef name,
+    std::vector<ParamNode*> params, const Type* returnType, BlockNode& body,
+    ClassNode& parent)
+    : FunctionNode{ Node::METHOD, location, access, name, std::move(params),
+        returnType, body }, ClassNode::Member{ parent }
+{
+}
+
+void MethodNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitMethod(*this);
+}
+
+CtorNode::CtorNode(Location location, Access access,
+    std::vector<ParamNode*> params, BlockNode& body, ClassNode& parent)
+    : FunctionNode{ Node::CTOR, location, access, parent.getName(),
+        std::move(params), parent.getType(), body }, ClassNode::Member{ parent }
+{
+}
+
+void CtorNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitCtor(*this);
 }
 
 BlockNode::BlockNode(Location location, std::vector<Node*> statements)
@@ -397,8 +548,7 @@ ExprNode& TernaryNode::getElse() const
 
 CallNode::CallNode(Location location, ExprNode& callee,
     std::vector<ArgNode*> args)
-    : ExprNode{ Node::CALL, location }, callee{ callee },
-    args{ std::move(args) }
+    : CallNode{ Node::CALL, location, callee, std::move(args) }
 {
 }
 
@@ -427,6 +577,12 @@ ArgNode& CallNode::getArg(size_t i) const
     return *args[i];
 }
 
+CallNode::CallNode(Node::Kind kind, Location location, ExprNode& callee,
+    std::vector<ArgNode*> args)
+    : ExprNode{ kind, location }, callee{ callee }, args{ std::move(args) }
+{
+}
+
 ArgNode::ArgNode(Location location, llvm::StringRef name, ExprNode& value)
     : Node{ Node::ARG, location }, name{ name }, value{ value }
 {
@@ -445,4 +601,52 @@ llvm::StringRef ArgNode::getName() const
 ExprNode& ArgNode::getValue() const
 {
     return value;
+}
+
+FieldAccessNode::FieldAccessNode(Location location, ExprNode& object,
+    llvm::StringRef field)
+    : ExprNode{ Node::FIELD_ACCESS, location }, object{ object }, field{ field }
+{
+}
+
+void FieldAccessNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitFieldAccess(*this);
+}
+
+ExprNode& FieldAccessNode::getObject() const
+{
+    return object;
+}
+
+llvm::StringRef FieldAccessNode::getField() const
+{
+    return field;
+}
+
+MethodCallNode::MethodCallNode(Location location, ExprNode& callee,
+    llvm::StringRef method, std::vector<ArgNode*> args)
+    : CallNode{ Node::METHOD_CALL, location, callee, std::move(args) },
+    method{ method }
+{
+}
+
+void MethodCallNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitMethodCall(*this);
+}
+
+llvm::StringRef MethodCallNode::getMethod() const
+{
+    return method;
+}
+
+SelfNode::SelfNode(Location location)
+    : ExprNode{ Node::SELF, location }
+{
+}
+
+void SelfNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitSelf(*this);
 }

@@ -6,6 +6,30 @@ Value::Value()
 {
 }
 
+bool Value::operator==(const Value& value) const
+{
+    // check the regular fields
+    if (kind != value.kind || vslType != value.vslType ||
+        llvmValue != value.llvmValue)
+    {
+        return false;
+    }
+    if (isField())
+    {
+        // check the base data
+        return value.isField() && base.vslType == value.base.vslType &&
+            base.llvmValue == value.base.llvmValue &&
+            base.shouldDestroy == value.base.shouldDestroy;
+    }
+    // not a field but other checks succeeded
+    return true;
+}
+
+bool Value::operator!=(const Value& value) const
+{
+    return !(*this == value);
+}
+
 Value Value::getNull()
 {
     return {};
@@ -19,6 +43,15 @@ Value Value::getExpr(const Type* vslType, llvm::Value* llvmValue)
 Value Value::getVar(const Type* vslType, llvm::Value* llvmVar)
 {
     return { Kind::VAR, vslType, llvmVar };
+}
+
+Value Value::getField(Value base, const Type* vslField, llvm::Value* llvmField,
+    bool destroyBase)
+{
+    assert(base.isExpr() && "Not an expr!");
+    Value value{ Kind::FIELD, vslField, llvmField };
+    value.base = { base.getVSLType(), base.getLLVMValue(), destroyBase };
+    return value;
 }
 
 Value Value::getFunc(const FunctionType* funcType, llvm::Function* llvmFunc)
@@ -39,6 +72,11 @@ bool Value::operator!() const
 Value::operator bool() const
 {
     return isValid();
+}
+
+bool Value::isAssignable() const
+{
+    return isVar() || isField();
 }
 
 bool Value::isExpr() const
@@ -71,6 +109,34 @@ llvm::Value* Value::getLLVMVar() const
 {
     assert(isVar() && "Not a var!");
     return llvmValue;
+}
+
+bool Value::isField() const
+{
+    return kind == Kind::FIELD;
+}
+
+const Type* Value::getVSLField() const
+{
+    assert(isField() && "Not a field!");
+    return vslType;
+}
+
+llvm::Value* Value::getLLVMField() const
+{
+    assert(isField() && "Not a field!");
+    return llvmValue;
+}
+
+Value Value::getBase() const
+{
+    return Value::getExpr(base.vslType, base.llvmValue);
+}
+
+bool Value::shouldDestroyBase() const
+{
+    assert(isField() && "Not a field!");
+    return base.shouldDestroy;
 }
 
 bool Value::isFunc() const

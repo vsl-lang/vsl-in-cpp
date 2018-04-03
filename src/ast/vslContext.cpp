@@ -1,5 +1,4 @@
 #include "ast/vslContext.hpp"
-#include <iostream>
 
 VSLContext::VSLContext()
     : errorType{ Type::ERROR }, boolType{ Type::BOOL }, intType{ Type::INT },
@@ -57,22 +56,66 @@ const SimpleType* VSLContext::getSimpleType(Type::Kind k) const
     }
 }
 
-const FunctionType* VSLContext::getFunctionType(std::vector<const Type*> params,
-    const Type* returnType)
+bool VSLContext::hasNamedType(llvm::StringRef name) const
 {
-    // can't construct the FunctionType by emplace() because ctor is protected
-    FunctionType ft{ std::move(params), returnType };
-    return &*functionTypes.emplace(std::move(ft)).first;
+    NamedType nt{ name };
+    return namedTypes.find(nt) != namedTypes.end();
 }
 
-const FunctionType* VSLContext::getFunctionType(FuncInterfaceNode& node)
+const NamedType* VSLContext::getNamedType(llvm::StringRef name)
 {
-    // copy only the param types
+    NamedType nt{ name };
+    return &*namedTypes.insert(nt).first;
+}
+
+const FunctionType* VSLContext::getFunctionType(const FuncInterfaceNode& node)
+{
+    // create the function type
+    FunctionType type{ getParamTypes(node), node.getReturnType(),
+        node.is(Node::CTOR) };
+    if (node.is(Node::METHOD))
+    {
+        // fill in the type of the self parameter for methods
+        type.setSelfType(
+            static_cast<const MethodNode&>(node).getParent().getType());
+    }
+    else if (node.is(Node::CTOR))
+    {
+        // fill in the type of the self parameter for ctors
+        type.setSelfType(
+            static_cast<const CtorNode&>(node).getParent().getType());
+    }
+    return &*functionTypes.emplace(std::move(type)).first;
+}
+
+const NamedType* VSLContext::createNamedType(llvm::StringRef name)
+{
+    // attempt to insert a NamedType
+    NamedType nt{ name };
+    auto pair = namedTypes.insert(nt);
+    if (!pair.second)
+    {
+        // name already exists!
+        return nullptr;
+    }
+    return &*pair.first;
+}
+
+ClassType* VSLContext::createClassType()
+{
+    // create a new empty ClassType and return a pointer to it
+    classTypes.push_back({});
+    return &classTypes.back();
+}
+
+std::vector<const Type*> VSLContext::getParamTypes(
+    const FuncInterfaceNode& node)
+{
     std::vector<const Type*> paramTypes;
     paramTypes.resize(node.getNumParams());
     for (size_t i = 0; i < node.getNumParams(); ++i)
     {
         paramTypes[i] = node.getParam(i).getType();
     }
-    return getFunctionType(std::move(paramTypes), node.getReturnType());
+    return paramTypes;
 }

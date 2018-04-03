@@ -38,6 +38,14 @@ TEST(ParserTest, Functions)
     invalid("public func f() -> Void { private func g() -> Void {} }");
 }
 
+TEST(ParserTest, Classes)
+{
+    valid("public class X{ public var x: Int; "
+        "public init(x: Int){ self.x = x; } "
+        "public func f() -> Int { return self.x + 1; } }");
+    valid("public var x: X = X();");
+}
+
 TEST(ParserTest, EmptyStmts)
 {
     valid("public func f() -> Void { ; }");

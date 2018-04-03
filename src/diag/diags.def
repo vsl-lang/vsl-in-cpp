@@ -20,6 +20,10 @@ DIAG(FUNCEPTION, (Location location), (ERROR, location,
         "function being defined within another function scope (funception!)"))
 DIAG(INVALID_PARAM_TYPE, (Location location, const Type& type), (ERROR,
         location, "type '", type, "' is an invalid parameter type"))
+DIAG(DUPLICATE_TYPE, (Location location, llvm::StringRef name), (ERROR,
+        location, "type '", name, "' was already defined earlier"))
+DIAG(DUPLICATE_FIELD, (const FieldNode& field), (ERROR, field.getLoc(),
+        "field '", field.getName(), "' was already defined earlier"))
 DIAG(NOT_A_BINARY_OP, (const Token& t), (ERROR, t.getLoc(), "token '",
         t.getText(), "' is not a binary operator"))
 DIAG(INVALID_INT, (const Token& t), (ERROR, t.getLoc(), "invalid integer '",
@@ -28,8 +32,10 @@ DIAG(OVERFLOW_DETECTED, (const Token& t), (WARNING, t.getLoc(),
         "overflow detected in integer '", t.getText(), '\''))
 
 // funcResolver
-DIAG(FUNC_ALREADY_DEFINED, (FuncInterfaceNode& func), (ERROR, func.getLoc(),
-        "function '", func.getName(), "' was already defined"))
+DIAG(FUNC_ALREADY_DEFINED, (const FuncInterfaceNode& func), (ERROR,
+        func.getLoc(), "function '", func.getName(), "' was already defined"))
+DIAG(FUNC_NAMED_AFTER_TYPE, (const FuncInterfaceNode& func), (ERROR,
+        func.getLoc(), "function '", func.getName(), "' is named after a type"))
 
 // irEmitter
 DIAG(TOPLEVEL_CTRL_FLOW, (Location l), (ERROR, l,
@@ -55,8 +61,6 @@ DIAG(RETVAL_MISMATCHES_RETTYPE, (const ExprNode& retVal, const Type& valType,
         valType, "' does not match return type '", retType, '\''))
 DIAG(CANT_RETURN_VOID_VALUE, (ReturnNode& ret), (ERROR,
         ret.getValue().getLoc(), "cannot return a value of type Void"))
-DIAG(UNKNOWN_IDENT, (IdentNode& id), (ERROR, id.getLoc(),
-        "unknown identifier '", id.getName(), '\''))
 DIAG(INVALID_INT_WIDTH, (LiteralNode& literal), (INTERNAL, literal.getLoc(),
         "VSL does not support ", literal.getValue().getBitWidth(),
         "-bit integers"))
@@ -75,6 +79,26 @@ DIAG(NOT_A_FUNCTION, (const ExprNode& callee, const Type& type), (ERROR,
         "' is not a function"))
 DIAG(MISMATCHING_ARG_COUNT, (Location l, size_t args, size_t params), (ERROR, l,
         "mismatched number of arguments ", args, " versus parameters ", params))
+DIAG(UNKNOWN_METHOD, (const MethodCallNode& call, const Type& objType), (ERROR,
+        call.getLoc(), "unknown method '", call.getMethod(),
+        "' for object of type '", objType, '\''))
+DIAG(PRIVATE_METHOD, (const MethodCallNode& call, const Type& objType), (ERROR,
+        call.getLoc(), "method '", call.getMethod(), "' for object of type '",
+        objType, "' is private"))
+DIAG(SELF_NOT_DEFINED, (const SelfNode& node), (ERROR, node.getLoc(),
+        "'self' was not defined in this scope"))
+DIAG(UNKNOWN_IDENT, (const IdentNode& id), (ERROR, id.getLoc(),
+        "unknown identifier '", id.getName(), '\''))
+DIAG(PRIVATE_CTOR, (const IdentNode& id), (ERROR, id.getLoc(),
+        "constructor for type '", id.getName(), "' is private"))
+DIAG(NOT_AN_OBJECT, (const ExprNode& node, const Type& type), (ERROR,
+        node.getLoc(), "expression of type '", type, "' is not an object"))
+DIAG(UNKNOWN_FIELD, (const FieldAccessNode& node, const Type& objType), (ERROR,
+        node.getLoc(), "unknown field ", node.getField(),
+        " for object of type '", objType, '\''))
+DIAG(PRIVATE_FIELD, (const FieldAccessNode& node, const Type& objType), (ERROR,
+        node.getLoc(), "field '", node.getField(), "' for object of type '",
+        objType, "' is private"))
 DIAG(LHS_NOT_ASSIGNABLE, (ExprNode& lhs), (ERROR, lhs.getLoc(),
         "lhs must be an identifier"))
 

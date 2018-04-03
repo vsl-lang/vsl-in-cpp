@@ -89,3 +89,53 @@ TEST(IRGenTest, Variables)
     // not implemented yet
     invalid("public func f() -> Int { return x + 1; } public var x: Int = 2;");
 }
+
+TEST(IRGenTest, Classes)
+{
+    // constructor/method bodies
+    valid("public class X{ public var x: Int; "
+        "public init(x: Int){ self.x = x; } "
+        "public func f() -> Int { return self.x + 1; } }");
+    // global variables of class type
+    valid("public class X { public let x: Int; public init(){} } "
+        "public let y: X = X();");
+    // modifying the fields of an object
+    valid("public class X { public let x: Int; public init(){} } "
+        "public func f(x: X) -> Void { x.x = x.x + 1; }");
+}
+
+TEST(IRGenTest, MethodCalls)
+{
+    valid("public class X { "
+        "public func f(x: X) -> X { return x.f(x: x); } }");
+    // mismatched return type
+    invalid("public class X { "
+        "public func f(x: X) -> Int { return self; } }");
+}
+
+TEST(IRGenTest, Self)
+{
+    // method that returns self
+    valid("public class X { public func f() -> X { return self; } }");
+    // self is used outside of a class
+    invalid("public func f() -> Int { return self.x; }");
+}
+
+TEST(IRGenTest, MemberAccess)
+{
+    // private field
+    valid("public class A { private var x: Int; "
+        "public func f() -> Int { return self.x; } }");
+    invalid("public class A { private var x: Int; } "
+        "public func f(x: A) -> Void { x.x = 1; }");
+    // private ctor
+    valid("public class A { private init(){} "
+        "public func f() -> A { return A(); } }");
+    invalid("public class A { private init(){} } "
+        "public var a: A = A();");
+    // private method
+    valid("public class A { private func f() -> Void {} "
+        "public func g() -> Void { self.f(); } }");
+    invalid("public class A { private func f() -> Void {} } "
+        "public func f(a: A) -> Void { a.f(); }");
+}

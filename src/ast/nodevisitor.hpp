@@ -7,9 +7,9 @@ class NodeVisitor;
 #include "llvm/ADT/ArrayRef.h"
 
 /**
- * Base class for visiting a Node, implementing the Visitor Pattern.
- * Subclasses can override the visit methods to perform some operation on a Node
- * through double dispatch.
+ * Base class for visiting a Node, implementing the Visitor Pattern. Subclasses
+ * can override the visit methods to perform some operation on a Node through
+ * double dispatch.
  */
 class NodeVisitor
 {
@@ -24,9 +24,13 @@ public:
     virtual void visitFunction(FunctionNode& node);
     virtual void visitExtFunc(ExtFuncNode& node);
     virtual void visitParam(ParamNode& node);
+    virtual void visitVariable(VariableNode& node);
+    virtual void visitClass(ClassNode& node);
+    virtual void visitField(FieldNode& node);
+    virtual void visitMethod(MethodNode& node);
+    virtual void visitCtor(CtorNode& node);
     virtual void visitBlock(BlockNode& node);
     virtual void visitEmpty(EmptyNode& node);
-    virtual void visitVariable(VariableNode& node);
     virtual void visitIf(IfNode& node);
     virtual void visitReturn(ReturnNode& node);
     virtual void visitIdent(IdentNode& node);
@@ -36,6 +40,9 @@ public:
     virtual void visitTernary(TernaryNode& node);
     virtual void visitCall(CallNode& node);
     virtual void visitArg(ArgNode& node);
+    virtual void visitFieldAccess(FieldAccessNode& node);
+    virtual void visitMethodCall(MethodCallNode& node);
+    virtual void visitSelf(SelfNode& node);
 };
 
 #endif // NODEVISITOR_HPP
