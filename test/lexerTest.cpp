@@ -1,6 +1,5 @@
 #include "diag/diag.hpp"
-#include "lexer/token.hpp"
-#include "lexer/vsllexer.hpp"
+#include "lexer/vslLexer.hpp"
 #include "gtest/gtest.h"
 
 #define valid(src) EXPECT_TRUE(lex(src))

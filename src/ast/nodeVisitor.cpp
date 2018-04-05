@@ -1,4 +1,4 @@
-#include "ast/nodevisitor.hpp"
+#include "ast/nodeVisitor.hpp"
 
 NodeVisitor::~NodeVisitor() = default;
 

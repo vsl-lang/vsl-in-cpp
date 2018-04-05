@@ -2,7 +2,7 @@
 #define NODEPRINTER_HPP
 
 #include "ast/node.hpp"
-#include "ast/nodevisitor.hpp"
+#include "ast/nodeVisitor.hpp"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/raw_ostream.h"
 

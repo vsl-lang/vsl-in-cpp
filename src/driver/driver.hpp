@@ -1,7 +1,7 @@
 #ifndef DRIVER_HPP
 #define DRIVER_HPP
 
-#include "driver/optionparser.hpp"
+#include "driver/optionParser.hpp"
 #include "llvm/Support/raw_ostream.h"
 #include <functional>
 

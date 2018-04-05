@@ -41,7 +41,7 @@ enum class Access
     NONE
 };
 
-#include "ast/nodevisitor.hpp"
+#include "ast/nodeVisitor.hpp"
 #include "ast/opKind.hpp"
 #include "ast/type.hpp"
 #include "lexer/location.hpp"

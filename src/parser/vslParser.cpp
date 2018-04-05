@@ -1,4 +1,4 @@
-#include "parser/vslparser.hpp"
+#include "parser/vslParser.hpp"
 #include "ast/opKind.hpp"
 
 VSLParser::VSLParser(VSLContext& vslCtx, Lexer& lexer)

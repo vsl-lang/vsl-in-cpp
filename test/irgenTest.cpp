@@ -1,8 +1,8 @@
 #include "ast/vslContext.hpp"
 #include "diag/diag.hpp"
 #include "irgen/irgen.hpp"
-#include "lexer/vsllexer.hpp"
-#include "parser/vslparser.hpp"
+#include "lexer/vslLexer.hpp"
+#include "parser/vslParser.hpp"
 #include "gtest/gtest.h"
 
 #define valid(src) EXPECT_TRUE(validate(src))

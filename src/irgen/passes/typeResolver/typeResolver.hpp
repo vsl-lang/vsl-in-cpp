@@ -2,7 +2,7 @@
 #define TYPERESOLVER_HPP
 
 #include "ast/node.hpp"
-#include "ast/nodevisitor.hpp"
+#include "ast/nodeVisitor.hpp"
 #include "ast/vslContext.hpp"
 #include "irgen/typeConverter/typeConverter.hpp"
 #include "llvm/ADT/ArrayRef.h"

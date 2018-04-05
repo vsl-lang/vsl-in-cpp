@@ -1,4 +1,4 @@
-#include "lexer/vsllexer.hpp"
+#include "lexer/vslLexer.hpp"
 #include <cctype>
 
 VSLLexer::VSLLexer(Diag& diag, const char* src)
