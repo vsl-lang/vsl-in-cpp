@@ -38,6 +38,8 @@ DIAG(FUNC_NAMED_AFTER_TYPE, (const FuncInterfaceNode& func), (ERROR,
         func.getLoc(), "function '", func.getName(), "' is named after a type"))
 
 // irEmitter
+DIAG(UNREACHABLE, (const Node& node), (WARNING, node.getLoc(),
+        "unreachable code"))
 DIAG(TOPLEVEL_CTRL_FLOW, (Location l), (ERROR, l,
         "top level control flow statements are not allowed"))
 DIAG(CANNOT_CONVERT, (const ExprNode& expr, const Type& from, const Type& to),

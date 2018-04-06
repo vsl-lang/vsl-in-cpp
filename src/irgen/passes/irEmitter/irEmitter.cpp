@@ -176,7 +176,15 @@ void IREmitter::visitBlock(BlockNode& node)
     for (Node* statement : node.getStatements())
     {
         // visit each statement
+        if (returned)
+        {
+            // we've already hit a return statement, so all code after this is
+            //  unreachable and shouldn't be bothered
+            diag.print<Diag::UNREACHABLE>(*statement);
+            break;
+        }
         statement->accept(*this);
+        // check if this block is returning
         if (statement->is(Node::RETURN))
         {
             returned = true;
