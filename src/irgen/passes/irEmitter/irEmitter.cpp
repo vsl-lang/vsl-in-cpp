@@ -1529,33 +1529,6 @@ Value IREmitter::copyValue(Value value)
     return loaded;
 }
 
-void IREmitter::destroyValue(Value value)
-{
-    // destruction applies only to exprs/fields
-    // if you need to destroy a variable value, call loadValue first
-    if (!value || value.isVar())
-    {
-        return;
-    }
-    if (value.isField() && value.shouldDestroyBase())
-    {
-        // if we just destroy the field, the base object could potentially be a
-        //  memory leak
-        // since the base object's destructor should destroy all of its fields
-        //  in addition to itself, we should only call the destructor.
-        destroyValue(value.getBase());
-        return;
-    }
-    // see if we actually have a destructor to call
-    llvm::Function* llvmFunc = global.getDtor(value.getVSLType());
-    if (!llvmFunc)
-    {
-        return;
-    }
-    // call that destructor
-    builder.CreateCall(llvmFunc, { value.getLLVMValue() });
-}
-
 Value IREmitter::loadValue(Value value)
 {
     // only assignable Values need to be loaded since they are pointers
@@ -1582,6 +1555,46 @@ void IREmitter::storeValue(Value from, Value to)
     }
 }
 
+void IREmitter::destroyValue(Value value)
+{
+    // only destroy expr/field Values
+    if (!value || value.isVar())
+    {
+        return;
+    }
+    if (value.isField() && value.shouldDestroyBase())
+    {
+        // if we just destroy the field, the base object could potentially be a
+        //  memory leak
+        // since the base object's destructor should destroy all of its fields
+        //  in addition to itself, we should only call that destructor.
+        value = value.getBase();
+    }
+    destroyValueImpl(value);
+}
+
+void IREmitter::destroyValueImpl(Value value)
+{
+    // see if we actually have a destructor to call
+    llvm::Function* llvmFunc = global.getDtor(value.getVSLType());
+    if (!llvmFunc)
+    {
+        return;
+    }
+    // call that destructor
+    builder.CreateCall(llvmFunc, { loadValue(value).getLLVMValue() });
+}
+
+void IREmitter::destroyVar(Value value)
+{
+    // only destroy variable Values
+    if (!value.isVar())
+    {
+        return;
+    }
+    destroyValueImpl(value);
+}
+
 void IREmitter::destroyVars()
 {
     // go through the current scope to destroy vars
@@ -1590,8 +1603,7 @@ void IREmitter::destroyVars()
     for (auto varIt = scope.rbegin(); varIt != scope.rend(); ++varIt)
     {
         // run destructor
-        // guaranteed to be a variable Value so need to load first
-        destroyValue(loadValue(varIt->second));
+        destroyVar(varIt->second);
     }
 }
 
@@ -1606,7 +1618,8 @@ void IREmitter::destroyAllVars()
         // ...and newest var
         for (auto varIt = scope.rbegin(); varIt != scope.rend(); ++varIt)
         {
-            destroyValue(loadValue(varIt->second));
+            // run destructor
+            destroyVar(varIt->second);
         }
     }
 }

@@ -400,14 +400,6 @@ private:
      */
     Value copyValue(Value value);
     /**
-     * Possibly generates instructions to destroy a value if it's an expression.
-     * For objects, this calls its destructor. Assignable values are ignored
-     * here because they should've been loaded first.
-     *
-     * @param value Value to destroy.
-     */
-    void destroyValue(Value value);
-    /**
      * Converts a Value into an expr Value. This creates a load instruction for
      * assignable Values.
      *
@@ -426,6 +418,28 @@ private:
      * @param to Value to store into. Must be a var/field value.
      */
     void storeValue(Value from, Value to);
+    /**
+     * Possibly generates instructions to destroy a value if it's an expression.
+     * For objects, this calls its destructor. Variable values are ignored here
+     * because they should've been loaded first, but fields are fine since their
+     * base objects may be expr Values.
+     *
+     * @param value Value to destroy. Must be an expr or field Value.
+     */
+    void destroyValue(Value value);
+    /**
+     * Factors out the common code between destroyValue and destroyVar.
+     *
+     * @param value Value to destroy.
+     */
+    void destroyValueImpl(Value value);
+    /**
+     * Destroys a variable Value. If the value doesn't have a destructor, this
+     * is a no-op.
+     *
+     * @param value Value to destroy. Must be a variable Value.
+     */
+    void destroyVar(Value value);
     /**
      * Destroys all variables in the current function scope. Useful when exiting
      * a scope.
