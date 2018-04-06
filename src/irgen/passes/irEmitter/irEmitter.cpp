@@ -753,6 +753,8 @@ void IREmitter::genAssign(BinaryNode& node)
             *lhsVal.getVSLType());
         return;
     }
+    // destroy lhs so rhs can take its place in memory
+    destroyVar(lhsVal);
     // finally, create the store instruction
     storeValue(rhsCopy, lhsVal);
 }
