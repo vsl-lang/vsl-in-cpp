@@ -157,7 +157,16 @@ void NodePrinter::visitIdent(IdentNode& node)
 
 void NodePrinter::visitLiteral(LiteralNode& node)
 {
-    node.getValue().print(os, false);
+    if (node.getValue().getBitWidth() == 1)
+    {
+        // print as a bool
+        os << (node.getValue().getBoolValue() ? "true" : "false");
+    }
+    else
+    {
+        // print as a regular int
+        node.getValue().print(os, false);
+    }
 }
 
 void NodePrinter::visitUnary(UnaryNode& node)
