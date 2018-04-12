@@ -4,7 +4,7 @@
 
 // driver
 DIAG(NO_INPUT, (int=0), (FATAL, "no input files"))
-DIAG(CANT_OPEN_FILE, (const char* file, std::string message), (FATAL,
+DIAG(CANT_OPEN_FILE, (const char* file, const std::string& message), (FATAL,
         "could not open file '", file, "': ", message))
 
 // lexer
@@ -61,18 +61,19 @@ DIAG(MISSING_RETURN, (const FunctionNode& func), (WARNING, func.getLoc(),
 DIAG(RETVAL_MISMATCHES_RETTYPE, (const ExprNode& retVal, const Type& valType,
         const Type& retType), (ERROR, retVal.getLoc(), "return value of type '",
         valType, "' does not match return type '", retType, '\''))
-DIAG(CANT_RETURN_VOID_VALUE, (ReturnNode& ret), (ERROR,
+DIAG(CANT_RETURN_VOID_VALUE, (const ReturnNode& ret), (ERROR,
         ret.getValue().getLoc(), "cannot return a value of type Void"))
-DIAG(INVALID_INT_WIDTH, (LiteralNode& literal), (INTERNAL, literal.getLoc(),
-        "VSL does not support ", literal.getValue().getBitWidth(),
-        "-bit integers"))
-DIAG(INVALID_UNARY, (UnaryNode& unary, const Type& type), (ERROR,
+DIAG(INVALID_INT_WIDTH, (const LiteralNode& literal), (INTERNAL,
+        literal.getLoc(), "VSL does not support ",
+        literal.getValue().getBitWidth(), "-bit integers"))
+DIAG(INVALID_UNARY, (const UnaryNode& unary, const Type& type), (ERROR,
         unary.getLoc(), "cannot apply unary operator '", unary.getOpSymbol(),
         "' to type '", type, '\''))
-DIAG(INVALID_BINARY, (BinaryNode& binary, const Type& lhs, const Type& rhs),
-    (ERROR, binary.getLoc(), "cannot apply binary operator '",
-        binary.getOpSymbol(), "' to types '", lhs, "' and '", rhs, '\''))
-DIAG(TERNARY_TYPE_MISMATCH, (TernaryNode& ternary, const Type& thenType,
+DIAG(INVALID_BINARY, (const BinaryNode& binary, const Type& lhs,
+        const Type& rhs), (ERROR, binary.getLoc(),
+        "cannot apply binary operator '", binary.getOpSymbol(), "' to types '",
+        lhs, "' and '", rhs, '\''))
+DIAG(TERNARY_TYPE_MISMATCH, (const TernaryNode& ternary, const Type& thenType,
         const Type& elseType), (ERROR, ternary.getLoc(),
         "ternary operands of type '", thenType, "' and '", elseType,
         "' don't match"))
@@ -101,15 +102,15 @@ DIAG(UNKNOWN_FIELD, (const FieldAccessNode& node, const Type& objType), (ERROR,
 DIAG(PRIVATE_FIELD, (const FieldAccessNode& node, const Type& objType), (ERROR,
         node.getLoc(), "field '", node.getField(), "' for object of type '",
         objType, "' is private"))
-DIAG(LHS_NOT_ASSIGNABLE, (ExprNode& lhs), (ERROR, lhs.getLoc(),
+DIAG(LHS_NOT_ASSIGNABLE, (const ExprNode& lhs), (ERROR, lhs.getLoc(),
         "lhs must be an identifier"))
 
 // irgen
-DIAG(LLVM_MODULE_ERROR, (std::string s), (INTERNAL,
-        "LLVM encountered the below errors:\n", std::move(s)))
+DIAG(LLVM_MODULE_ERROR, (const std::string& s), (INTERNAL,
+        "LLVM encountered the below errors:\n", s))
 
 // codegen
-DIAG(CANT_FIND_TARGET, (std::string error), (FATAL,
+DIAG(CANT_FIND_TARGET, (const std::string& error), (FATAL,
         "could not find requested target: ", std::move(error)))
 DIAG(TARGET_CANT_EMIT_OBJ, (int=0), (FATAL,
         "target machine cannot emit a file of type object"))
