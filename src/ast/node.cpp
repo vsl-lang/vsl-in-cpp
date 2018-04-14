@@ -192,9 +192,19 @@ llvm::StringRef VariableNode::getName() const
     return name;
 }
 
+bool VariableNode::hasType() const
+{
+    return type;
+}
+
 const Type* VariableNode::getType() const
 {
     return type;
+}
+
+void VariableNode::setType(const Type* type)
+{
+    this->type = type;
 }
 
 bool VariableNode::hasInit() const

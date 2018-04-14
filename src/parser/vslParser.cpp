@@ -280,17 +280,19 @@ VSLParser::VarData VSLParser::parseVarData()
         return data;
     }
     data.name = consume().getText();
-    // parse type
-    if (current().isNot(TokenKind::COLON))
+    // states whether type is omitted and must be inferred from initializer
+    bool optionalType;
+    // parse optional type
+    if (current().is(TokenKind::COLON))
     {
-        errorExpected("':'");
-        return data;
+        consume();
+        data.type = parseType();
+        optionalType = false;
     }
-    consume();
-    data.type = parseType();
-    if (!data.type)
+    else
     {
-        return data;
+        data.type = nullptr;
+        optionalType = true;
     }
     // parse optional initializer
     if (current().is(TokenKind::ASSIGN))
@@ -301,6 +303,13 @@ VSLParser::VarData VSLParser::parseVarData()
     else
     {
         data.init = nullptr;
+        // can't have both type and initializer omitted!
+        if (optionalType)
+        {
+            errorExpected("variable initializer");
+            consume();
+            return data;
+        }
     }
     // make sure there's a semicolon at the end
     if (current().isNot(TokenKind::SEMICOLON))
@@ -415,6 +424,20 @@ FieldNode* VSLParser::parseField(Access access, ClassNode& parent)
     VarData data = parseVarData();
     if (data.errored)
     {
+        return nullptr;
+    }
+    // fields must have types
+    // TODO: these rules may be relaxed later once we have inline field inits so
+    //  we can infer the type from that
+    if (!data.type)
+    {
+        diag.print<Diag::MISSING_FIELD_TYPE>(data.location, data.name);
+        return nullptr;
+    }
+    // fields also must not have initializers
+    if (data.init)
+    {
+        diag.print<Diag::NO_FIELD_INITS>(data.location);
         return nullptr;
     }
     return makeNode<FieldNode>(data.location, access, data.name, data.type,

@@ -249,11 +249,11 @@ private:
      * only with its entry block generated so that the user can fill in the
      * initialization code and its return instruction.
      *
-     * @param var Variable to initialize.
+     * @param varName Variable's name.
      *
      * @returns The constructor function.
      */
-    llvm::Function* genGlobalVarCtor(llvm::GlobalVariable* var);
+    llvm::Function* genGlobalVarCtor(llvm::StringRef varName);
     /**
      * Generates a global variable's destructor. This function will already be
      * complete so no need to modify it.

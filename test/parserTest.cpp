@@ -40,10 +40,13 @@ TEST(ParserTest, Functions)
 
 TEST(ParserTest, Classes)
 {
-    valid("public class X{ public var x: Int; "
+    valid("public class X { public var x: Int; "
         "public init(x: Int){ self.x = x; } "
         "public func f() -> Int { return self.x + 1; } }");
-    valid("public var x: X = X();");
+    // fields can't have inline field inits just yet
+    invalid("public class X { public var x: Int = 1; }");
+    // also must have explicit type for now
+    invalid("public class X { public var x; }");
 }
 
 TEST(ParserTest, EmptyStmts)
@@ -71,8 +74,16 @@ TEST(ParserTest, Ifs)
 
 TEST(ParserTest, Variables)
 {
+    // local vars
     valid("public func f() -> Void { let x: Int = 1337; }");
     valid("public func f() -> Void { var y: Void = x; }");
+    valid("public func f() -> Void { var z = 21; }");
+    // global vars
+    valid("public var x: X = X();");
+    valid("public var x = X();");
+    // must have either type or init or both
+    invalid("public var x;");
+    invalid("public func f() -> Void { var x; }");
 }
 
 TEST(ParserTest, Returns)

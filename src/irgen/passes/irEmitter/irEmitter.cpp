@@ -43,68 +43,99 @@ void IREmitter::visitParam(ParamNode& node)
 
 void IREmitter::visitVariable(VariableNode& node)
 {
-    // make sure the variable type is valid
-    if (!node.getType()->isValid())
-    {
-        diag.print<Diag::INVALID_VAR_TYPE>(node);
-        return;
-    }
-    llvm::Type* llvmType = converter.convert(node.getType());
-    llvm::Value* llvmValue;
+    // pre-init code
     if (isGlobal())
     {
-        // global variable
-        // declare the global variable
-        llvm::GlobalVariable* var = genGlobalVar(node.getAccess(),
-            node.getType(), llvmType, node.getName());
-        if (!var)
-        {
-            diag.print<Diag::VAR_ALREADY_DEFINED>(node);
-            return;
-        }
-        llvmValue = var;
-        // declare the constructor function
-        llvm::Function* ctor = genGlobalVarCtor(var);
-        // generate the destructor function
-        genGlobalVarDtor(var, node.getType());
-        // start inserting at the constructor
+        // setup the constructor function
+        llvm::Function* ctor = genGlobalVarCtor(node.getName());
         builder.SetInsertPoint(&ctor->back());
-    }
-    else
-    {
-        // local variable
-        llvm::AllocaInst* inst = createEntryAlloca(llvmType, node.getName());
-        llvmValue = inst;
-        // add to current scope
-        if (func.set(node.getName(), Value::getVar(node.getType(), inst)))
-        {
-            diag.print<Diag::VAR_ALREADY_DEFINED>(node);
-            inst->eraseFromParent();
-            return;
-        }
     }
     // generate initialization code
     node.getInit().accept(*this);
     Value init = copyValue(result);
     result = Value::getNull();
-    // before initializing the variable, make sure that the initializer
-    //  expression is actually valid
+    // validate the initializer expression
     bool valid = true;
     if (!init)
     {
         valid = false;
     }
-    // match the var and init types
-    else if (node.getType() != init.getVSLType())
+    else
     {
-        diag.print<Diag::MISMATCHING_VAR_TYPES>(node, *init.getVSLType());
-        valid = false;
+        // check whether the variable's type is inferred from the init expr
+        bool inferred;
+        if (!node.hasType())
+        {
+            node.setType(init.getVSLType());
+            inferred = true;
+        }
+        else
+        {
+            inferred = false;
+        }
+        // make sure the variable type is valid
+        if (!node.getType()->isValid())
+        {
+            diag.print<Diag::INVALID_VAR_TYPE>(node);
+            valid = false;
+        }
+        // match the var and init types if we haven't inferred the var type
+        else if (!inferred && node.getType() != init.getVSLType())
+        {
+            diag.print<Diag::MISMATCHING_VAR_TYPES>(node, *init.getVSLType());
+            valid = false;
+        }
     }
-    // store the variable
+    // setup the storage location
     if (valid)
     {
-        storeValue(init, Value::getVar(node.getType(), llvmValue));
+        llvm::Type* llvmType = converter.convert(node.getType());
+        llvm::Value* llvmValue;
+        if (isGlobal())
+        {
+            // create the global variable
+            llvm::GlobalVariable* var = genGlobalVar(node.getAccess(),
+                node.getType(), llvmType, node.getName());
+            llvmValue = var;
+            if (!var)
+            {
+                // variable was already defined!
+                diag.print<Diag::VAR_ALREADY_DEFINED>(node);
+                var->eraseFromParent();
+                valid = false;
+            }
+            else
+            {
+                // save the current insertion point
+                auto ip = builder.saveIP();
+                // generate the destructor function
+                genGlobalVarDtor(var, node.getType());
+                // restore insert point
+                builder.restoreIP(ip);
+            }
+        }
+        else
+        {
+            // local vars only need to use an alloca instruction
+            llvm::AllocaInst* inst = createEntryAlloca(llvmType,
+                node.getName());
+            llvmValue = inst;
+            // add to current scope
+            if (func.set(node.getName(), Value::getVar(node.getType(), inst)))
+            {
+                // variable was already defined!
+                diag.print<Diag::VAR_ALREADY_DEFINED>(node);
+                inst->eraseFromParent();
+                valid = false;
+            }
+        }
+        // store the variable if everything's still fine
+        if (valid)
+        {
+            storeValue(init, Value::getVar(node.getType(), llvmValue));
+        }
     }
+    // post-init code
     if (isGlobal())
     {
         // this was inserting inside a constructor function so it must be
@@ -991,14 +1022,13 @@ llvm::GlobalVariable* IREmitter::genGlobalVar(Access access,
     return var;
 }
 
-llvm::Function* IREmitter::genGlobalVarCtor(llvm::GlobalVariable* var)
+llvm::Function* IREmitter::genGlobalVarCtor(llvm::StringRef varName)
 {
     // create the constructor function
     auto* funcType = llvm::FunctionType::get(builder.getVoidTy(),
         /*isVarArg=*/false);
     auto* globalVarCtor = llvm::Function::Create(funcType,
-        llvm::GlobalValue::InternalLinkage, var->getName() + ".ctor",
-        &module);
+        llvm::GlobalValue::InternalLinkage, varName + ".ctor", &module);
     // call the ctor function at program start
     addGlobalCtor(globalVarCtor);
     // create the entry block

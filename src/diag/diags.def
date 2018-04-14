@@ -24,6 +24,10 @@ DIAG(DUPLICATE_TYPE, (Location location, llvm::StringRef name), (ERROR,
         location, "type '", name, "' was already defined earlier"))
 DIAG(DUPLICATE_FIELD, (const FieldNode& field), (ERROR, field.getLoc(),
         "field '", field.getName(), "' was already defined earlier"))
+DIAG(MISSING_FIELD_TYPE, (Location location, llvm::StringRef field), (ERROR,
+        "missing field type in field '", field, '\''))
+DIAG(NO_FIELD_INITS, (Location location), (ERROR,
+        "VSL does not support inline initializers yet"))
 DIAG(NOT_A_BINARY_OP, (const Token& t), (ERROR, t.getLoc(), "token '",
         t.getText(), "' is not a binary operator"))
 DIAG(INVALID_INT, (const Token& t), (ERROR, t.getLoc(), "invalid integer '",

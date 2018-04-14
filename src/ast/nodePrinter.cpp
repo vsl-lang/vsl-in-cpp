@@ -37,8 +37,11 @@ void NodePrinter::visitParam(ParamNode& node)
 void NodePrinter::visitVariable(VariableNode& node)
 {
     indent() << accessPrefix(node.getAccess()) <<
-        (node.isConst() ? "let " : "var ") << node.getName() << ": " <<
-        *node.getType();
+        (node.isConst() ? "let " : "var ") << node.getName();
+    if (node.hasType())
+    {
+        os << ": " << *node.getType();
+    }
     if (node.hasInit())
     {
         os << " = ";
@@ -77,6 +80,7 @@ void NodePrinter::visitClass(ClassNode& node)
 
 void NodePrinter::visitField(FieldNode& node)
 {
+    // handled like a normal var
     visitVariable(node);
 }
 

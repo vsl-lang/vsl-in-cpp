@@ -369,7 +369,9 @@ public:
     virtual ~VariableNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     llvm::StringRef getName() const;
+    bool hasType() const;
     const Type* getType() const;
+    void setType(const Type* type);
     bool hasInit() const;
     ExprNode& getInit() const;
     bool isConst() const;
