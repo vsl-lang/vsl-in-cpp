@@ -74,6 +74,8 @@ DeclNode* VSLParser::parseDecl()
     {
     case TokenKind::KW_FUNC:
         return parseFunction(access);
+    case TokenKind::KW_TYPEALIAS:
+        return parseTypealias(access);
     case TokenKind::KW_VAR:
     case TokenKind::KW_LET:
         return parseVariable(access);
@@ -240,8 +242,51 @@ ParamNode* VSLParser::parseParam()
     return makeNode<ParamNode>(location, name, type);
 }
 
+// typealias -> access? typealias name assign type
+// access provided by caller
+TypealiasNode* VSLParser::parseTypealias(Access access)
+{
+    // parse typealias keyword
+    if (current().isNot(TokenKind::KW_TYPEALIAS))
+    {
+        errorExpected("'typealias'");
+        return nullptr;
+    }
+    Location location = consume().getLoc();
+    // parse alias name
+    if (current().isNot(TokenKind::IDENTIFIER))
+    {
+        errorExpected("identifier");
+        return nullptr;
+    }
+    llvm::StringRef name = consume().getText();
+    // parse assign
+    if (current().isNot(TokenKind::ASSIGN))
+    {
+        errorExpected("'='");
+        return nullptr;
+    }
+    consume();
+    // parse alias type
+    const Type* type = parseType();
+    if (!type)
+    {
+        return nullptr;
+    }
+    // parse semicolon
+    if (current().isNot(TokenKind::SEMICOLON))
+    {
+        errorExpected("';'");
+    }
+    else
+    {
+        consume();
+    }
+    return makeNode<TypealiasNode>(location, access, name, type);
+}
+
 // variable -> access? (var | let) identifier colon type assign expr semicolon
-// accessmod provided by caller if applicable
+// access provided by caller if applicable
 VariableNode* VSLParser::parseVariable(Access access)
 {
     VarData data = parseVarData();

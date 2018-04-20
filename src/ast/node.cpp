@@ -175,6 +175,27 @@ const Type* ParamNode::getType() const
     return type;
 }
 
+TypealiasNode::TypealiasNode(Location location, Access access,
+    llvm::StringRef name, const Type* type)
+    : DeclNode{ Node::TYPEALIAS, location, access }, name{ name }, type{ type }
+{
+}
+
+void TypealiasNode::accept(NodeVisitor& nodeVisitor)
+{
+    nodeVisitor.visitTypealias(*this);
+}
+
+llvm::StringRef TypealiasNode::getName() const
+{
+    return name;
+}
+
+const Type* TypealiasNode::getType() const
+{
+    return type;
+}
+
 VariableNode::VariableNode(Location location, Access access,
     llvm::StringRef name, const Type* type, ExprNode* init, bool constness)
     : VariableNode{ Node::VARIABLE, location, access, name, type, init,

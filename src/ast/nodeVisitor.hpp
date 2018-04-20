@@ -24,6 +24,7 @@ public:
     virtual void visitFunction(FunctionNode& node);
     virtual void visitExtFunc(ExtFuncNode& node);
     virtual void visitParam(ParamNode& node);
+    virtual void visitTypealias(TypealiasNode& node);
     virtual void visitVariable(VariableNode& node);
     virtual void visitClass(ClassNode& node);
     virtual void visitField(FieldNode& node);

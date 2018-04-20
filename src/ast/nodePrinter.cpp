@@ -34,6 +34,11 @@ void NodePrinter::visitParam(ParamNode& node)
     os << node.getName() << ": " << *node.getType();
 }
 
+void NodePrinter::visitTypealias(TypealiasNode& node)
+{
+    os << "typealias " << node.getName() << " = " << *node.getType() << ';';
+}
+
 void NodePrinter::visitVariable(VariableNode& node)
 {
     indent() << accessPrefix(node.getAccess()) <<

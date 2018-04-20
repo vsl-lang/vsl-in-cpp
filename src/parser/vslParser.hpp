@@ -161,6 +161,14 @@ private:
      */
     ParamNode* parseParam();
     /**
+     * Parses a typealias, e.g.\ `public typealias X = Int;`.
+     *
+     * @param access Access specifier.
+     *
+     * @returns A type alias.
+     */
+    TypealiasNode* parseTypealias(Access access);
+    /**
      * Parses a variable declaration, e.g.\ `public var x: Int = 1;`. This can
      * also be inside a function where there is no access specifier.
      *

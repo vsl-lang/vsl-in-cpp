@@ -22,6 +22,10 @@ void NodeVisitor::visitParam(ParamNode& node)
 {
 }
 
+void NodeVisitor::visitTypealias(TypealiasNode& node)
+{
+}
+
 void NodeVisitor::visitVariable(VariableNode& node)
 {
 }

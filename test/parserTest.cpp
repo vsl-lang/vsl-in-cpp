@@ -72,6 +72,14 @@ TEST(ParserTest, Ifs)
         "}");
 }
 
+TEST(ParserTest, Typealiases)
+{
+    valid("public typealias X = Int;");
+    valid("private typealias Y = X;");
+    invalid("public typealias Int = X;");
+    valid("public typealias X = Y; public typealias Y = X;");
+}
+
 TEST(ParserTest, Variables)
 {
     // local vars

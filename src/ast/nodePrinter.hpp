@@ -23,6 +23,7 @@ public:
     virtual void visitFunction(FunctionNode& node) override;
     virtual void visitExtFunc(ExtFuncNode& node) override;
     virtual void visitParam(ParamNode& node) override;
+    virtual void visitTypealias(TypealiasNode& node) override;
     virtual void visitVariable(VariableNode& node) override;
     virtual void visitClass(ClassNode& node) override;
     virtual void visitField(FieldNode& node) override;

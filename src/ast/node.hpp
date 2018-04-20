@@ -8,6 +8,7 @@ class FunctionNode;
 class ExtFuncNode;
 class ParamNode;
 class VariableNode;
+class TypealiasNode;
 class ClassNode;
 class FieldNode;
 class MethodNode;
@@ -108,6 +109,8 @@ public:
         EXTFUNC,
         /** Function parameter. */
         PARAM,
+        /** Type alias. */
+        TYPEALIAS,
         /** Variable definition. */
         VARIABLE,
         /** Class definition. */
@@ -345,6 +348,34 @@ private:
     /** The name of the parameter. */
     llvm::StringRef name;
     /** The type of the parameter. */
+    const Type* type;
+};
+
+/**
+ * Represents an alias given to a type, e.g.\ `public typealias X = Int;`.
+ */
+class TypealiasNode : public DeclNode
+{
+public:
+    /**
+     * Creates a TypealiasNode.
+     *
+     * @param location Where this TypealiasNode was found in the source.
+     * @param access Access specifier.
+     * @param name Name of the alias.
+     * @param type Type that's being aliased.
+     */
+    TypealiasNode(Location location, Access access, llvm::StringRef name,
+        const Type* type);
+    virtual ~TypealiasNode() override = default;
+    virtual void accept(NodeVisitor& nodeVisitor) override;
+    llvm::StringRef getName() const;
+    const Type* getType() const;
+
+private:
+    /** Name of the alias. */
+    llvm::StringRef name;
+    /** Type that's being aliased. */
     const Type* type;
 };
 
