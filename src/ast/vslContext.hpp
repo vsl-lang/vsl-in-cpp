@@ -58,21 +58,14 @@ public:
      */
     const SimpleType* getSimpleType(Type::Kind k) const;
     /**
-     * Checks if a named type already exists.
-     *
-     * @param naem Name of the type.
-     *
-     * @returns True if the type does exist, false otherwise.
-     */
-    bool hasNamedType(llvm::StringRef name) const;
-    /**
-     * Gets a named type or creates one it nonexistent.
+     * Gets or creates an UnresolvedType. This is useful when parsing since all
+     * the types may not be known yet.
      *
      * @param name Name of the type.
      *
-     * @returns A named type.
+     * @returns An unresolved type.
      */
-    const NamedType* getNamedType(llvm::StringRef name);
+    const UnresolvedType* getUnresolvedType(llvm::StringRef name);
     /**
      * Gets or constructs a FunctionType from a FuncInterfaceNode. This is a
      * relatively expensive operation so it should only be called once per
@@ -85,20 +78,23 @@ public:
      */
     const FunctionType* getFunctionType(const FuncInterfaceNode& node);
     /**
-     * Creates a named type. Returns null if the name already exists.
+     * Constructs an opaque, mutable class type. This can be used along with its
+     * mutator methods to build the "body" of the class type. Returns null if
+     * the type name already exists.
+     *
+     * @param name Name of the class.
+     *
+     * @returns A new class type, or null if the name already exists.
+     */
+    ClassType* createClassType(llvm::StringRef name);
+    /**
+     * Searches for a type by name.
      *
      * @param name Name of the type.
      *
-     * @returns A new NamedType, or null if the name already exists.
+     * @returns A named type, or null if the name doesn't exist.
      */
-    const NamedType* createNamedType(llvm::StringRef name);
-    /**
-     * Constructs an opaque, mutable class type. This can be used along with its
-     * mutator methods to build the "body" of the class type.
-     *
-     * @returns A new class type.
-     */
-    ClassType* createClassType();
+    const Type* getType(llvm::StringRef name) const;
 
     /** @} */
 
@@ -124,12 +120,12 @@ private:
     SimpleType intType;
     /** Represents the Void type. */
     SimpleType voidType;
-    /** Contains all the Namedtypes. */
-    std::unordered_set<NamedType> namedTypes;
-    /** Contains all the FunctionTypes. */
+    /** Owns all the UnresolvedTypes. */
+    std::unordered_set<UnresolvedType> unresolvedTypes;
+    /** Owns all the FunctionTypes. */
     std::unordered_set<FunctionType> functionTypes;
-    /** Contains all the ClassTypes. */
-    std::deque<ClassType> classTypes;
+    /** Owns all other named types that are not UnresolvedTypes. */
+    llvm::StringMap<std::unique_ptr<Type>> namedTypes;
 };
 
 #endif // VSLCONTEXT_HPP

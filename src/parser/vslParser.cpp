@@ -350,17 +350,15 @@ ClassNode* VSLParser::parseClass(Access access)
     }
     consume();
     // create the class type
-    const NamedType* type = vslCtx.getNamedType(name);
-    if (type->hasUnderlyingType())
+    ClassType* type = vslCtx.createClassType(name);
+    if (!type)
     {
         // this type is already defined, so that means we have a duplicate type!
         diag.print<Diag::DUPLICATE_TYPE>(location, name);
         return nullptr;
     }
-    ClassType* classType = vslCtx.createClassType();
-    type->setUnderlyingType(classType);
     // create the ClassNode and build its body
-    auto* node = makeNode<ClassNode>(location, access, name, type, classType);
+    auto* node = makeNode<ClassNode>(location, access, name, type);
     parseMembers(*node);
     // parse closing curly brace
     if (current().isNot(TokenKind::RBRACE))
@@ -968,7 +966,7 @@ const Type* VSLParser::parseType()
         type = vslCtx.getVoidType();
         break;
     case TokenKind::IDENTIFIER:
-        type = vslCtx.getNamedType(current().getText());
+        type = vslCtx.getUnresolvedType(current().getText());
         break;
     default:
         errorExpected("type");

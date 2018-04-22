@@ -95,7 +95,7 @@ bool FuncResolver::verifyFuncName(const FuncInterfaceNode& node) const
         diag.print<Diag::FUNC_ALREADY_DEFINED>(node);
         return true;
     }
-    if (vslCtx.hasNamedType(node.getName()))
+    if (vslCtx.getType(node.getName()))
     {
         diag.print<Diag::FUNC_NAMED_AFTER_TYPE>(node);
         return true;

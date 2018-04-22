@@ -3,9 +3,11 @@
 
 class Type;
 class SimpleType;
-class NamedType;
+class UnresolvedType;
 class FunctionType;
 class ClassType;
+
+class VSLContext;
 
 #include "ast/node.hpp"
 #include "llvm/ADT/ArrayRef.h"
@@ -40,8 +42,8 @@ public:
         BOOL,
         /** Integer. */
         INT,
-        /** Named. */
-        NAMED,
+        /** Unresolved. */
+        UNRESOLVED,
         /** Function. */
         FUNCTION,
         /** Class. */
@@ -50,7 +52,9 @@ public:
     Kind getKind() const;
     bool is(Kind kind) const;
     bool isNot(Kind kind) const;
-    bool isFunctionType() const;
+    const UnresolvedType* asUnresolvedType() const;
+    const FunctionType* asFunctionType() const;
+    const ClassType* asClassType() const;
     /**
      * Verifies whether the Type is valid and can be stored in a variable, i.e.,
      * not Void or Error.
@@ -58,6 +62,24 @@ public:
      * @returns True if this type is valid, false otherwise.
      */
     bool isValid() const;
+    /**
+     * Compares this type's most basic form with the given type's most basic
+     * form. Used in type checking.
+     *
+     * @param type Type to compare. Must not be null.
+     * @param vslCtx Required for some types.
+     *
+     * @returns Whether the types match up or not.
+     */
+    bool matches(const Type* type, VSLContext& vslCtx) const;
+    /**
+     * Gets the most basic form of this type. Used for type checking.
+     *
+     * @param vslCtx Required for some Types.
+     *
+     * @returns The most basic form of this type.
+     */
+    const Type* resolve(VSLContext& vslCtx) const;
     /**
      * Prints a Type.
      *
@@ -80,6 +102,10 @@ protected:
      * @returns The string representation of the Type kind.
      */
     static const char* getKindName(Kind k);
+    /**
+     * Virtual resolve implementation.
+     */
+    virtual const Type* resolveImpl(VSLContext& vslCtx) const;
 
 private:
     /**
@@ -111,43 +137,30 @@ private:
 };
 
 /**
- * Represents a named (possibly unresolved) type.
+ * Represents a named unresolved type.
  */
-class NamedType : public Type
+class UnresolvedType : public Type
 {
     friend class VSLContext;
 public:
-    bool operator==(const NamedType& type) const;
+    bool operator==(const UnresolvedType& type) const;
     llvm::StringRef getName() const;
-    /**
-     * Checks if the type has an underlying type. This is the type that will be
-     * actually used when resolving it into an LLVM type.
-     */
-    bool hasUnderlyingType() const;
-    const Type* getUnderlyingType() const;
-    /**
-     * Set the underlying type. This is a const method because the underlying
-     * type needs to be a mutable field.
-     *
-     * @param type Underlying type.
-     */
-    void setUnderlyingType(const Type* type) const;
 
 protected:
     /**
-     * Creates a NamedType. Starts out with no underlying type.
+     * Creates an UnresolvedType.
      *
      * @param name Name of the type.
      */
-    NamedType(llvm::StringRef name);
+    UnresolvedType(llvm::StringRef name);
+    virtual const Type* resolveImpl(VSLContext& vslCtx) const override;
 
 private:
     virtual void printImpl(llvm::raw_ostream& os) const override;
-    void printUnderlyingType(llvm::raw_ostream& os) const;
     /** Name of the type. */
     llvm::StringRef name;
-    /** The type being represented. */
-    mutable const Type* underlyingType;
+    /** Actual type. Cached when resolve is called. */
+    mutable const Type* actualType;
 };
 
 /**
@@ -175,8 +188,8 @@ public:
      *
      * @returns The type of the `self` parameter.
      */
-    const NamedType* getSelfType() const;
-    void setSelfType(const NamedType* selfType);
+    const ClassType* getSelfType() const;
+    void setSelfType(const ClassType* selfType);
 
 protected:
     /**
@@ -196,7 +209,7 @@ private:
     /** What type the function returns. */
     const Type* returnType;
     /** Type of the self parameter. */
-    const NamedType* selfType;
+    const ClassType* selfType;
     /** Whether this is a constructor or not. */
     bool ctor;
 };
@@ -243,36 +256,45 @@ public:
      */
     bool setField(llvm::StringRef name, const Type* type, size_t index,
         Access access);
+    /**
+     * Gets the name of the class.
+     *
+     * @returns The name of the class.
+     */
+    llvm::StringRef getName() const;
 
 protected:
     /**
-     * Creates an opaque ClassType.
+     * Creates an empty ClassType.
+     *
+     * @param name Name of the class.
      */
-    ClassType();
+    ClassType(llvm::StringRef name);
 
 private:
     virtual void printImpl(llvm::raw_ostream& os) const override;
     /** Contained fields. */
     llvm::StringMap<Field> fieldTypes;
+    /** Name of the class. */
+    llvm::StringRef name;
 };
 
 namespace std
 {
 /**
- * Template specialization for hashing {@link NamedType NamedTypes}.
+ * Template specialization for hashing {@link UnresolvedType UnresolvedTypes}.
  */
 template<>
-struct hash<NamedType>
+struct hash<UnresolvedType>
 {
     /**
-     * Computes the hash value for a given NamedType. The underlying type is
-     * never hashed because that has a mutable interface.
+     * Computes the hash value for a given UnresolvedType.
      *
-     * @param type The NamedType to compute the hash value for.
+     * @param type The UnresolvedType to compute the hash value for.
      *
-     * @returns The hash value for the given type.
+     * @returns The hash value for the type.
      */
-    size_t operator()(const NamedType& type) const
+    size_t operator()(const UnresolvedType& type) const
     {
         return llvm::hash_value(type.getName());
     }
@@ -286,12 +308,13 @@ struct hash<FunctionType>
     /**
      * Computes the hash value for a given FunctionType.
      *
-     * @param ft The FunctionType to compute the hash value for.
+     * @param type The FunctionType to compute the hash value for.
      *
-     * @returns The hash value for ft.
+     * @returns The hash value for the type.
      */
     size_t operator()(const FunctionType& type) const
     {
+        // TODO: we should hash based on the resolved forms of these types
         return llvm::hash_combine(type.isCtor(), type.getSelfType(),
             type.getReturnType(), type.getParams());
     }

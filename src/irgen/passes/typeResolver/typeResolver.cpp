@@ -35,26 +35,20 @@ void TypeResolver::visitClass(ClassNode& node)
 
 void TypeResolver::gatherInfo(ClassNode& node)
 {
-    const ClassType* vslType = node.getClassType();
-    // create a named llvm struct type to hold all the fields
-    // the "struct.<class>" prefix prevents collisions with the reference type
-    auto* structType = llvm::StructType::create(llvmCtx,
-        std::string{ "struct." } += node.getName());
-    // register the class' llvm equivalent
-    converter.addClassType(node.getName(), vslType, structType);
+    // register the class
+    converter.addClassType(node.getName(), node.getType());
 }
 
 void TypeResolver::resolve(ClassNode& node)
 {
-    const ClassType* classType = node.getClassType();
+    const ClassType* type = node.getType();
     // get the llvm struct type
     // the representation of this is documented in TypeConverter::addClassType
-    llvm::PointerType* ptrType = converter.convert(classType);
-    llvm::StructType* rcType =
+    llvm::PointerType* ptrType = converter.convert(type);
+    llvm::StructType* objType =
         llvm::cast<llvm::StructType>(ptrType->getElementType());
-    // (rcType has the 0th field as an i32 for the refcount)
     llvm::StructType* structType =
-        llvm::cast<llvm::StructType>(rcType->getElementType(1));
+        llvm::cast<llvm::StructType>(objType->getElementType(1));
     // fill in the structType with the llvm equivalent of each field type
     std::vector<llvm::Type*> llvmFieldTypes;
     llvmFieldTypes.resize(node.getNumFields());

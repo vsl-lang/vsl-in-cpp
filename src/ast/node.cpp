@@ -241,9 +241,9 @@ ClassNode& ClassNode::Member::getParent() const
 }
 
 ClassNode::ClassNode(Location location, Access access, llvm::StringRef name,
-    const NamedType* type, ClassType* classType)
+    ClassType* type)
     : DeclNode{ Node::CLASS, location, access }, name{ name }, type{ type },
-    classType{ classType }, ctor{ nullptr }
+    ctor{ nullptr }
 {
 }
 
@@ -257,14 +257,9 @@ llvm::StringRef ClassNode::getName() const
     return name;
 }
 
-const NamedType* ClassNode::getType() const
+const ClassType* ClassNode::getType() const
 {
     return type;
-}
-
-const ClassType* ClassNode::getClassType() const
-{
-    return classType;
 }
 
 llvm::ArrayRef<FieldNode*> ClassNode::getFields() const
@@ -299,11 +294,14 @@ llvm::ArrayRef<MethodNode*> ClassNode::getMethods() const
 
 bool ClassNode::addField(FieldNode& field)
 {
-    if (classType->setField(field.getName(), field.getType(), fields.size(),
+    // attempt to add a field to the ClassType
+    if (type->setField(field.getName(), field.getType(), fields.size(),
             field.getAccess()))
     {
+        // field already exists
         return true;
     }
+    // everything's fine, add to field node list
     fields.push_back(&field);
     return false;
 }

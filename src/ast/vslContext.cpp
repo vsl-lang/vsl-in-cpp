@@ -56,56 +56,53 @@ const SimpleType* VSLContext::getSimpleType(Type::Kind k) const
     }
 }
 
-bool VSLContext::hasNamedType(llvm::StringRef name) const
+const UnresolvedType* VSLContext::getUnresolvedType(llvm::StringRef name)
 {
-    NamedType nt{ name };
-    return namedTypes.find(nt) != namedTypes.end();
-}
-
-const NamedType* VSLContext::getNamedType(llvm::StringRef name)
-{
-    NamedType nt{ name };
-    return &*namedTypes.insert(nt).first;
+    return &*unresolvedTypes.insert(UnresolvedType{ name }).first;
 }
 
 const FunctionType* VSLContext::getFunctionType(const FuncInterfaceNode& node)
 {
     // create the function type
     FunctionType type{ getParamTypes(node), node.getReturnType(),
-        node.is(Node::CTOR) };
+        /*ctor=*/ node.is(Node::CTOR) };
+    const ClassType* selfType;
     if (node.is(Node::METHOD))
     {
-        // fill in the type of the self parameter for methods
-        type.setSelfType(
-            static_cast<const MethodNode&>(node).getParent().getType());
+        selfType = static_cast<const MethodNode&>(node).getParent().getType();
     }
     else if (node.is(Node::CTOR))
     {
-        // fill in the type of the self parameter for ctors
-        type.setSelfType(
-            static_cast<const CtorNode&>(node).getParent().getType());
+        selfType = static_cast<const CtorNode&>(node).getParent().getType();
     }
+    type.setSelfType(selfType);
     return &*functionTypes.emplace(std::move(type)).first;
 }
 
-const NamedType* VSLContext::createNamedType(llvm::StringRef name)
+ClassType* VSLContext::createClassType(llvm::StringRef name)
 {
-    // attempt to insert a NamedType
-    NamedType nt{ name };
-    auto pair = namedTypes.insert(nt);
+    // try to insert a new empty ClassType
+    auto* ptr = new ClassType{ name };
+    auto pair = namedTypes.try_emplace(name, ptr);
     if (!pair.second)
     {
         // name already exists!
         return nullptr;
     }
-    return &*pair.first;
+    // if successful, return a pointer to the new ClassType
+    return ptr;
 }
 
-ClassType* VSLContext::createClassType()
+const Type* VSLContext::getType(llvm::StringRef name) const
 {
-    // create a new empty ClassType and return a pointer to it
-    classTypes.push_back({});
-    return &classTypes.back();
+    auto it = namedTypes.find(name);
+    if (it == namedTypes.end())
+    {
+        // name doesn't exist
+        return nullptr;
+    }
+    // return a ptr to the type
+    return it->getValue().get();
 }
 
 std::vector<const Type*> VSLContext::getParamTypes(

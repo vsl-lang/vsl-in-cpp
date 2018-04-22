@@ -1,12 +1,17 @@
 #include "irgen/typeConverter/typeConverter.hpp"
 
-TypeConverter::TypeConverter(llvm::LLVMContext& llvmCtx)
-    : llvmCtx{ llvmCtx }
+TypeConverter::TypeConverter(VSLContext& vslCtx, llvm::LLVMContext& llvmCtx)
+    : vslCtx{ vslCtx }, llvmCtx{ llvmCtx }
 {
 }
 
 llvm::Type* TypeConverter::convert(const Type* type) const
 {
+    if (!type)
+    {
+        // type doesn't even exist
+        return getOpaqueType();
+    }
     switch (type->getKind())
     {
     case Type::VOID:
@@ -15,8 +20,8 @@ llvm::Type* TypeConverter::convert(const Type* type) const
         return llvm::Type::getInt1Ty(llvmCtx);
     case Type::INT:
         return llvm::Type::getInt32Ty(llvmCtx);
-    case Type::NAMED:
-        return convert(static_cast<const NamedType*>(type));
+    case Type::UNRESOLVED:
+        return convert(static_cast<const UnresolvedType*>(type));
     case Type::FUNCTION:
         return convert(static_cast<const FunctionType*>(type));
     case Type::CLASS:
@@ -27,10 +32,16 @@ llvm::Type* TypeConverter::convert(const Type* type) const
     }
 }
 
-llvm::Type* TypeConverter::convert(const SimpleType* type) const
+llvm::Type* TypeConverter::convert(const UnresolvedType* type) const
 {
-    // delegate over to the switch above
-    return convert(static_cast<const Type*>(type));
+    // attempt to lookup the type
+    const Type* resolved = type->resolve(vslCtx);
+    if (type == resolved)
+    {
+        // trying to resolve returns the same type so it's forever indefinite
+        return getOpaqueType();
+    }
+    return convert(resolved);
 }
 
 llvm::FunctionType* TypeConverter::convert(const FunctionType* type) const
@@ -73,17 +84,6 @@ llvm::FunctionType* TypeConverter::convert(const FunctionType* type) const
     return llvm::FunctionType::get(ret, params, /*isVarArg=*/false);
 }
 
-llvm::Type* TypeConverter::convert(const NamedType* type) const
-{
-    if (!type->hasUnderlyingType())
-    {
-        // type isn't fully resolved
-        return getOpaqueType();
-    }
-    // attempt to convert the underlying type
-    return convert(type->getUnderlyingType());
-}
-
 llvm::PointerType* TypeConverter::convert(const ClassType* type) const
 {
     // look for the llvm reference type from previous calls to addClassType
@@ -97,18 +97,21 @@ llvm::PointerType* TypeConverter::convert(const ClassType* type) const
     return it->second;
 }
 
-void TypeConverter::addClassType(llvm::StringRef name, const ClassType* vslType,
-    llvm::StructType* structType)
+void TypeConverter::addClassType(llvm::StringRef name, const ClassType* vslType)
 {
-    // structType equivalent but with a reference count in the front
-    auto* rcType = llvm::StructType::create(name,
+    // create a named llvm struct type to hold all the fields
+    // the "struct.<class>" prefix prevents collisions with the final ref type
+    auto* structType = llvm::StructType::create(llvmCtx,
+        std::string{ "struct." } += name);
+    // same as structType but with a reference count in the front
+    auto* objType = llvm::StructType::create(name,
         llvm::Type::getInt32Ty(llvmCtx), structType);
-    // pointer to the reference-counted structType
-    auto* refType = llvm::PointerType::getUnqual(rcType);
+    // pointer to the reference-counted objType
+    auto* refType = llvm::PointerType::getUnqual(objType);
     // insert the class/reference types (result is pair<iterator, bool>)
     auto pair = classes.emplace(vslType, refType);
     // make sure that the insert was successful
-    assert(pair.second && "Class already exists");
+    assert(pair.second && "Class already exists!");
 }
 
 llvm::StructType* TypeConverter::getOpaqueType() const

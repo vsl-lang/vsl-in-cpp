@@ -438,17 +438,14 @@ public:
      * @param location Where this ClassNode was found in the source.
      * @param access Access specifier.
      * @param name Name of the class.
-     * @param namedType External type of the class. Should have classType as its
-     * underlying type.
-     * @param classType Class type equivalent.
+     * @param type Class type equivalent.
      */
     ClassNode(Location location, Access access, llvm::StringRef name,
-        const NamedType* type, ClassType* classType);
+        ClassType* type);
     virtual ~ClassNode() override = default;
     virtual void accept(NodeVisitor& nodeVisitor) override;
     llvm::StringRef getName() const;
-    const NamedType* getType() const;
-    const ClassType* getClassType() const;
+    const ClassType* getType() const;
     llvm::ArrayRef<FieldNode*> getFields() const;
     size_t getNumFields() const;
     FieldNode& getField(size_t i) const;
@@ -471,9 +468,7 @@ private:
     /** Name of the class. */
     llvm::StringRef name;
     /** Type of the class. */
-    const NamedType* type;
-    /** Class type equivalent. */
-    ClassType* classType;
+    ClassType* type;
     /** List of fields. */
     std::vector<FieldNode*> fields;
     /** Class constructor. Can be null. */
@@ -535,13 +530,10 @@ public:
 class CtorNode : public FunctionNode, public ClassNode::Member
 {
 public:
-    // TODO: could create UnresolvedType when parsing ClassNode and use that as
-    //       the return type
     /**
-     * Creates a CtorNode. The return type will be null until the class type is
-     * resolved.
+     * Creates a CtorNode.
      *
-     * @param location Where this MethodNode was found in the source.
+     * @param location Where this CtorNode was found in the source.
      * @param access Access specifier.
      * @param params The function's parameters.
      * @param body Body of the method.

@@ -322,7 +322,7 @@ private:
      */
     Value lookupIdent(IdentNode& node);
     /**
-     * Creates a ConstantInt for the first index of a GEP instruction. Note,
+     * Creates a Constant for the first index of a GEP instruction. Note,
      * however, that all other indexes must be of `i32` type.
      *
      * @param ptrType Pointer type to the object being GEP'd.
@@ -378,15 +378,6 @@ private:
      * @param node Class to create a destructor for.
      */
     void generateDtor(const ClassNode& node);
-    /**
-     * Attempts to convert a Type to a ClassType. This method returns null if
-     * the type can't be resolved to a ClassType.
-     *
-     * @param type Type to convert.
-     *
-     * @returns The resulting ClassType, or null if not possible.
-     */
-    static const ClassType* toClassType(const Type* type);
     /**
      * Loads and copies a Value if it's a variable or field access. Expr copies
      * are elided because they're just temporaries. When copying objects, the

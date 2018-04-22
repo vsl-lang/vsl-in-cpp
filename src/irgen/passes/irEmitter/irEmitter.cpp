@@ -80,7 +80,8 @@ void IREmitter::visitVariable(VariableNode& node)
             valid = false;
         }
         // match the var and init types if we haven't inferred the var type
-        else if (!inferred && node.getType() != init.getVSLType())
+        else if (!inferred &&
+            !node.getType()->matches(init.getVSLType(), vslCtx))
         {
             diag.print<Diag::MISMATCHING_VAR_TYPES>(node, *init.getVSLType());
             valid = false;
@@ -253,7 +254,7 @@ void IREmitter::visitIf(IfNode& node)
     }
     Value condition;
     // make sure it's a bool
-    if (result.getVSLType() == vslCtx.getBoolType())
+    if (result.getVSLType()->matches(vslCtx.getBoolType(), vslCtx))
     {
         condition = result;
     }
@@ -355,12 +356,12 @@ void IREmitter::visitReturn(ReturnNode& node)
     // type checking
     if (value)
     {
-        if (value.getVSLType() != func.getReturnType())
+        if (!value.getVSLType()->matches(func.getReturnType(), vslCtx))
         {
             diag.print<Diag::RETVAL_MISMATCHES_RETTYPE>(node.getValue(),
                 *value.getVSLType(), *func.getReturnType());
         }
-        else if (value.getVSLType() == vslCtx.getVoidType())
+        else if (value.getVSLType()->matches(vslCtx.getVoidType(), vslCtx))
         {
             diag.print<Diag::CANT_RETURN_VOID_VALUE>(node);
         }
@@ -420,7 +421,7 @@ void IREmitter::visitUnary(UnaryNode& node)
     {
     case UnaryKind::NOT:
         // should only be valid on booleans
-        if (value.getVSLType() != vslCtx.getBoolType())
+        if (!value.getVSLType()->matches(vslCtx.getBoolType(), vslCtx))
         {
             result = Value::getNull();
             break;
@@ -473,7 +474,7 @@ void IREmitter::visitBinary(BinaryNode& node)
     Value loadedRhs = loadValue(rhs);
     result = Value::getNull();
     // make sure the types match
-    if (lhs.getVSLType() == rhs.getVSLType())
+    if (lhs.getVSLType()->matches(rhs.getVSLType(), vslCtx))
     {
         // choose the appropriate operator to generate code for
         const Type* type = lhs.getVSLType();
@@ -536,7 +537,7 @@ void IREmitter::visitTernary(TernaryNode& node)
     {
         return;
     }
-    if (result.getVSLType() != vslCtx.getBoolType())
+    if (!result.getVSLType()->matches(vslCtx.getBoolType(), vslCtx))
     {
         diag.print<Diag::CANNOT_CONVERT>(node.getCondition(),
             *result.getVSLType(), *vslCtx.getBoolType());
@@ -584,7 +585,7 @@ void IREmitter::visitTernary(TernaryNode& node)
     contBlock->insertInto(currFunc);
     builder.SetInsertPoint(contBlock);
     // do type checking to make sure everything's fine
-    if (thenCase.getVSLType() != elseCase.getVSLType())
+    if (!thenCase.getVSLType()->matches(elseCase.getVSLType(), vslCtx))
     {
         diag.print<Diag::TERNARY_TYPE_MISMATCH>(node, *thenCase.getVSLType(),
             *elseCase.getVSLType());
@@ -640,7 +641,7 @@ void IREmitter::visitFieldAccess(FieldAccessNode& node)
     Value base = result;
     // resolve the type
     const Type* type = base.getVSLType();
-    const ClassType* classType = toClassType(type);
+    const ClassType* classType = type->resolve(vslCtx)->asClassType();
     // field access applies only to objects of class type
     if (!classType)
     {
@@ -708,8 +709,8 @@ void IREmitter::visitMethodCall(MethodCallNode& node)
     // lookup the method
     Value methodFunc;
     Access access;
-    std::tie(methodFunc, access) =
-        global.getMethod(selfArg.getVSLType(), node.getMethod());
+    std::tie(methodFunc, access) = global.getMethod(
+        selfArg.getVSLType()->resolve(vslCtx), node.getMethod());
     if (!methodFunc)
     {
         // method can't be found
@@ -742,9 +743,16 @@ void IREmitter::visitSelf(SelfNode& node)
 void IREmitter::genNeg(Value value)
 {
     const Type* type = value.getVSLType();
-    result = (type == vslCtx.getIntType() || type == vslCtx.getBoolType()) ?
-        Value::getExpr(type, builder.CreateNeg(value.getLLVMValue(), "neg")) :
-        Value::getNull();
+    if (type->matches(vslCtx.getIntType(), vslCtx) ||
+        type->matches(vslCtx.getBoolType(), vslCtx))
+    {
+        result = Value::getExpr(type,
+            builder.CreateNeg(value.getLLVMValue(), "neg"));
+    }
+    else
+    {
+        result = Value::getNull();
+    }
 }
 
 void IREmitter::genAssign(BinaryNode& node)
@@ -778,7 +786,7 @@ void IREmitter::genAssign(BinaryNode& node)
         return;
     }
     // make sure the types match up before doing the assignment
-    if (lhsVal.getVSLType() != rhsVal.getVSLType())
+    if (!lhsVal.getVSLType()->matches(rhsVal.getVSLType(), vslCtx))
     {
         diag.print<Diag::CANNOT_CONVERT>(rhs, *rhsVal.getVSLType(),
             *lhsVal.getVSLType());
@@ -818,7 +826,7 @@ void IREmitter::genShortCircuit(BinaryNode& node)
     Value cond1 = result;
     Value cond1Loaded = loadValue(cond1);
     // of course, lhs has to be a bool for this to work
-    if (cond1.getVSLType() != vslCtx.getBoolType())
+    if (!cond1.getVSLType()->matches(vslCtx.getBoolType(), vslCtx))
     {
         diag.print<Diag::CANNOT_CONVERT>(lhs, *cond1.getVSLType(),
             *vslCtx.getBoolType());
@@ -830,7 +838,7 @@ void IREmitter::genShortCircuit(BinaryNode& node)
     auto* currBlock = builder.GetInsertBlock();
     llvm::Function* currFunc = currBlock->getParent();
     // setup blocks
-    llvm::Twine name = (node.getOp() == BinaryKind::AND) ? "and" : "or";
+    llvm::StringRef name = (node.getOp() == BinaryKind::AND) ? "and" : "or";
     auto* longCheck = llvm::BasicBlock::Create(llvmCtx, name + ".long");
     auto* cont = llvm::BasicBlock::Create(llvmCtx, name + ".cont");
     // create the branch
@@ -863,7 +871,7 @@ void IREmitter::genShortCircuit(BinaryNode& node)
     // of course, rhs has to be a bool for this to work
     // the check happens later so that the cont block is neither a memory leak
     //  nor a dangling pointer, and we can safely insert other code afterwards
-    if (result.getVSLType() != vslCtx.getBoolType())
+    if (!cond2.getVSLType()->matches(vslCtx.getBoolType(), vslCtx))
     {
         diag.print<Diag::CANNOT_CONVERT>(rhs, *cond2.getVSLType(),
             *vslCtx.getBoolType());
@@ -887,42 +895,43 @@ void IREmitter::genShortCircuit(BinaryNode& node)
 
 void IREmitter::genAdd(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
-    result = (type == vslCtx.getIntType()) ?
+    result = (type->matches(vslCtx.getIntType(), vslCtx)) ?
         Value::getExpr(type, builder.CreateAdd(lhs, rhs, "add")) :
         Value::getNull();
 }
 
 void IREmitter::genSub(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
-    result = (type == vslCtx.getIntType()) ?
+    result = (type->matches(vslCtx.getIntType(), vslCtx)) ?
         Value::getExpr(type, builder.CreateSub(lhs, rhs, "sub")) :
         Value::getNull();
 }
 
 void IREmitter::genMul(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
-    result = (type == vslCtx.getIntType()) ?
+    result = (type->matches(vslCtx.getIntType(), vslCtx)) ?
         Value::getExpr(type, builder.CreateMul(lhs, rhs, "mul")) :
         Value::getNull();
 }
 
 void IREmitter::genDiv(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
-    result = (type == vslCtx.getIntType()) ?
+    result = (type->matches(vslCtx.getIntType(), vslCtx)) ?
         Value::getExpr(type, builder.CreateSDiv(lhs, rhs, "sdiv")) :
         Value::getNull();
 }
 
 void IREmitter::genMod(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
-    result = (type == vslCtx.getIntType()) ?
+    result = (type->matches(vslCtx.getIntType(), vslCtx)) ?
         Value::getExpr(type, builder.CreateSRem(lhs, rhs, "srem")) :
         Value::getNull();
 }
 
 void IREmitter::genEQ(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
-    result = (type == vslCtx.getIntType() || type == vslCtx.getBoolType()) ?
+    result = (type->matches(vslCtx.getIntType(), vslCtx) ||
+            type->matches(vslCtx.getBoolType(), vslCtx)) ?
         Value::getExpr(vslCtx.getBoolType(),
             builder.CreateICmpEQ(lhs, rhs, "cmp")) :
         Value::getNull();
@@ -930,7 +939,8 @@ void IREmitter::genEQ(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 
 void IREmitter::genNE(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
-    result = (type == vslCtx.getIntType() || type == vslCtx.getBoolType()) ?
+    result = (type->matches(vslCtx.getIntType(), vslCtx) ||
+            type->matches(vslCtx.getBoolType(), vslCtx)) ?
         Value::getExpr(vslCtx.getBoolType(),
             builder.CreateICmpNE(lhs, rhs, "cmp")) :
         Value::getNull();
@@ -938,7 +948,7 @@ void IREmitter::genNE(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 
 void IREmitter::genGT(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
-    result = (type == vslCtx.getIntType()) ?
+    result = (type->matches(vslCtx.getIntType(), vslCtx)) ?
         Value::getExpr(vslCtx.getBoolType(),
             builder.CreateICmpSGT(lhs, rhs, "cmp")) :
         Value::getNull();
@@ -946,7 +956,7 @@ void IREmitter::genGT(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 
 void IREmitter::genGE(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
-    result = (type == vslCtx.getIntType()) ?
+    result = (type->matches(vslCtx.getIntType(), vslCtx)) ?
         Value::getExpr(vslCtx.getBoolType(),
             builder.CreateICmpSGE(lhs, rhs, "cmp")) :
         Value::getNull();
@@ -954,7 +964,7 @@ void IREmitter::genGE(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 
 void IREmitter::genLT(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
-    result = (type == vslCtx.getIntType()) ?
+    result = (type->matches(vslCtx.getIntType(), vslCtx)) ?
         Value::getExpr(vslCtx.getBoolType(),
             builder.CreateICmpSLT(lhs, rhs, "cmp")) :
         Value::getNull();
@@ -962,7 +972,7 @@ void IREmitter::genLT(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 
 void IREmitter::genLE(const Type* type, llvm::Value* lhs, llvm::Value* rhs)
 {
-    result = (type == vslCtx.getIntType()) ?
+    result = (type->matches(vslCtx.getIntType(), vslCtx)) ?
         Value::getExpr(vslCtx.getBoolType(),
             builder.CreateICmpSLE(lhs, rhs, "cmp")) :
         Value::getNull();
@@ -1039,7 +1049,7 @@ llvm::Function* IREmitter::genGlobalVarCtor(llvm::StringRef varName)
 
 void IREmitter::genGlobalVarDtor(llvm::GlobalVariable* var, const Type* type)
 {
-    llvm::Function* dtorFunc = global.getDtor(type);
+    llvm::Function* dtorFunc = global.getDtor(type->resolve(vslCtx));
     if (!dtorFunc)
     {
         // destructor doesn't even exist!
@@ -1135,58 +1145,42 @@ void IREmitter::addGlobalCall(llvm::Function* f, bool startOrEnd)
 
 llvm::Value* IREmitter::createMalloc(const Type* type)
 {
-    const Type* newType = type;
+    const Type* resolved = type->resolve(vslCtx);
     llvm::StringRef name;
-    // resolve the type
-    if (newType->is(Type::NAMED))
-    {
-        // high-level name of the type is known, but not the underlying type
-        name = static_cast<const NamedType*>(newType)->getName();
-        // iteratively get the most underlying type
-        do
-        {
-            newType =
-                static_cast<const NamedType*>(newType)->getUnderlyingType();
-        }
-        while (newType->is(Type::NAMED));
-    }
     // do something special for mallocing a class
-    if (newType->is(Type::CLASS))
+    if (resolved->is(Type::CLASS))
     {
-        return createMalloc(static_cast<const ClassType*>(newType), name);
+        return createMalloc(resolved->asClassType(), name);
     }
     // or not if it isn't a class
-    return createMalloc(converter.convert(newType), name);
+    return createMalloc(converter.convert(resolved), name);
 }
 
 llvm::Value* IREmitter::createMalloc(const ClassType* type,
     llvm::StringRef name)
 {
     // get the pointer type of the object
-    llvm::PointerType* objPtrType = converter.convert(type);
+    llvm::PointerType* refType = converter.convert(type);
     // object type to allocate
-    auto* objType = llvm::cast<llvm::StructType>(objPtrType->getElementType());
+    auto* objType = llvm::cast<llvm::StructType>(refType->getElementType());
     // create the malloc call
-    llvm::Value* obj = createMalloc(objType, llvm::Twine{ "obj." } + name);
+    llvm::Value* obj = createMalloc(objType, "obj." + name);
     if (!obj)
     {
         return nullptr;
     }
-    // get the type of a getelementptr index
-    llvm::IntegerType* indexType =
-        module.getDataLayout().getIntPtrType(llvmCtx);
     // create list of getelementptr indexes
     std::initializer_list<llvm::Value*> indexes
     {
         // index as array
-        llvm::ConstantInt::get(indexType, 0),
+        createGEPIndex(refType, 0),
         // index as struct (for the refcount): %A* -> i32*
         // after the index, only i32 constants are allowed
         builder.getInt32(0)
     };
     // get a pointer to the object's reference count
     llvm::Value* refcount = builder.CreateGEP(objType, obj, indexes,
-        llvm::Twine{ "obj." } + name + ".refcount");
+        "obj." + name + ".refcount");
     // initialize the refcount with a 1, so the object is now live and ready to
     //  be initialized
     builder.CreateStore(builder.getInt32(1), refcount);
@@ -1230,7 +1224,11 @@ Value IREmitter::lookupIdent(IdentNode& node)
         if (!value)
         {
             // maybe constructor?
-            const NamedType* selfType = vslCtx.getNamedType(node.getName());
+            const Type* selfType = vslCtx.getType(node.getName());
+            if (selfType)
+            {
+                selfType = selfType->resolve(vslCtx)->asClassType();
+            }
             Access access;
             std::tie(value, access) = global.getCtor(selfType);
             if (!value)
@@ -1252,7 +1250,7 @@ Value IREmitter::lookupIdent(IdentNode& node)
 llvm::Constant* IREmitter::createGEPIndex(llvm::Type* ptrType,
     uint64_t i) const
 {
-    // in llvm 7, use getIndexType
+    // NOTE: in llvm 7, use getIndexType
     return llvm::ConstantInt::get(module.getDataLayout().getIntPtrType(ptrType),
         i);
 }
@@ -1310,7 +1308,7 @@ void IREmitter::cleanupFuncBody(FunctionNode& node)
     if (bb && !bb->getTerminator())
     {
         destroyAllVars();
-        if (func.getReturnType() == vslCtx.getVoidType())
+        if (func.getReturnType()->matches(vslCtx.getVoidType(), vslCtx))
         {
             builder.CreateRetVoid();
         }
@@ -1363,8 +1361,8 @@ void IREmitter::createCall(CallNode& node, Value funcVal, Value selfArg)
         else if (calleeType->isMethod())
         {
             // methods just require the self argument
-            assert(selfArg.getVSLType() == calleeType->getSelfType() &&
-                "invalid self param!");
+            assert(selfArg.getVSLType()->matches(calleeType->getSelfType(),
+                    vslCtx) && "invalid self param!");
             llvmSelfArg = selfArg.getLLVMValue();
         }
         // reserve a space for the self parameter
@@ -1386,7 +1384,7 @@ void IREmitter::createCall(CallNode& node, Value funcVal, Value selfArg)
         // save the argument for destruction later
         vslArgs.push_back(result);
         // check that the types match
-        if (result.getVSLType() == paramType)
+        if (result.getVSLType()->matches(paramType, vslCtx))
         {
             llvmArgs.push_back(copyValue(result).getLLVMValue());
         }
@@ -1433,13 +1431,14 @@ void IREmitter::createCall(CallNode& node, Value funcVal, Value selfArg)
 
 bool IREmitter::canAccessMember(const Type* objType, Access access) const
 {
-    return access != Access::PRIVATE || objType == self.getVSLType();
+    return access != Access::PRIVATE ||
+        (self && objType->matches(self.getVSLType(), vslCtx));
 }
 
 void IREmitter::generateDtor(const ClassNode& node)
 {
     // get the function
-    llvm::Function* llvmFunc = global.getDtor(node.getType());
+    llvm::Function* llvmFunc = global.getDtor(node.getType()->resolve(vslCtx));
     assert(llvmFunc && "FuncResolver didn't run or didn't register dtor");
     // setup the function
     auto* entry = llvm::BasicBlock::Create(llvmCtx, "entry", llvmFunc);
@@ -1470,7 +1469,8 @@ void IREmitter::generateDtor(const ClassNode& node)
     {
         // lookup the field's destructor
         const FieldNode& field = node.getField(i);
-        llvm::Function* dtorFunc = global.getDtor(field.getType());
+        llvm::Function* dtorFunc =
+            global.getDtor(field.getType()->resolve(vslCtx));
         if (!dtorFunc)
         {
             // destructor doesn't exist so this can be skipped
@@ -1502,24 +1502,6 @@ void IREmitter::generateDtor(const ClassNode& node)
     builder.CreateRetVoid();
 }
 
-const ClassType* IREmitter::toClassType(const Type* type)
-{
-    // infinitely get the underlying type until it's no longer a NamedType
-    // TODO: protect against infinite loops
-    // or just redo the type system
-    while (type->is(Type::NAMED) &&
-        static_cast<const NamedType*>(type)->hasUnderlyingType())
-    {
-        type = static_cast<const NamedType*>(type)->getUnderlyingType();
-    }
-    // make sure this is a ClassType before casting
-    if (!type->is(Type::CLASS))
-    {
-        return nullptr;
-    }
-    return static_cast<const ClassType*>(type);
-}
-
 Value IREmitter::copyValue(Value value)
 {
     // only assignable values (lvalues) can be copied
@@ -1533,7 +1515,7 @@ Value IREmitter::copyValue(Value value)
     //  reference, therefore we need to load it first
     Value loaded = loadValue(value);
     // see if we have an object, since objects need to increment their refcount
-    if (toClassType(value.getVSLType()))
+    if (value.getVSLType()->resolve(vslCtx)->is(Type::CLASS))
     {
         llvm::Value* objPtr = loaded.getLLVMValue();
         // get the refcount
@@ -1608,7 +1590,8 @@ void IREmitter::destroyValue(Value value)
 void IREmitter::destroyValueImpl(Value value)
 {
     // see if we actually have a destructor to call
-    llvm::Function* llvmFunc = global.getDtor(value.getVSLType());
+    llvm::Function* llvmFunc =
+        global.getDtor(value.getVSLType()->resolve(vslCtx));
     if (!llvmFunc)
     {
         return;

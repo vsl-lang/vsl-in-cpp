@@ -16,39 +16,39 @@ public:
     /**
      * Creates a TypeConverter.
      *
+     * @param vslCtx VSL context object.
      * @param llvmCtx LLVM context object.
      */
-    TypeConverter(llvm::LLVMContext& llvmCtx);
+    TypeConverter(VSLContext& vslCtx, llvm::LLVMContext& llvmCtx);
     /**
      * Converts a type. This returns the LLVM opaque type if no type exists that
      * could represent the given VSL type.
      *
-     * @param type VSL type to convert.
+     * @param type VSL type to convert. Can be null.
      *
      * @returns An equivalent LLVM type, or the opaque type if nonexistent.
      */
     llvm::Type* convert(const Type* type) const;
-    llvm::Type* convert(const SimpleType* type) const;
-    llvm::Type* convert(const NamedType* type) const;
+    llvm::Type* convert(const UnresolvedType* type) const;
     llvm::FunctionType* convert(const FunctionType* type) const;
     /**
      * Converts a class type. This should be a pointer to a reference-counted
      * struct, which holds the reference count and the class struct type.
      *
+     * @param type VSL type to convert. Can be null.
+     *
      * @returns A reference type.
      */
     llvm::PointerType* convert(const ClassType* type) const;
     /**
-     * Adds a class type. This internally creates the reference-counted LLVM
-     * struct type for this type. The resulting type is a pointer to allow easy
-     * copying between function scopes.
+     * Adds a class type. This internally creates all the LLVM types for it. The
+     * resulting type is a pointer to allow easy copying between function
+     * scopes.
      *
      * @param name Name of the class. Used to create the reference-counted type.
      * @param vslType VSL type of class. Must not already be added.
-     * @param structType LLVM struct type.
      */
-    void addClassType(llvm::StringRef name, const ClassType* vslType,
-        llvm::StructType* structType);
+    void addClassType(llvm::StringRef name, const ClassType* vslType);
 
 private:
     /**
@@ -57,6 +57,8 @@ private:
      * @returns The LLVM opaque type.
      */
     llvm::StructType* getOpaqueType() const;
+    /** VSL context object. */
+    VSLContext& vslCtx;
     /** LLVM context object. */
     llvm::LLVMContext& llvmCtx;
     /** Maps VSL class types to LLVM references. */

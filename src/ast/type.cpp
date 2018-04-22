@@ -1,4 +1,5 @@
 #include "ast/type.hpp"
+#include "ast/vslContext.hpp"
 
 llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Type& type)
 {
@@ -21,14 +22,36 @@ bool Type::isNot(Kind kind) const
     return this->kind != kind;
 }
 
-bool Type::isFunctionType() const
+const UnresolvedType* Type::asUnresolvedType() const
 {
-    return kind == FUNCTION;
+    return is(Type::UNRESOLVED) ? static_cast<const UnresolvedType*>(this)
+        : nullptr;
+}
+
+const FunctionType* Type::asFunctionType() const
+{
+    return is(Type::FUNCTION) ? static_cast<const FunctionType*>(this)
+        : nullptr;
+}
+
+const ClassType* Type::asClassType() const
+{
+    return is(Type::CLASS) ? static_cast<const ClassType*>(this) : nullptr;
 }
 
 bool Type::isValid() const
 {
     return kind != ERROR && kind != VOID;
+}
+
+bool Type::matches(const Type* type, VSLContext& vslCtx) const
+{
+    return resolve(vslCtx) == type->resolve(vslCtx);
+}
+
+const Type* Type::resolve(VSLContext& vslCtx) const
+{
+    return resolveImpl(vslCtx);
 }
 
 void Type::print(llvm::raw_ostream& os) const
@@ -58,6 +81,12 @@ const char* Type::getKindName(Kind k)
     }
 }
 
+const Type* Type::resolveImpl(VSLContext& vslCtx) const
+{
+    // assumed if resolveImpl isn't overridden
+    return this;
+}
+
 SimpleType::SimpleType(Type::Kind kind)
     : Type{ kind }
 {
@@ -68,68 +97,41 @@ void SimpleType::printImpl(llvm::raw_ostream& os) const
     os << getKindName(getKind());
 }
 
-bool NamedType::operator==(const NamedType& type) const
+bool UnresolvedType::operator==(const UnresolvedType& type) const
 {
     return name == type.name;
 }
 
-llvm::StringRef NamedType::getName() const
+llvm::StringRef UnresolvedType::getName() const
 {
     return name;
 }
 
-bool NamedType::hasUnderlyingType() const
-{
-    return underlyingType;
-}
-
-const Type* NamedType::getUnderlyingType() const
-{
-    return underlyingType;
-}
-
-void NamedType::setUnderlyingType(const Type* type) const
-{
-    underlyingType = type;
-}
-
-NamedType::NamedType(llvm::StringRef name)
-    : Type{ Type::NAMED }, name{ name }, underlyingType{ nullptr }
+UnresolvedType::UnresolvedType(llvm::StringRef name)
+    : Type{ Type::UNRESOLVED }, name{ name }, actualType{ nullptr }
 {
 }
 
-void NamedType::printImpl(llvm::raw_ostream& os) const
+const Type* UnresolvedType::resolveImpl(VSLContext& vslCtx) const
+{
+    if (actualType)
+    {
+        // already called before so return cached type
+        return actualType;
+    }
+    // attempt to lookup the name
+    actualType = vslCtx.getType(name);
+    if (!actualType)
+    {
+        // type doesn't exist, fallback to superclass implementation
+        actualType = Type::resolveImpl(vslCtx);
+    }
+    return actualType;
+}
+
+void UnresolvedType::printImpl(llvm::raw_ostream& os) const
 {
     os << name;
-    printUnderlyingType(os);
-}
-
-void NamedType::printUnderlyingType(llvm::raw_ostream& os) const
-{
-    if (hasUnderlyingType())
-    {
-        switch (underlyingType->getKind())
-        {
-        case Type::ERROR:
-        case Type::VOID:
-        case Type::BOOL:
-        case Type::INT:
-        case Type::FUNCTION:
-            os << " (aka " << *underlyingType << ')';
-            break;
-        case Type::NAMED:
-            // instead of getting something like "A (aka B (aka Int))" we
-            //  attempt to print ITS underlying type so we get "A (aka Int)"
-            // if it doesn't have an underlying type we'll just get "A" rather
-            //  than "A (aka B)" which wouldn't really help much
-            static_cast<const NamedType*>(underlyingType)->printUnderlyingType(
-                os);
-            break;
-        case Type::CLASS:
-            // class types don't really have a string representation for now
-            break;
-        }
-    }
 }
 
 bool FunctionType::operator==(const FunctionType& type) const
@@ -173,12 +175,12 @@ bool FunctionType::hasSelfType() const
     return selfType;
 }
 
-const NamedType* FunctionType::getSelfType() const
+const ClassType* FunctionType::getSelfType() const
 {
     return selfType;
 }
 
-void FunctionType::setSelfType(const NamedType* selfType)
+void FunctionType::setSelfType(const ClassType* selfType)
 {
     this->selfType = selfType;
 }
@@ -186,8 +188,7 @@ void FunctionType::setSelfType(const NamedType* selfType)
 FunctionType::FunctionType(std::vector<const Type*> params,
     const Type* returnType, bool ctor)
     : Type{ Type::FUNCTION }, params{ std::move(params) },
-    returnType{ returnType }, selfType{ nullptr },
-    ctor{ ctor }
+    returnType{ returnType }, selfType{ nullptr }, ctor{ ctor }
 {
 }
 
@@ -250,12 +251,17 @@ bool ClassType::setField(llvm::StringRef name, const Type* type, size_t index,
     return !fieldTypes.try_emplace(name, type, index, access).second;
 }
 
-ClassType::ClassType()
-    : Type{ Type::CLASS }
+llvm::StringRef ClassType::getName() const
+{
+    return name;
+}
+
+ClassType::ClassType(llvm::StringRef name)
+    : Type{ Type::CLASS }, name{ name }
 {
 }
 
 void ClassType::printImpl(llvm::raw_ostream& os) const
 {
-    os << "<class type>";
+    os << name;
 }

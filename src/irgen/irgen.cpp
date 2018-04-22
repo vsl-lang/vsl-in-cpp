@@ -6,7 +6,7 @@
 
 IRGen::IRGen(VSLContext& vslCtx, Diag& diag, llvm::Module& module)
     : vslCtx{ vslCtx }, diag{ diag }, module{ module },
-    converter{ module.getContext() }
+    converter{ vslCtx, module.getContext() }
 {
 }
 

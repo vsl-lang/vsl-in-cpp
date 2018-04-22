@@ -146,7 +146,7 @@ bool Value::isFunc() const
 
 const FunctionType* Value::getVSLFunc() const
 {
-    assert(isFunc() && vslType->isFunctionType() && "Not a func!");
+    assert(isFunc() && vslType->is(Type::FUNCTION) && "Not a func!");
     return static_cast<const FunctionType*>(vslType);
 }
 
