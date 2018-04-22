@@ -112,6 +112,7 @@ void TypeConverter::addClassType(llvm::StringRef name, const ClassType* vslType)
     auto pair = classes.emplace(vslType, refType);
     // make sure that the insert was successful
     assert(pair.second && "Class already exists!");
+    (void) pair;
 }
 
 llvm::StructType* TypeConverter::getOpaqueType() const

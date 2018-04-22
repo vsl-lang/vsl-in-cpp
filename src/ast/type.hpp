@@ -20,14 +20,13 @@ class VSLContext;
 llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Type& type);
 
 /**
- * Represents a VSL type. Derived Types are stored in a VSLContext separate from
- * eachother, therefore not needing a virtual destructor. This may change in the
- * future as the type system becomes more complex.
+ * Represents a VSL type.
  */
 class Type
 {
     friend class VSLContext;
 public:
+    virtual ~Type() = 0;
     /**
      * Specifies the kind of Type object being represented. Keep in mind that
      * one Type subclass can be represented by multiple Kinds.
@@ -124,6 +123,9 @@ private:
 class SimpleType : public Type
 {
     friend class VSLContext;
+public:
+    virtual ~SimpleType() override = default;
+
 protected:
     /**
      * Creates a SimpleType.
@@ -143,6 +145,7 @@ class UnresolvedType : public Type
 {
     friend class VSLContext;
 public:
+    virtual ~UnresolvedType() override = default;
     bool operator==(const UnresolvedType& type) const;
     llvm::StringRef getName() const;
 
@@ -170,6 +173,7 @@ class FunctionType : public Type
 {
     friend class VSLContext;
 public:
+    virtual ~FunctionType() override = default;
     bool operator==(const FunctionType& type) const;
     size_t getNumParams() const;
     const Type* getParamType(size_t i) const;
@@ -236,6 +240,8 @@ public:
         /** Access specifier. */
         Access access;
     };
+
+    virtual ~ClassType() override = default;
     /**
      * Gets a field type, or null if it doesn't exist.
      *

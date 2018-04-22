@@ -75,6 +75,10 @@ const FunctionType* VSLContext::getFunctionType(const FuncInterfaceNode& node)
     {
         selfType = static_cast<const CtorNode&>(node).getParent().getType();
     }
+    else
+    {
+        selfType = nullptr;
+    }
     type.setSelfType(selfType);
     return &*functionTypes.emplace(std::move(type)).first;
 }

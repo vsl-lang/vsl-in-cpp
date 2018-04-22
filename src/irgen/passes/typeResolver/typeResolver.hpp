@@ -3,11 +3,8 @@
 
 #include "ast/node.hpp"
 #include "ast/nodeVisitor.hpp"
-#include "ast/vslContext.hpp"
 #include "irgen/typeConverter/typeConverter.hpp"
 #include "llvm/ADT/ArrayRef.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
 
 /**
  * Gathers information on type declarations to resolve {@link UnresolvedType
@@ -19,12 +16,9 @@ public:
     /**
      * Creates a TypeResolver.
      *
-     * @param vslCtx Context object.
      * @param converter VSL to LLVM type converter.
-     * @param module Used for declaring LLVM types.
      */
-    TypeResolver(VSLContext& vslCtx, TypeConverter& converter,
-        llvm::Module& module);
+    TypeResolver(TypeConverter& converter);
     virtual ~TypeResolver() override = default;
     virtual void visitAST(llvm::ArrayRef<DeclNode*> ast) override;
     virtual void visitClass(ClassNode& node) override;
@@ -54,14 +48,8 @@ private:
      * @param node Class to resolve.
      */
     void resolve(ClassNode& node);
-    /** Context object. */
-    VSLContext& vslCtx;
     /** VSL to LLVM type converter. */
     TypeConverter& converter;
-    /** Used for declaring LLVM types. */
-    llvm::Module& module;
-    /** LLVM context object. */
-    llvm::LLVMContext& llvmCtx;
     /** Current AST pass to do. */
     Pass pass;
 };

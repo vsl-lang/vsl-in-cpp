@@ -1,12 +1,9 @@
 #include "irgen/passes/typeResolver/typeResolver.hpp"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/Support/Casting.h"
-#include <string>
 
-TypeResolver::TypeResolver(VSLContext& vslCtx, TypeConverter& converter,
-    llvm::Module& module)
-    : vslCtx{ vslCtx }, converter{ converter }, module{ module },
-    llvmCtx{ module.getContext() }
+TypeResolver::TypeResolver(TypeConverter& converter)
+    : converter{ converter }
 {
 }
 

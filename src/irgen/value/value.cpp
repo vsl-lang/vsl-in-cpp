@@ -17,9 +17,10 @@ bool Value::operator==(const Value& value) const
     if (isField())
     {
         // check the base data
-        return value.isField() && base.vslType == value.base.vslType &&
-            base.llvmValue == value.base.llvmValue &&
-            base.shouldDestroy == value.base.shouldDestroy;
+        return value.isField() &&
+            data.base.vslType == value.data.base.vslType &&
+            data.base.llvmValue == value.data.base.llvmValue &&
+            data.base.shouldDestroy == value.data.base.shouldDestroy;
     }
     // not a field but other checks succeeded
     return true;
@@ -50,7 +51,7 @@ Value Value::getField(Value base, const Type* vslField, llvm::Value* llvmField,
 {
     assert(base.isExpr() && "Not an expr!");
     Value value{ Kind::FIELD, vslField, llvmField };
-    value.base = { base.getVSLType(), base.getLLVMValue(), destroyBase };
+    value.data.base = { base.getVSLType(), base.getLLVMValue(), destroyBase };
     return value;
 }
 
@@ -130,13 +131,13 @@ llvm::Value* Value::getLLVMField() const
 
 Value Value::getBase() const
 {
-    return Value::getExpr(base.vslType, base.llvmValue);
+    return Value::getExpr(data.base.vslType, data.base.llvmValue);
 }
 
 bool Value::shouldDestroyBase() const
 {
     assert(isField() && "Not a field!");
-    return base.shouldDestroy;
+    return data.base.shouldDestroy;
 }
 
 bool Value::isFunc() const

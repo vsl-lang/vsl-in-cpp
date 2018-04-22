@@ -13,7 +13,7 @@ IRGen::IRGen(VSLContext& vslCtx, Diag& diag, llvm::Module& module)
 void IRGen::run()
 {
     // resolve type declarations
-    TypeResolver typeResolver{ vslCtx, converter, module };
+    TypeResolver typeResolver{ converter };
     typeResolver.visitAST(vslCtx.getGlobals());
     // resolve global functions
     FuncResolver funcResolver{ vslCtx, diag, global, converter, module };

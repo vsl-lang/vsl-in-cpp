@@ -173,7 +173,7 @@ private:
     /** LLVM value. */
     llvm::Value* llvmValue;
     /** Data not shared by all Value kinds. */
-    union
+    union Data
     {
         /** Field Values only. */
         struct
@@ -185,7 +185,7 @@ private:
             /** Whether the base object should be destroyed after use. */
             bool shouldDestroy;
         } base;
-    };
+    } data;
 };
 
 #endif // VALUE_HPP

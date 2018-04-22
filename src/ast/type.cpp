@@ -7,6 +7,8 @@ llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Type& type)
     return os;
 }
 
+Type::~Type() = default;
+
 Type::Kind Type::getKind() const
 {
     return kind;
